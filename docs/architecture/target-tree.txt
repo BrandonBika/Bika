@@ -1,0 +1,734 @@
+civicneuro/
+  .github/
+    workflows/
+      ci.yml
+      security.yml                 # runs tests/security/** and boundary/CSP/secret checks
+      codeql.yml
+      secret-scan.yml
+      deploy-migrations.yml
+      deploy-edge-functions.yml
+      deploy-apps.yml
+    CODEOWNERS
+    dependabot.yml
+    pull_request_template.md
+    ISSUE_TEMPLATE/
+      bug_report.md
+      security_report.md
+  .githooks/
+    pre-commit                     # lint, format, secret scan
+    commit-msg
+  .editorconfig
+  .gitignore
+  .env.example
+  .nvmrc
+  package.json                     # npm workspaces root
+  README.md
+  SECURITY.md
+  CONTRIBUTING.md
+  LICENSE
+  eslint.config.js
+  .prettierrc
+  docs/
+    README.md
+    architecture/
+      target-tree.txt
+      system-architecture.md
+      architecture-at-scale.md
+      data-model.md
+      api-contracts.md
+      rbac-matrix.md
+      toolchain.md
+      trust-boundaries.md
+      superseded-notes.md          # FastAPI, Django, Kivy, R2, Cloudflare, Resend-as-primary are superseded
+      dependency-rules.md
+      realtime-channels.md
+      query-builder-spec.md
+    design/                        # existing HTML flow maps and diagrams go here later
+      README.md
+      flowmaps/
+        org-admin.html
+        org-employee.html
+        platform-admin.html
+        platform-employee.html
+        resident-mobile-v7.html
+        dashboard-flow-map-v6.html
+      diagrams/
+        api-connections-map.html
+        data-model.html
+        system-architecture.html
+        architecture-at-scale.html
+        toolchain-diagram.html
+        rbac-matrix.html
+        stage1-growth-structure.html
+        media-compression-handler.html
+    decisions/
+      decisions.md
+      ADR-0001-js-only-stack.md
+      ADR-0002-rls-and-edge-functions-as-enforcement.md
+      ADR-0003-token-storage-strategy.md
+      ADR-0004-rls-deny-all-default.md
+      ADR-0005-media-private-bucket-signed-urls.md
+      ADR-0006-beacon-ephemeral-location.md
+      ADR-0007-audit-log-scope-and-append-only.md
+      ADR-0008-pwa-as-resident-client.md
+      ADR-0009-media-processing-client-plus-edge-validation.md
+      ADR-0010-supabase-only-backend.md
+      ADR-0011-whisper-and-gemini-providers.md
+      ADR-0012-supabase-and-static-hosting-only.md
+    security/
+      security-review.md
+      threat-model-core.md
+      threat-model-beacon.md
+      threat-model-lifeline.md
+      threat-model-guest-flows.md
+      threat-model-whatsapp.md
+      threat-model-ai-intake.md    # Whisper transcripts and Gemini output as untrusted input
+      threat-model-supabase-direct-access.md
+      secure-coding-standard.md
+      owasp-asvs-mapping.md
+      incident-response.md
+      breach-notification-popia.md
+      key-rotation.md
+      pentest-checklist.md
+      pre-launch-gates.md
+    compliance/
+      popia-notice.md
+      data-retention-schedule.md
+      record-of-processing.md
+      dpia-beacon-lifeline.md
+      operator-agreement-template.md
+      consent-records.md
+      data-subject-requests.md
+    runbooks/
+      deploy.md
+      rollback.md
+      restore-from-backup.md
+      onboard-organisation.md
+      rotate-secrets.md
+      handle-abuse-report.md
+    product/
+      growth-stage1.md
+      roadmap.md
+  apps/
+    resident-pwa/                  # replaces the Kivy app; installable PWA
+      package.json
+      README.md
+      index.html
+      offline.html
+      manifest.webmanifest
+      service-worker.js
+      _headers                     # copy of infra/hosting/headers: strict CSP, Trusted Types, HSTS, frame-ancestors none
+      _redirects
+      public/
+        icons/
+        images/
+        fonts/
+      src/
+        main.js
+        router.js
+        config.js
+        session.js
+        permissions.js             # shared contacts-permission flow (Lifeline + Beacon)
+        pages/
+          welcome/                 # [PAGE]
+          sign-in/                 # [PAGE]
+          register/                # [PAGE]
+          verify-email/            # [PAGE]
+          forgot-password/         # [PAGE]
+          reset-password/          # [PAGE]
+          session-expired/         # [PAGE]
+          guest-report/            # [PAGE]
+          guest-confirmation/      # [PAGE]
+          track-report/            # [PAGE]
+          home/                    # [PAGE]
+          snap-and-say/            # [PAGE]
+          report-new/              # [PAGE]
+          report-duplicate-check/  # [PAGE]
+          report-detail/           # [PAGE]
+          report-thread/           # [PAGE]
+          report-satisfaction/     # [PAGE]
+          report-reopen-escalate/  # [PAGE]
+          my-reports/              # [PAGE]
+          alerts/                  # [PAGE]
+          news/                    # [PAGE]
+          news-article/            # [PAGE]
+          polls/                   # [PAGE]
+          poll-detail/             # [PAGE]
+          community-pulse/         # [PAGE]
+          your-area/               # [PAGE]
+          pilot-org-select/        # [PAGE]
+          beacon-home/             # [PAGE]
+          beacon-add-to-circle/    # [PAGE]
+          beacon-requests/         # [PAGE]
+          beacon-share-session/    # [PAGE]
+          beacon-safety-notice/    # [PAGE]
+          lifeline-home/           # [PAGE]
+          lifeline-card-edit/      # [PAGE]
+          lifeline-call-countdown/ # [PAGE]
+          contacts-permission/     # [PAGE]
+          menu/                    # [PAGE]
+          account/                 # [PAGE]
+          profile-edit/            # [PAGE]
+          notification-settings/   # [PAGE]
+          privacy-policy/          # [PAGE]
+          data-export/             # [PAGE]
+          delete-account/          # [PAGE]
+          help-and-safety/         # [PAGE]
+          error-state/             # [PAGE]
+          empty-state/             # [PAGE]
+        components/
+          app-shell/               # [WC]
+          bottom-nav/              # [WC]
+          top-menu-button/         # [WC]
+          report-card/             # [WC]
+          status-pill/             # [WC]
+          media-capture/           # [WC]
+          map-pin-picker/          # [WC]
+          voice-input/             # [WC]
+          consent-checkbox/        # [WC]
+          captcha-widget/          # [WC] hCaptcha
+          beacon-share-indicator/  # [WC]
+          stop-all-sharing-button/ # [WC]
+          offline-banner/          # [WC]
+          toast/                   # [WC]
+        features/
+          reports/
+            reports.client.js
+            reports.store.js
+            draft-report.js
+          offline/
+            queue.js
+            sync.js
+          beacon/
+            beacon.client.js
+            realtime-subscription.js
+          lifeline/
+            lifeline.client.js
+            call-dispatch.js
+          snap-and-say/
+            snap-and-say.client.js
+            confirm-draft.js
+          auth/
+            auth.client.js
+            session-guard.js
+        styles/
+          app.css
+          pages.css
+    org-dashboard/
+      package.json
+      README.md
+      index.html
+      _headers
+      _redirects
+      public/
+        icons/
+        images/
+        fonts/
+        vendor/
+          leaflet/                 # self-hosted map library; no third-party scripts at runtime
+      src/
+        main.js
+        router.js
+        config.js
+        session.js
+        route-guards.js            # consumes packages/rbac
+        pages/
+          login/                   # [PAGE]
+          register-organisation/   # [PAGE]
+          application-pending/     # [PAGE]
+          forgot-password/         # [PAGE]
+          reset-password/          # [PAGE]
+          session-expired/         # [PAGE]
+          mfa-setup/               # [PAGE]
+          mfa-challenge/           # [PAGE]
+          accept-invite/           # [PAGE]
+          dashboard-map/           # [PAGE]
+          report-sheet/            # [PAGE]
+          report-sheet-historical/ # [PAGE]
+          report-detail/           # [PAGE]
+          posts/                   # [PAGE]
+          post-editor/             # [PAGE]
+          chat/                    # [PAGE]
+          surveys/                 # [PAGE]
+          survey-editor/           # [PAGE]
+          survey-results/          # [PAGE]
+          analytics/               # [PAGE]
+          manage-profiles/         # [PAGE]
+          invite-member/           # [PAGE]
+          export-data/             # [PAGE]
+          my-profile/              # [PAGE]
+          settings-profile/        # [PAGE]
+          settings-services/       # [PAGE]
+          settings-departments/    # [PAGE]
+          settings-boundary/       # [PAGE]
+          empty-state/             # [PAGE]
+          error-state/             # [PAGE]
+        components/
+          sidebar/                 # [WC]
+          topbar/                  # [WC]
+          kpi-cards/               # [WC]
+          map-view/                # [WC]
+          query-builder-modal/     # [WC]
+          report-table/            # [WC]
+          status-select/           # [WC]
+          assign-select/           # [WC]
+          pin-visibility-toggle/   # [WC]
+          chat-thread/             # [WC]
+          export-dialog/           # [WC]
+          boundary-uploader/       # [WC]
+          confirm-dialog/          # [WC]
+          toast/                   # [WC]
+        features/
+          reports/
+            reports.client.js
+            reports.store.js
+          query/
+            query.store.js         # shared filter state; uses packages/query-builder
+          map/
+            map.controller.js
+            clustering.js
+          exports/
+            export.client.js
+          auth/
+            auth.client.js
+            session-guard.js
+        styles/
+          app.css
+          pages.css
+    platform-admin/                # internal only; staff accounts + mandatory MFA (AAL2) enforced in RLS
+      package.json
+      README.md
+      index.html
+      _headers
+      _redirects
+      public/
+        icons/
+        images/
+        fonts/
+        vendor/
+          leaflet/
+      src/
+        main.js
+        router.js
+        config.js
+        session.js
+        route-guards.js
+        pages/
+          login/                   # [PAGE]
+          mfa-challenge/           # [PAGE]
+          dashboard-map/           # [PAGE]
+          report-sheet/            # [PAGE]
+          report-detail/           # [PAGE]
+          unassigned-queue/        # [PAGE]
+          posts/                   # [PAGE]
+          chat-readonly/           # [PAGE]
+          surveys/                 # [PAGE]
+          analytics/               # [PAGE]
+          manage-profiles/         # [PAGE]
+          export-data/             # [PAGE]
+          my-profile/              # [PAGE]
+          organisation-approvals/  # [PAGE]
+          approval-review/         # [PAGE]
+          pilot-mode/              # [PAGE]
+          pilot-promote/           # [PAGE]
+          platform-activity/       # [PAGE]
+          system-settings/         # [PAGE]
+          audit-log/               # [PAGE]
+          notification-log/        # [PAGE]
+          platform-team/           # [PAGE]
+          second-approver/         # [PAGE]
+        components/
+          sidebar/                 # [WC]
+          topbar/                  # [WC]
+          kpi-cards/               # [WC]
+          map-view/                # [WC]
+          query-builder-modal/     # [WC]
+          report-table/            # [WC]
+          boundary-review-map/     # [WC]
+          approval-card/           # [WC]
+          audit-table/             # [WC]
+          confirm-dialog/          # [WC]
+          toast/                   # [WC]
+        features/
+          approvals/
+            approvals.client.js
+          pilot/
+            pilot.client.js
+          platform/
+            platform.client.js
+          auth/
+            auth.client.js
+            session-guard.js
+        styles/
+          app.css
+          pages.css
+  packages/
+    rbac/                          # [PKG]
+      src/
+        matrix.js
+        roles.js
+        can.js
+      test/
+        matrix.test.js
+    schemas/                       # [PKG]
+      src/
+        common.js
+        auth.js
+        reports.js
+        media.js
+        posts.js
+        surveys.js
+        chat.js
+        beacon.js
+        lifeline.js
+        organisations.js
+        exports.js
+        validate.js
+      test/
+        schemas.test.js
+    config/                        # [PKG]
+      src/
+        enums.js
+        limits.js
+        regex.js
+    supabase-client/               # [PKG] anon-key client, auth, Realtime; the only place apps touch Supabase
+      src/
+        client.js
+        auth.js
+        realtime.js
+        storage.js
+        mfa.js
+    functions-client/              # [PKG] typed wrappers over Edge Function calls
+      src/
+        invoke.js
+        errors.js
+        retry.js
+        endpoints.js
+      test/
+        invoke.test.js
+    query-builder/                 # [PKG] shared attribute + spatial engine
+      src/
+        field-catalog.js
+        operators.js
+        compile-attribute.js
+        compile-spatial.js
+        compile.js
+        state-shape.js
+        validate.js
+      test/
+        compile.test.js
+    geo/                           # [PKG]
+      src/
+        point-in-polygon.js
+        distance.js
+        parse-geojson.js
+        parse-kml-safe.js          # XXE-safe, size and vertex limits
+        validate-geometry.js
+      test/
+        geo.test.js
+    state/                         # [PKG]
+      src/
+        store.js
+        subscribe.js
+    security-web/                  # [PKG]
+      src/
+        escape-html.js
+        safe-dom.js
+        trusted-types.js
+        sanitize-url.js
+        csv-safe.js
+        csp-nonce.js
+        redact.js
+      test/
+        security-web.test.js
+    media-client/                  # [PKG] uses ffmpeg.wasm self-hosted for video/audio
+      src/
+        compress-image.js
+        strip-metadata.js
+        compress-video.js
+        compress-audio.js
+        limits.js
+        upload-to-quarantine.js
+    offline-queue/                 # [PKG]
+      src/
+        queue.js
+        idempotency-key.js
+        encrypt-at-rest.js
+        sync.js
+    ui/                            # [PKG] shared web components and tokens
+      src/
+        base-element.js
+        button/
+          button.js
+          button.css
+        input/
+          input.js
+          input.css
+        modal/
+          modal.js
+          modal.css
+        table/
+          table.js
+          table.css
+        toast/
+          toast.js
+          toast.css
+    design-tokens/                 # [PKG]
+      src/
+        tokens.css
+        reset.css
+        typography.css
+        themes-light-dark.css
+    i18n/                          # [PKG]
+      src/
+        index.js
+        locales/
+          en.json
+          zu.json
+          af.json
+    logger/                        # [PKG] redacting logger, no PII in logs (synced into functions/_shared)
+      src/
+        logger.js
+        redact-rules.js
+  supabase/
+    README.md
+    hardening.md
+    config.toml                    # auth settings: signup rules, email confirm, MFA, CAPTCHA, JWT expiry, SMTP
+    templates/                     # Supabase Auth email templates (HTML)
+      confirm-signup.html
+      invite.html
+      magic-link-disabled.html
+      recovery.html
+      email-change.html
+      reauthentication.html
+    functions/
+      import_map.json
+      _shared/
+        config.js                  # ONLY file that reads environment variables
+        supabase-admin.js          # ONLY place the service_role key is used
+        supabase-user.js           # client scoped to the caller's JWT
+        authenticate.js            # verify JWT: algorithm, audience, issuer, expiry, AAL
+        require-role.js            # consumes vendored rbac
+        tenant-context.js          # ctx {orgId, role, userId} from verified identity only
+        validate-body.js           # strict schema, rejects unknown fields
+        rate-limit.js
+        captcha.js                 # hCaptcha verification
+        idempotency.js             # keys scoped per user or device
+        cors.js
+        security-headers.js
+        audit.js
+        errors.js
+        logger.js
+        pagination.js              # cursor-based
+        org-match.js
+        geo-validate.js            # polygon vertex caps, self-intersection, area checks
+        reference-number.js        # random non-sequential component
+        crypto.js
+        pii-redact.js
+        signed-urls.js
+        email-templates/
+          pilot-alert.js
+          status-update.js
+          org-decision.js
+        vendor/                    # generated by tools/sync-shared.js — do not hand-edit
+          rbac/
+            matrix.js
+            roles.js
+            can.js
+          schemas/
+            index.js
+      reports-create/                 # [FUNCTION]
+      reports-lookup/                 # [FUNCTION]
+      reports-update-status/                 # [FUNCTION]
+      reports-bulk-map-visibility/                 # [FUNCTION]
+      reports-flag/                 # [FUNCTION]
+      reports-reassign-org/                 # [FUNCTION]
+      media-upload-intent/                 # [FUNCTION]
+      media-validate/                 # [FUNCTION]
+      media-signed-url/                 # [FUNCTION]
+      exports-generate/                 # [FUNCTION]
+      invites-create/                 # [FUNCTION]
+      invites-accept/                 # [FUNCTION]
+      guest-contact-verify/                 # [FUNCTION]
+      orgs-register/                 # [FUNCTION]
+      orgs-approve/                 # [FUNCTION]
+      orgs-boundary-upload/                 # [FUNCTION]
+      pilot-manage/                 # [FUNCTION]
+      pilot-promote/                 # [FUNCTION]
+      pilot-send-alert/                 # [FUNCTION]
+      beacon-search/                 # [FUNCTION]
+      beacon-connection/                 # [FUNCTION]
+      beacon-share-session/                 # [FUNCTION]
+      beacon-block-report/                 # [FUNCTION]
+      lifeline-cards/                 # [FUNCTION]
+      lifeline-dispatch/                 # [FUNCTION]
+      snap-and-say/                 # [FUNCTION]
+      transcribe/                 # [FUNCTION]
+      whatsapp-webhook/                 # [FUNCTION]
+      notifier-send/                 # [FUNCTION]
+      privacy-export/                 # [FUNCTION]
+      privacy-delete/                 # [FUNCTION]
+      platform-team-invite/                 # [FUNCTION]
+      platform-second-approval/                 # [FUNCTION]
+      analytics-query/                 # [FUNCTION]
+      job-weekly-digest/                 # [FUNCTION]
+      job-analytics-precompute/                 # [FUNCTION]
+      job-retention-purge/                 # [FUNCTION]
+      job-orphan-media-cleanup/                 # [FUNCTION]
+      job-expire-invites/                 # [FUNCTION]
+      job-expire-location-shares/                 # [FUNCTION]
+      job-guest-contact-purge/                 # [FUNCTION]
+    migrations/
+      0001_extensions_postgis_pgcron.sql
+      0002_enums.sql
+      0003_residents_and_platform_staff.sql
+      0004_organisations_branches_departments_categories.sql
+      0005_org_users.sql
+      0006_reports.sql
+      0007_report_media.sql
+      0008_surveys_and_posts.sql
+      0009_chat_messages.sql
+      0010_beacon_connections_location_shares.sql
+      0011_lifeline_cards.sql
+      0012_audit_log_append_only.sql
+      0013_invites_tokens.sql
+      0014_consent_records.sql
+      0015_quotas_and_rate_limits.sql
+      0016_whatsapp_sessions.sql
+      0017_ai_intake_sessions.sql
+      0018_indexes.sql
+      0019_rls_enable_deny_all.sql
+      0020_retention_functions.sql
+      0021_custom_access_token_hook.sql
+      0022_mfa_aal2_enforcement.sql
+      0023_storage_buckets_and_policies.sql
+      0024_realtime_private_channels.sql
+      0025_rpc_security_definer_functions.sql
+      0026_pg_cron_schedules.sql
+      0027_revoke_public_grants.sql
+    policies/
+      residents.sql
+      platform_staff.sql
+      organisations.sql
+      branches.sql
+      departments.sql
+      categories.sql
+      org_users.sql
+      reports.sql
+      report_media.sql
+      surveys.sql
+      survey_responses.sql
+      posts.sql
+      chat_messages.sql
+      connections.sql
+      location_shares.sql
+      lifeline_cards.sql
+      audit_log_entries.sql
+      invites.sql
+      consent_records.sql
+      quotas_and_rate_limits.sql
+      storage_objects.sql
+      realtime_messages.sql
+    seed/
+      dev_seed.sql
+      default_categories.sql
+    tests/
+      rls_cross_tenant.test.sql
+      rls_residents.test.sql
+      rls_anon_denied.test.sql
+      rls_audit_append_only.test.sql
+      rls_realtime_channels.test.sql
+      rls_storage_objects.test.sql
+      rls_mfa_aal2.test.sql
+  infra/
+    README.md
+    hosting/                       # static-host-agnostic security headers for the three apps
+      headers/
+        resident-pwa.headers
+        org-dashboard.headers
+        platform-admin.headers
+      csp-policies.md
+      hosting-options.md
+      dns-and-tls.md
+    supabase/
+      auth-settings.md
+      network-restrictions.md
+      smtp-and-email-auth.md       # SPF, DKIM, DMARC for the sending domain
+      captcha.md
+      mfa.md
+      storage-buckets.md
+      backups-and-pitr.md
+      secrets-management.md
+  tests/
+    README.md
+    security/
+      cross-tenant-access.test.js
+      bulk-endpoint-ownership.test.js
+      rbac-matrix.test.js
+      mass-assignment.test.js
+      upload-limits-and-sniffing.test.js
+      media-metadata-stripped.test.js
+      stored-xss.test.js
+      csv-formula-injection.test.js
+      jwt-validation.test.js
+      session-revocation.test.js
+      account-enumeration.test.js
+      guest-lookup-enumeration.test.js
+      guest-contact-abuse.test.js
+      invite-token-single-use.test.js
+      beacon-channel-authorization.test.js
+      beacon-no-location-persistence.test.js
+      beacon-block-symmetry.test.js
+      supabase-direct-access-denied.test.js
+      rls-matches-rbac-matrix.test.js
+      kml-xxe-and-geometry-limits.test.js
+      whatsapp-signature.test.js
+      ai-output-untrusted.test.js
+      transcript-untrusted.test.js
+      rate-limit-public-functions.test.js
+      service-role-key-not-in-clients.test.js
+      storage-signed-url-expiry.test.js
+      quarantine-promotion.test.js
+      mfa-required-for-admins.test.js
+      captcha-required-guest-flows.test.js
+      audit-log-append-only.test.js
+      csp-headers.test.js
+    unit/
+      README.md
+    integration/
+      reports-lifecycle.test.js
+      org-match.test.js
+      query-builder-parity.test.js
+      offline-queue-idempotency.test.js
+    e2e/
+      README.md
+      resident-report-flow.test.js
+      org-triage-flow.test.js
+      platform-approval-flow.test.js
+    load/
+      README.md
+      report-submit.load.js
+      map-read.load.js
+    fixtures/
+      README.md
+      geojson/
+        valid-boundary.geojson
+        oversized-boundary.geojson
+        self-intersecting.geojson
+      kml/
+        xxe-attempt.kml
+      media/
+        README.md
+  tools/
+    dev-server.js
+    check-boundaries.js            # enforces apps -> packages only, no cross-app imports
+    check-csp.js
+    check-no-secrets.js
+    check-no-inline-scripts.js
+    check-no-innerhtml.js
+    check-forbidden-stack.js       # fails if python/django/kivy/fastapi/cloudflare/wrangler/r2 appear
+    sync-shared.js                 # copies packages/rbac + schemas into supabase/functions/_shared/vendor
+    check-service-role-usage.js    # service_role may be referenced only in _shared/supabase-admin.js
+    gen-rbac-docs.js
+    verify-scaffold.js
+    seed-dev-data.js
