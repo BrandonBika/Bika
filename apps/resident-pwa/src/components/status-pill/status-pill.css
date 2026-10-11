@@ -1,0 +1,107 @@
+/* Status pill (one component, variants: Review, In progress, Resolved, Escalated, Withdrawn, Queued) */
+.cn-status-pill,
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body, 'Public Sans', sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px 10px 4px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.cn-status-pill .dot,
+.pill .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: 0 0 6px;
+}
+
+/* Review / Open / Under review */
+.cn-status-pill.pill-review,
+.cn-status-pill.cn-status--review,
+.cn-status-pill.cn-status--open,
+.cn-status-pill.cn-status--under_review,
+.pill.pill-review {
+  background-color: var(--amber-tint, #FAEEDA);
+  color: #633806;
+}
+.cn-status-pill.pill-review .dot,
+.cn-status-pill.cn-status--review .dot,
+.cn-status-pill.cn-status--open .dot,
+.cn-status-pill.cn-status--under_review .dot,
+.pill.pill-review .dot {
+  background-color: var(--amber, #BA7517);
+}
+
+/* In progress */
+.cn-status-pill.pill-progress,
+.cn-status-pill.cn-status--in_progress,
+.cn-status-pill.cn-status--progress,
+.pill.pill-progress {
+  background-color: var(--blue-tint, #E6F1FB);
+  color: #042C53;
+}
+.cn-status-pill.pill-progress .dot,
+.cn-status-pill.cn-status--in_progress .dot,
+.cn-status-pill.cn-status--progress .dot,
+.pill.pill-progress .dot {
+  background-color: var(--blue, #185FA5);
+}
+
+/* Resolved */
+.cn-status-pill.pill-resolved,
+.cn-status-pill.cn-status--resolved,
+.pill.pill-resolved {
+  background-color: var(--teal-tint, #E1F5EE);
+  color: var(--teal-deep, #085041);
+}
+.cn-status-pill.pill-resolved .dot,
+.cn-status-pill.cn-status--resolved .dot,
+.pill.pill-resolved .dot {
+  background-color: var(--teal, #0F6E56);
+}
+
+/* Escalated */
+.cn-status-pill.pill-escalated,
+.cn-status-pill.cn-status--escalated,
+.pill.pill-escalated {
+  background-color: var(--red-tint, #FCEBEB);
+  color: #501313;
+}
+.cn-status-pill.pill-escalated .dot,
+.cn-status-pill.cn-status--escalated .dot,
+.pill.pill-escalated .dot {
+  background-color: var(--red, #A32D2D);
+}
+
+/* Withdrawn */
+.cn-status-pill.pill-withdrawn,
+.cn-status-pill.cn-status--withdrawn,
+.pill.pill-withdrawn {
+  background-color: #ECEAE2;
+  color: #3E4A44;
+}
+.cn-status-pill.pill-withdrawn .dot,
+.cn-status-pill.cn-status--withdrawn .dot,
+.pill.pill-withdrawn .dot {
+  background-color: #8B8B85;
+}
+
+/* Queued */
+.cn-status-pill.pill-queued,
+.cn-status-pill.cn-status--queued,
+.pill.pill-queued {
+  background-color: #ECEAE2;
+  color: #3E4A44;
+}
+.cn-status-pill.pill-queued .dot,
+.cn-status-pill.cn-status--queued .dot,
+.pill.pill-queued .dot {
+  background-color: #8B8B85;
+}

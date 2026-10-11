@@ -1,0 +1,148 @@
+.cn-badges-page {
+  box-sizing: border-box;
+  padding: 0 16px 16px;
+  background: var(--paper, #F6F4EE);
+  color: var(--ink, #16241F);
+  font-family: var(--font-body, 'Public Sans', sans-serif);
+}
+
+.cn-badges-title {
+  margin: 0 0 4px;
+  color: var(--ink, #16241F);
+  font: 600 18px/1.3 var(--font-serif, 'Source Serif 4', serif);
+}
+
+.cn-badges-subtitle {
+  margin: 0 0 12px;
+  color: var(--ink-soft, #3E4A44);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.cn-badges-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--sage, #EAF3DE);
+  color: #1E3A12;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.cn-badges-note__icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(15, 110, 86, 0.12);
+  color: var(--teal-deep, #085041);
+  font-size: 11px;
+  font-weight: 700;
+  flex: 0 0 16px;
+}
+
+.cn-badges-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.cn-badge-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 13px;
+  border: 1.5px solid var(--line, #DAD5C6);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink, #16241F);
+  text-align: left;
+  cursor: pointer;
+}
+
+.cn-badge-card.selected {
+  border-color: var(--teal, #0F6E56);
+  background: var(--teal-tint, #E1F5EE);
+}
+
+.cn-badge-card__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--paper, #F6F4EE);
+  color: var(--teal-deep, #085041);
+  font-size: 16px;
+  font-weight: 700;
+  flex: 0 0 36px;
+}
+
+.cn-badge-card__body {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.cn-badge-card__title {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.cn-badge-card__desc {
+  margin-top: 2px;
+  color: var(--ink-soft, #3E4A44);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.cn-badge-card__check {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--line, #DAD5C6);
+  border-radius: 50%;
+  flex: 0 0 20px;
+  margin-top: 2px;
+}
+
+.cn-badge-card.selected .cn-badge-card__check {
+  border-color: var(--teal, #0F6E56);
+  background: var(--teal, #0F6E56);
+}
+
+.cn-badge-card.selected .cn-badge-card__check::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.cn-badges-save {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink, #16241F);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cn-badges-page button:focus-visible {
+  outline: 2px solid var(--teal, #0F6E56);
+  outline-offset: 2px;
+}

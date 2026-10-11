@@ -1,0 +1,14 @@
+{
+  "name": "@civicneuro/offline-queue",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./queue": "./src/queue.js",
+    "./sync": "./src/sync.js",
+    "./encrypt-at-rest": "./src/encrypt-at-rest.js",
+    "./idempotency-key": "./src/idempotency-key.js"
+  }
+}

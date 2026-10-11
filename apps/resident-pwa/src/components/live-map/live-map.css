@@ -1,0 +1,8 @@
+.cn-live-map {
+	position: relative;
+	display: block;
+	overflow: hidden;
+	width: 100%;
+	height: 100%;
+	background-color: #EAF3DE;
+}

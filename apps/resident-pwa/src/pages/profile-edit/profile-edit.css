@@ -1,0 +1,84 @@
+.cn-profile-edit-page {
+  box-sizing: border-box;
+  padding: 0 16px 16px;
+  background: var(--paper, #F6F4EE);
+  color: var(--ink, #16241F);
+  font-family: var(--font-body, 'Public Sans', sans-serif);
+}
+
+.cn-profile-title {
+  margin: 0 0 10px;
+  color: var(--ink, #16241F);
+  font: 600 18px/1.3 var(--font-serif, 'Source Serif 4', serif);
+}
+
+.cn-profile-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.cn-profile-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.cn-profile-field__label {
+  color: var(--ink-soft, #3E4A44);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.cn-profile-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 42px;
+  padding: 11px 12px;
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink, #16241F);
+  font: 500 12px/1.4 var(--font-body, 'Public Sans', sans-serif);
+}
+
+.cn-profile-input:focus {
+  outline: none;
+  border-color: var(--teal, #0F6E56);
+}
+
+.cn-profile-note {
+  margin: 10px 0 0;
+  color: var(--muted, #8B8B85);
+  font-size: 10px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.cn-profile-save {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 14px;
+  padding: 13px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink, #16241F);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cn-profile-save.is-disabled,
+.cn-profile-save:disabled {
+  background: var(--disabled-teal, #B8CFC7);
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.cn-profile-edit-page button:focus-visible,
+.cn-profile-edit-page input:focus-visible {
+  outline: 2px solid var(--teal, #0F6E56);
+  outline-offset: 2px;
+}

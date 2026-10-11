@@ -1,0 +1,13 @@
+.cn-offline-banner {
+  background-color: var(--cn-color-warning, #ffab00);
+  color: #172b4d;
+  padding: 8px 16px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.cn-offline-banner.hidden {
+  display: none;
+}

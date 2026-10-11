@@ -1,0 +1,287 @@
+.cn-home-page {
+	display: block;
+	min-height: 100%;
+	padding: 10px 16px 84px;
+	color: #16241F;
+	background: #F6F4EE;
+	font-family: 'Public Sans', sans-serif;
+}
+
+.cn-home-welcome {
+	margin: 0 0 12px;
+}
+
+.cn-home-greeting {
+	margin: 0;
+	color: #3E4A44;
+	font-size: 12px;
+	line-height: 1.4;
+}
+
+.cn-home-name {
+	margin: 0;
+	color: #16241F;
+	font-family: 'Source Serif 4', Georgia, serif;
+	font-size: 19px;
+	font-weight: 600;
+	line-height: 1.3;
+}
+
+.cn-home-quick-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 9px;
+	margin-bottom: 12px;
+}
+
+.cn-home-quick {
+	position: relative;
+	display: flex;
+	min-width: 0;
+	min-height: 122px;
+	flex-direction: column;
+	align-items: flex-start;
+	padding: 12px;
+	border-radius: 14px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.cn-home-quick--snap {
+	border: 0;
+	background: linear-gradient(135deg, #0F6E56 0%, #0B5E7A 100%);
+	color: #FFFFFF;
+}
+
+.cn-home-quick--report {
+	border: 1px solid #DAD5C6;
+	background: #FFFFFF;
+	color: #16241F;
+}
+
+.cn-home-quick-icons {
+	display: flex;
+	gap: 6px;
+}
+
+.cn-home-icon {
+	display: flex;
+	width: 34px;
+	height: 34px;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.22);
+}
+
+.cn-home-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.cn-home-icon--main {
+	background: #FFFFFF;
+	color: #085041;
+}
+
+.cn-home-icon--report {
+	border-radius: 50%;
+	background: #E1F5EE;
+	color: #085041;
+}
+
+.cn-home-quick-title {
+	margin-top: auto;
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1.3;
+}
+
+.cn-home-quick-sub {
+	margin-top: 2px;
+	color: inherit;
+	font-size: 10.5px;
+	line-height: 1.4;
+	opacity: 0.82;
+}
+
+.cn-home-area {
+	overflow: hidden;
+	margin-bottom: 12px;
+	padding: 12px 0 12px 12px;
+	border: 1px solid #DAD5C6;
+	border-radius: 12px;
+	background: #FFFFFF;
+}
+
+.cn-home-area-header {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 8px;
+	padding-right: 12px;
+	margin-bottom: 10px;
+}
+
+.cn-home-area-eyebrow {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	color: #085041;
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+.cn-home-area-eyebrow svg {
+	width: 11px;
+	height: 11px;
+}
+
+.cn-home-area-title {
+	margin: 2px 0 0;
+	color: #16241F;
+	font-size: 12.5px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.cn-home-see-all {
+	flex: 0 0 auto;
+	padding: 4px 0;
+	border: 0;
+	background: transparent;
+	color: #185FA5;
+	font: 600 10.5px 'Public Sans', sans-serif;
+	cursor: pointer;
+}
+
+.cn-home-pulse-scroll {
+	display: flex;
+	gap: 9px;
+	overflow-x: auto;
+	padding-right: 12px;
+	scrollbar-width: none;
+}
+
+.cn-home-pulse-scroll::-webkit-scrollbar {
+	display: none;
+}
+
+.cn-home-pulse-card {
+	display: flex;
+	flex: 0 0 132px;
+	min-height: 132px;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 6px;
+	padding: 10px 11px;
+	border: 0;
+	border-radius: 11px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.cn-home-pulse-card--poll {
+	background: #E6F1FB;
+	color: #042C53;
+}
+
+.cn-home-pulse-card--stat {
+	background: #EAF3DE;
+	color: #085041;
+}
+
+.cn-home-pulse-card--trend {
+	background: #FAEEDA;
+	color: #633806;
+}
+
+.cn-home-pulse-label {
+	font-size: 9.5px;
+	font-weight: 700;
+	line-height: 1.35;
+	text-transform: uppercase;
+}
+
+.cn-home-pulse-copy {
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.cn-home-pulse-meta,
+.cn-home-poll-options {
+	margin-top: auto;
+	font-size: 9.5px;
+	line-height: 1.4;
+	opacity: 0.82;
+}
+
+.cn-home-tiles {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 9px;
+}
+
+.cn-home-tile {
+	display: flex;
+	min-width: 0;
+	min-height: 88px;
+	flex-direction: column;
+	align-items: flex-start;
+	padding: 12px;
+	border: 1px solid #DAD5C6;
+	border-radius: 12px;
+	background: #FFFFFF;
+	color: #16241F;
+	text-align: left;
+	cursor: pointer;
+}
+
+.cn-home-tile-icon {
+	display: flex;
+	width: 26px;
+	height: 26px;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 8px;
+	border-radius: 8px;
+}
+
+.cn-home-tile-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+.cn-home-tile-icon--news {
+	background: #E6F1FB;
+	color: #185FA5;
+}
+
+.cn-home-tile-icon--survey {
+	background: #EAF3DE;
+	color: #0F6E56;
+}
+
+.cn-home-tile-icon--notifications {
+	background: #E1F5EE;
+	color: #0F6E56;
+}
+
+.cn-home-tile-label {
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.35;
+}
+
+.cn-home-tile-meta {
+	margin-top: 1px;
+	color: #3E4A44;
+	font-size: 10.5px;
+}
+
+.cn-home-page button:focus-visible {
+	outline: 2px solid #185FA5;
+	outline-offset: 2px;
+}

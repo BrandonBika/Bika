@@ -1,0 +1,86 @@
+.cn-bottom-nav,
+.phone-bottomnav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--cn-app-max-width, 480px);
+  padding: 9px 6px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: var(--paper-raised, #FFFFFF);
+  border-top: 1px solid var(--line, #DAD5C6);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 80;
+  box-sizing: border-box;
+}
+
+.cn-nav-item,
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-family: var(--font-body, 'Public Sans', sans-serif);
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #8B8B85;
+  text-decoration: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  transition: color 150ms ease;
+}
+
+.cn-nav-icon,
+.nav-item svg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: inherit;
+}
+
+.cn-nav-icon {
+  position: relative;
+}
+
+.cn-nav-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.cn-nav-badge {
+  position: absolute;
+  top: -5px;
+  right: -9px;
+  display: flex;
+  min-width: 14px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border: 1px solid var(--paper-raised, #FFFFFF);
+  border-radius: 99px;
+  background: var(--red, #A32D2D);
+  color: #FFFFFF;
+  font: 700 9px/1 var(--font-body, 'Public Sans', sans-serif);
+  box-sizing: border-box;
+}
+
+.cn-nav-item.active,
+.nav-item.active {
+  color: var(--teal-deep, #085041);
+  font-weight: 700;
+}
+
+.cn-nav-item.active .cn-nav-icon svg,
+.nav-item.active svg {
+  color: var(--teal, #0F6E56);
+}

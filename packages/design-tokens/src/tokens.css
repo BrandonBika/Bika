@@ -1,0 +1,186 @@
+/* packages/design-tokens/src/tokens.css
+   Design system custom properties — single source of truth.
+   All values are unitless numbers where possible so calc() math works cleanly.
+*/
+
+:root {
+  /* ── Colour Palette ──────────────────────────────────────── */
+  --clr-brand-hue: 217;
+  --clr-brand-sat: 80%;
+
+  --clr-brand-50:  hsl(var(--clr-brand-hue) var(--clr-brand-sat) 95%);
+  --clr-brand-100: hsl(var(--clr-brand-hue) var(--clr-brand-sat) 88%);
+  --clr-brand-200: hsl(var(--clr-brand-hue) var(--clr-brand-sat) 76%);
+  --clr-brand-300: hsl(var(--clr-brand-hue) var(--clr-brand-sat) 64%);
+  --clr-brand-400: hsl(var(--clr-brand-hue) var(--clr-brand-sat) 52%);
+  --clr-brand-500: hsl(var(--clr-brand-hue) var(--clr-brand-sat) 44%);
+  --clr-brand-600: hsl(var(--clr-brand-hue) var(--clr-brand-sat) 36%);
+  --clr-brand-700: hsl(var(--clr-brand-hue) var(--clr-brand-sat) 28%);
+  --clr-brand-800: hsl(var(--clr-brand-hue) var(--clr-brand-sat) 20%);
+  --clr-brand-900: hsl(var(--clr-brand-hue) var(--clr-brand-sat) 14%);
+
+  --clr-success-50:  hsl(145 60% 94%);
+  --clr-success-500: hsl(145 60% 38%);
+  --clr-success-700: hsl(145 60% 24%);
+
+  --clr-warning-50:  hsl(38 96% 92%);
+  --clr-warning-500: hsl(38 96% 50%);
+  --clr-warning-700: hsl(38 96% 30%);
+
+  --clr-danger-50:  hsl(0 74% 94%);
+  --clr-danger-500: hsl(0 74% 48%);
+  --clr-danger-700: hsl(0 74% 30%);
+
+  --clr-neutral-0:   hsl(0 0% 100%);
+  --clr-neutral-50:  hsl(210 17% 97%);
+  --clr-neutral-100: hsl(210 17% 93%);
+  --clr-neutral-200: hsl(210 15% 86%);
+  --clr-neutral-300: hsl(210 12% 74%);
+  --clr-neutral-400: hsl(210 10% 58%);
+  --clr-neutral-500: hsl(210 10% 44%);
+  --clr-neutral-600: hsl(210 12% 32%);
+  --clr-neutral-700: hsl(210 15% 22%);
+  --clr-neutral-800: hsl(210 17% 14%);
+  --clr-neutral-900: hsl(210 20% 8%);
+
+  /* Lifeline category colours */
+  --clr-crime:    hsl(0  74% 48%);
+  --clr-fire:     hsl(22 90% 50%);
+  --clr-sickness: hsl(145 60% 38%);
+  --clr-gbv:      hsl(300 50% 45%);
+
+  /* ── Semantic Colour Tokens ───────────────────────────────── */
+  /* Override in prefers-color-scheme: dark below */
+  --clr-bg:           var(--clr-neutral-0);
+  --clr-bg-subtle:    var(--clr-neutral-50);
+  --clr-bg-elevated:  var(--clr-neutral-0);
+  --clr-surface:      var(--clr-neutral-0);
+  --clr-border:       var(--clr-neutral-200);
+  --clr-border-strong:var(--clr-neutral-300);
+
+  --clr-text:         var(--clr-neutral-900);
+  --clr-text-subtle:  var(--clr-neutral-500);
+  --clr-text-disabled:var(--clr-neutral-400);
+  --clr-text-inverse: var(--clr-neutral-0);
+
+  --clr-primary:      var(--clr-brand-500);
+  --clr-primary-dark: var(--clr-brand-700);
+  --clr-primary-bg:   var(--clr-brand-50);
+  --clr-primary-text: var(--clr-brand-700);
+
+  --clr-success-bg:  var(--clr-success-50);
+  --clr-success-text:var(--clr-success-700);
+  --clr-warning-bg:  var(--clr-warning-50);
+  --clr-warning-text:var(--clr-warning-700);
+  --clr-danger-bg:   var(--clr-danger-50);
+  --clr-danger-text: var(--clr-danger-700);
+
+  /* ── Spacing Scale ──────────────────────────────────────── */
+  --space-1:  0.25rem;  /* 4px  */
+  --space-2:  0.5rem;   /* 8px  */
+  --space-3:  0.75rem;  /* 12px */
+  --space-4:  1rem;     /* 16px */
+  --space-5:  1.25rem;  /* 20px */
+  --space-6:  1.5rem;   /* 24px */
+  --space-8:  2rem;     /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+
+  /* ── Typography ─────────────────────────────────────────── */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-mono: 'Courier New', Courier, monospace;
+
+  --text-xs:   0.75rem;   /* 12px */
+  --text-sm:   0.875rem;  /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg:   1.125rem;  /* 18px */
+  --text-xl:   1.25rem;   /* 20px */
+  --text-2xl:  1.5rem;    /* 24px */
+  --text-3xl:  1.875rem;  /* 30px */
+  --text-4xl:  2.25rem;   /* 36px */
+
+  --leading-tight:  1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed:1.75;
+
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  /* ── Border Radius ──────────────────────────────────────── */
+  --radius-sm:  0.25rem;  /* 4px  */
+  --radius-md:  0.5rem;   /* 8px  */
+  --radius-lg:  0.75rem;  /* 12px */
+  --radius-xl:  1rem;     /* 16px */
+  --radius-2xl: 1.5rem;   /* 24px */
+  --radius-full:9999px;
+
+  /* ── Shadows ────────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px 0 hsl(210 20% 8% / 0.05);
+  --shadow-md: 0 4px 6px -1px hsl(210 20% 8% / 0.08),
+               0 2px 4px -2px hsl(210 20% 8% / 0.05);
+  --shadow-lg: 0 10px 15px -3px hsl(210 20% 8% / 0.08),
+               0 4px  6px  -4px hsl(210 20% 8% / 0.05);
+  --shadow-xl: 0 20px 25px -5px hsl(210 20% 8% / 0.10),
+               0 8px  10px -6px hsl(210 20% 8% / 0.06);
+
+  /* ── Motion ─────────────────────────────────────────────── */
+  --duration-fast:   120ms;
+  --duration-normal: 200ms;
+  --duration-slow:   360ms;
+  --ease-out:        cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-spring:     cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Layout ──────────────────────────────────────────────── */
+  --nav-height:         3.5rem;   /* 56px bottom nav */
+  --top-bar-height:     3.5rem;   /* 56px top bar    */
+  --max-content-width:  36rem;    /* 576px — single col phone */
+  --page-padding-x:     var(--space-4);
+  --touch-target:       2.75rem;  /* 44px minimum     */
+
+  /* ── Z-index Ladder ─────────────────────────────────────── */
+  --z-page:       0;
+  --z-sticky:     10;
+  --z-nav:        100;
+  --z-dropdown:   200;
+  --z-sheet:      300;
+  --z-modal:      400;
+  --z-toast:      500;
+  --z-overlay:    600;
+}
+
+/* ── Dark Mode Overrides ─────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --clr-bg:           var(--clr-neutral-900);
+    --clr-bg-subtle:    var(--clr-neutral-800);
+    --clr-bg-elevated:  var(--clr-neutral-800);
+    --clr-surface:      var(--clr-neutral-800);
+    --clr-border:       var(--clr-neutral-700);
+    --clr-border-strong:var(--clr-neutral-600);
+
+    --clr-text:         var(--clr-neutral-50);
+    --clr-text-subtle:  var(--clr-neutral-400);
+    --clr-text-disabled:var(--clr-neutral-600);
+
+    --clr-primary:      var(--clr-brand-300);
+    --clr-primary-dark: var(--clr-brand-200);
+    --clr-primary-bg:   var(--clr-brand-900);
+    --clr-primary-text: var(--clr-brand-200);
+
+    --clr-success-bg:  var(--clr-neutral-800);
+    --clr-success-text:hsl(145 60% 60%);
+    --clr-warning-bg:  var(--clr-neutral-800);
+    --clr-warning-text:hsl(38 96% 65%);
+    --clr-danger-bg:   var(--clr-neutral-800);
+    --clr-danger-text: hsl(0 74% 70%);
+
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.4),
+                 0 2px 4px -2px hsl(0 0% 0% / 0.3);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.4),
+                 0 4px  6px  -4px hsl(0 0% 0% / 0.3);
+  }
+}

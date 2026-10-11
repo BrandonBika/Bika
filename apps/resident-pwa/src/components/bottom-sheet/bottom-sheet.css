@@ -1,0 +1,7 @@
+.cn-sheet-backdrop {
+  position: fixed; inset: 0; background: rgba(9,30,66,0.54); z-index: 1000;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+.cn-sheet-content {
+  background: #ffffff; border-radius: 16px 16px 0 0; padding: 20px; max-height: 80vh; overflow-y: auto;
+}

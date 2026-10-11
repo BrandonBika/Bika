@@ -1,0 +1,29 @@
+.cn-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--cn-color-border, #dfe1e6);
+  border-radius: var(--cn-radius-md, 8px);
+}
+
+.cn-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: var(--cn-font-size-sm, 0.875rem);
+}
+
+.cn-table th,
+.cn-table td {
+  padding: var(--cn-space-3, 12px) var(--cn-space-4, 16px);
+  border-bottom: 1px solid var(--cn-color-border, #dfe1e6);
+}
+
+.cn-table th {
+  background-color: var(--cn-color-surface, #f4f5f7);
+  font-weight: 600;
+  color: var(--cn-color-text, #172b4d);
+}
+
+.cn-table tr:last-child td {
+  border-bottom: none;
+}

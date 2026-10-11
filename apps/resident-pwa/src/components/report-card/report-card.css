@@ -1,0 +1,34 @@
+.cn-report-card {
+  background: var(--cn-color-surface, #ffffff);
+  border: 1px solid var(--cn-color-border, #dfe1e6);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+.cn-report-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.cn-report-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.cn-report-card-ref {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--cn-color-text-muted, #6b778c);
+}
+.cn-report-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.cn-report-card-meta {
+  font-size: 0.8125rem;
+  color: var(--cn-color-text-muted, #6b778c);
+  display: flex;
+  justify-content: space-between;
+}

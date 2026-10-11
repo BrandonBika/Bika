@@ -1,0 +1,14 @@
+{
+  "name": "@civicneuro/supabase-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./auth": "./src/auth.js",
+    "./client": "./src/client.js",
+    "./realtime": "./src/realtime.js",
+    "./storage": "./src/storage.js"
+  }
+}

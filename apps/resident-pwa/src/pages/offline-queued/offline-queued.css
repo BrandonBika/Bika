@@ -1,0 +1,10 @@
+/* apps/resident-pwa/src/pages/offline-queued/offline-queued.css */
+.cn-offline-queued-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 120px);
+  padding: 24px 20px;
+  box-sizing: border-box;
+  background: var(--paper, #F6F4EE);
+}

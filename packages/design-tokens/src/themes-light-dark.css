@@ -1,0 +1,56 @@
+/* packages/design-tokens/src/themes-light-dark.css
+   Data-attribute theme overrides (for user-preference-override toggle).
+   The default is controlled by prefers-color-scheme in tokens.css.
+   These selectors are stronger than media queries only when
+   [data-theme="light"|"dark"] is set on <html> explicitly.
+*/
+
+[data-theme="light"] {
+  --clr-bg:           hsl(0 0% 100%);
+  --clr-bg-subtle:    hsl(210 17% 97%);
+  --clr-bg-elevated:  hsl(0 0% 100%);
+  --clr-surface:      hsl(0 0% 100%);
+  --clr-border:       hsl(210 15% 86%);
+  --clr-border-strong:hsl(210 12% 74%);
+
+  --clr-text:         hsl(210 20% 8%);
+  --clr-text-subtle:  hsl(210 10% 44%);
+  --clr-text-disabled:hsl(210 10% 58%);
+
+  --clr-primary:      var(--clr-brand-500);
+  --clr-primary-dark: var(--clr-brand-700);
+  --clr-primary-bg:   var(--clr-brand-50);
+  --clr-primary-text: var(--clr-brand-700);
+
+  --clr-success-bg:  var(--clr-success-50);
+  --clr-success-text:var(--clr-success-700);
+  --clr-warning-bg:  var(--clr-warning-50);
+  --clr-warning-text:var(--clr-warning-700);
+  --clr-danger-bg:   var(--clr-danger-50);
+  --clr-danger-text: var(--clr-danger-700);
+}
+
+[data-theme="dark"] {
+  --clr-bg:           hsl(210 20% 8%);
+  --clr-bg-subtle:    hsl(210 17% 14%);
+  --clr-bg-elevated:  hsl(210 17% 14%);
+  --clr-surface:      hsl(210 17% 14%);
+  --clr-border:       hsl(210 15% 22%);
+  --clr-border-strong:hsl(210 12% 32%);
+
+  --clr-text:         hsl(210 17% 97%);
+  --clr-text-subtle:  hsl(210 10% 58%);
+  --clr-text-disabled:hsl(210 12% 32%);
+
+  --clr-primary:      var(--clr-brand-300);
+  --clr-primary-dark: var(--clr-brand-200);
+  --clr-primary-bg:   var(--clr-brand-900);
+  --clr-primary-text: var(--clr-brand-200);
+
+  --clr-success-bg:  hsl(210 17% 14%);
+  --clr-success-text:hsl(145 60% 60%);
+  --clr-warning-bg:  hsl(210 17% 14%);
+  --clr-warning-text:hsl(38 96% 65%);
+  --clr-danger-bg:   hsl(210 17% 14%);
+  --clr-danger-text: hsl(0 74% 70%);
+}

@@ -1,0 +1,451 @@
+/**
+ * @file apps/resident-pwa/src/pages/beacon-start-confirm/beacon-start-confirm.css
+ * Screen A4: Start sharing confirm styles.
+ */
+
+.cn-beacon-confirm-page {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  background-color: var(--paper, #F6F4EE);
+  padding: 14px 16px 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.cf-member-row:focus-visible,
+.cf-select-all-btn:focus-visible,
+.cf-chip:focus-visible,
+.cf-toggle:focus-visible,
+.cf-start-btn:focus-visible,
+.cf-location-retry:focus-visible,
+.cf-reduced-accuracy-confirmation button:focus-visible,
+.cf-back-btn:focus-visible {
+  outline: 3px solid var(--beacon-deep, #0E5961);
+  outline-offset: 2px;
+}
+
+/* Header */
+.cf-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.cf-back-btn {
+  width: 26px;
+  height: 26px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  background: var(--paper-raised, #FFFFFF);
+  border: 1px solid var(--line, #DAD5C6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 26px;
+}
+
+.cf-back-btn svg {
+  width: 13px;
+  height: 13px;
+  color: var(--ink, #16241F);
+}
+
+.cf-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink, #16241F);
+}
+
+.cf-sub {
+  font-size: 10.5px;
+  color: var(--ink-soft, #3E4A44);
+  margin-top: 1px;
+}
+
+/* Route preview mini map */
+.cf-route-preview {
+  position: relative;
+  height: 88px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line, #DAD5C6);
+  margin-bottom: 4px;
+}
+
+.cf-route-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  isolation: isolate;
+}
+
+.cf-route-preview .beacon-leaflet-marker {
+  width: 20px;
+  height: 20px;
+  font-size: 8px;
+}
+
+.cf-route-preview .beacon-leaflet-marker--self {
+  width: 20px;
+  height: 20px;
+}
+
+.cf-route-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  background: #FFFFFF;
+  border-radius: 99px;
+  padding: 3px 9px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--ink, #16241F);
+  box-shadow: 0 4px 10px rgba(22, 36, 31, 0.16);
+  z-index: 500;
+  pointer-events: none;
+}
+
+/* Section Header */
+.cf-section-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-soft, #3E4A44);
+  margin: 14px 0 8px;
+}
+
+.cf-select-all-btn {
+  background: none;
+  border: none;
+  color: var(--beacon-deep, #0E5961);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+  min-height: 44px;
+  padding: 8px;
+}
+
+/* Members Selection List */
+.cf-member-list {
+  background: var(--paper-raised, #FFFFFF);
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.cf-member-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  width: 100%;
+  min-height: 44px;
+  border-top: 1px solid var(--line, #DAD5C6);
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+
+.cf-member-row:first-child {
+  border-top: none;
+}
+
+.cf-member-row:hover {
+  background: rgba(28, 140, 153, 0.04);
+}
+
+.cf-member-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--sage-line, #97C459);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif, 'Source Serif 4', serif);
+  font-size: 12px;
+  font-weight: 600;
+  color: #173404;
+  flex: 0 0 32px;
+}
+
+.cf-member-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cf-member-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink, #16241F);
+}
+
+.cf-member-meta {
+  font-size: 10px;
+  color: var(--ink-soft, #3E4A44);
+  margin-top: 1px;
+}
+
+.cf-check-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line, #DAD5C6);
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.cf-check-circle.on {
+  background: var(--beacon, #1C8C99);
+  border-color: var(--beacon, #1C8C99);
+  color: #FFFFFF;
+}
+
+.cf-check-circle svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Duration Chips */
+.cf-duration-row {
+  display: flex;
+  gap: 6px;
+}
+
+.cf-chip {
+  flex: 1;
+  text-align: center;
+  min-height: 44px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 8px 4px;
+  border-radius: 99px;
+  white-space: nowrap;
+  background: #FFFFFF;
+  border: 1px solid var(--line, #DAD5C6);
+  color: var(--ink-soft, #3E4A44);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cf-chip.on {
+  background: var(--beacon-tint, #E3F3F5);
+  border-color: var(--beacon, #1C8C99);
+  color: var(--beacon-deep, #0E5961);
+}
+
+/* Off-Path Alert row */
+.cf-alert-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #FFFFFF;
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-top: 14px;
+}
+
+.cf-alert-ic {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--amber-tint, #FAEEDA);
+  color: var(--amber, #BA7517);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 30px;
+}
+
+.cf-alert-ic svg {
+  width: 15px;
+  height: 15px;
+}
+
+.cf-alert-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink, #16241F);
+}
+
+.cf-alert-desc {
+  font-size: 10.5px;
+  color: var(--ink-soft, #3E4A44);
+  line-height: 1.4;
+  margin-top: 1px;
+}
+
+.cf-toggle {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  position: relative;
+  flex: 0 0 44px;
+  cursor: pointer;
+}
+
+.cf-toggle::before {
+  content: '';
+  width: 34px;
+  height: 20px;
+  border-radius: 99px;
+  background: var(--beacon, #1C8C99);
+  position: relative;
+  display: block;
+  margin: auto;
+  transition: background 0.2s ease;
+}
+
+.cf-toggle.off {
+  background: transparent;
+}
+
+.cf-toggle.off::before {
+  background: var(--line, #DAD5C6);
+}
+
+.cf-toggle-knob {
+  position: absolute;
+  right: 7px;
+  top: 14px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  transition: transform 0.2s ease;
+}
+
+.cf-toggle.off .cf-toggle-knob {
+  transform: translateX(-14px);
+}
+
+/* Start Button */
+.cf-start-btn {
+  margin: 16px 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: var(--beacon, #1C8C99);
+  color: #FFFFFF;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 12px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.cf-start-btn:disabled {
+  background: #A9CFD4;
+  cursor: not-allowed;
+}
+
+.cf-start-btn:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.cf-hint {
+  font-size: 10px;
+  color: var(--ink-soft, #3E4A44);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.cf-location-retry {
+  display: block;
+  margin: 6px auto 0;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--beacon-deep, #0E5961);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cf-location-retry[hidden] {
+  display: none;
+}
+
+.cf-location-retry:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.cf-location-map-choice[hidden] {
+  display: none;
+}
+
+.cf-reduced-accuracy-confirmation {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #D9B66E;
+  border-radius: 10px;
+  background: #FAEEDA;
+  color: #633806;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.cf-reduced-accuracy-confirmation[hidden] {
+  display: none;
+}
+
+.cf-reduced-accuracy-confirmation p {
+  margin: 0 0 8px;
+}
+
+.cf-reduced-accuracy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cf-reduced-accuracy-actions button {
+  flex: 1 1 110px;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1px solid #9A6A20;
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: #633806;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cf-reduced-accuracy-actions button:first-child {
+  background: #633806;
+  color: #FFFFFF;
+}

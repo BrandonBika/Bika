@@ -1,0 +1,2056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CivicNeuro — Reports tab layout map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16241F;
+    --ink-soft:#3E4A44;
+    --paper:#F6F4EE;
+    --paper-raised:#FFFFFF;
+    --line:#DAD5C6;
+    --teal:#0F6E56;
+    --teal-deep:#085041;
+    --teal-tint:#E1F5EE;
+    --blue:#185FA5;
+    --blue-tint:#E6F1FB;
+    --amber:#BA7517;
+    --amber-tint:#FAEEDA;
+    --sage:#EAF3DE;
+    --sage-line:#97C459;
+    --red:#A32D2D;
+    --red-tint:#FCEBEB;
+    --beacon:#1C8C99;
+    --beacon-deep:#0E5961;
+    --beacon-tint:#E3F3F5;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:#EDEAE0;
+    font-family:'Public Sans',sans-serif;
+    color:var(--ink);
+    padding:40px 20px 80px;
+  }
+  h1.mock-title{
+    font-family:'Source Serif 4',serif;
+    font-weight:600;
+    font-size:15px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:56px 0 14px;
+    max-width:1360px;
+    margin-left:auto;
+    margin-right:auto;
+    padding:0 4px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  h1.mock-title:first-child{margin-top:0;}
+  h1.mock-title .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);}
+  .frame-wrap{max-width:1360px;margin:0 auto;}
+
+  /* ---------- shared bits ---------- */
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 10px 4px 8px;border-radius:99px;white-space:nowrap;flex:0 0 auto;}
+  .pill .dot{width:6px;height:6px;border-radius:50%;}
+  .pill-review{background:var(--amber-tint);color:#633806;}
+  .pill-review .dot{background:var(--amber);}
+  .pill-progress{background:var(--blue-tint);color:#042C53;}
+  .pill-progress .dot{background:var(--blue);}
+  .pill-resolved{background:var(--teal-tint);color:var(--teal-deep);}
+  .pill-resolved .dot{background:var(--teal);}
+  .pill-escalated{background:var(--red-tint);color:#501313;}
+  .pill-escalated .dot{background:var(--red);}
+
+  .route-line{position:relative;padding-left:22px;}
+  .route-line::before{
+    content:"";position:absolute;left:5px;top:6px;bottom:6px;width:0;
+    border-left:2px dotted #B9C4B9;
+  }
+  .route-step{position:relative;padding-bottom:22px;}
+  .route-step:last-child{padding-bottom:0;}
+  .route-step::before{
+    content:"";position:absolute;left:-22px;top:2px;width:11px;height:11px;border-radius:50%;
+    background:var(--paper-raised);border:2px solid #B9C4B9;
+  }
+  .route-step.done::before{background:var(--teal);border-color:var(--teal);}
+  .route-step.current::before{background:var(--paper-raised);border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-tint);}
+  .route-step .r-label{font-size:13px;font-weight:600;color:var(--ink);}
+  .route-step .r-meta{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .route-step.upcoming .r-label{color:#8B8B85;font-weight:500;}
+
+  /* ================= DASHBOARD ================= */
+  .dash{
+    background:var(--paper);
+    border-radius:14px;
+    border:1px solid var(--line);
+    overflow:hidden;
+    box-shadow:0 30px 60px -30px rgba(22,36,31,.35);
+    display:flex;
+    min-height:820px;
+  }
+  .dash-rail{
+    width:224px;flex:0 0 224px;background:var(--ink);color:#DDE3DD;
+    padding:22px 16px;display:flex;flex-direction:column;
+  }
+  .dash-logo{display:flex;align-items:center;gap:9px;padding:0 8px 22px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,.1);}
+  .dash-logo .mark{width:26px;height:26px;border-radius:7px;background:var(--teal);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .dash-logo .mark svg{width:15px;height:15px;}
+  .dash-logo .name{font-family:'Source Serif 4',serif;font-weight:600;font-size:16.5px;color:#fff;}
+  .dash-nav{display:flex;flex-direction:column;gap:2px;}
+  .dash-nav .n-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:13.5px;font-weight:500;color:#B7C0B9;cursor:default;}
+  .dash-nav .n-item svg{width:16px;height:16px;opacity:.85;flex:0 0 auto;}
+  .dash-nav .n-item.active{background:rgba(255,255,255,.08);color:#fff;}
+  .dash-nav .n-item.active svg{opacity:1;color:var(--sage-line);}
+  .dash-section-label{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#748078;margin:20px 0 6px;padding:0 10px;}
+  .dash-rail-foot{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:9px;}
+  .dash-avatar{width:28px;height:28px;border-radius:50%;background:var(--sage-line);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#173404;}
+  .dash-rail-foot .who{font-size:12.5px;font-weight:600;color:#fff;line-height:1.25;}
+  .dash-rail-foot .role{font-size:11px;color:#8B968E;}
+
+  .dash-main{flex:1;display:flex;flex-direction:column;min-width:0;}
+  .dash-topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 28px;border-bottom:1px solid var(--line);}
+  .dash-topbar h2{font-family:'Source Serif 4',serif;font-size:21px;font-weight:600;margin:0;}
+  .dash-topbar .sub{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  .dash-search{display:flex;align-items:center;gap:8px;background:var(--paper-raised);border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-size:12.5px;color:#8B8B85;min-width:230px;}
+  .dash-body{padding:24px 28px;overflow:auto;}
+
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+  .kpi{background:var(--paper-raised);border:1px solid var(--line);border-radius:12px;padding:16px 18px;}
+  .kpi .k-label{font-size:12px;color:var(--ink-soft);font-weight:500;}
+  .kpi .k-value{font-family:'Source Serif 4',serif;font-size:30px;font-weight:600;margin-top:6px;}
+  .kpi .k-delta{font-size:11.5px;margin-top:5px;font-weight:600;}
+  .kpi.k-total .k-value{color:var(--ink);}
+  .kpi.k-pending .k-value{color:#633806;}
+  .kpi.k-high .k-value{color:#501313;}
+  .kpi.k-resolved .k-value{color:var(--teal-deep);}
+
+  .grid-2{display:grid;grid-template-columns:1.35fr 1fr;gap:16px;align-items:start;}
+  .card{background:var(--paper-raised);border:1px solid var(--line);border-radius:12px;padding:18px 20px;}
+  .card h3{font-size:14px;font-weight:600;margin:0 0 4px;}
+  .card .card-sub{font-size:12px;color:var(--ink-soft);margin-bottom:14px;}
+
+  .queue-row{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:14px;padding:10px 0;border-top:1px solid var(--line);font-size:13px;}
+  .queue-row:first-of-type{border-top:none;}
+  .queue-row .q-title{font-weight:600;}
+  .queue-row .q-ref{font-size:11.5px;color:var(--ink-soft);font-weight:400;margin-top:1px;}
+  .queue-row .q-cat{font-size:12px;color:var(--ink-soft);}
+  .queue-row .q-date{font-size:12px;color:var(--ink-soft);white-space:nowrap;}
+
+  .bars{display:flex;align-items:flex-end;gap:14px;height:120px;margin-top:6px;}
+  .bars .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .bars .bar{width:100%;border-radius:5px 5px 0 0;}
+  .bars .bar-label{font-size:11px;color:var(--ink-soft);}
+
+  .activity-item{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--line);}
+  .activity-item:first-of-type{border-top:none;}
+  .activity-item .a-dot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex:0 0 auto;}
+  .activity-item .a-text{font-size:12.5px;line-height:1.5;}
+  .activity-item .a-time{font-size:11px;color:var(--ink-soft);margin-top:1px;}
+
+  .map-card{position:relative;height:190px;border-radius:12px;overflow:hidden;border:1px solid var(--line);
+    background:
+      radial-gradient(circle at 30% 35%, rgba(15,110,86,.10), transparent 40%),
+      linear-gradient(#EFEDE3,#EFEDE3);
+  }
+  .map-card svg{position:absolute;inset:0;width:100%;height:100%;}
+  .map-pin{position:absolute;width:16px;height:16px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid var(--paper-raised);}
+
+  /* ================= MOBILE ================= */
+  .mobile-row{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;}
+  .phone{
+    width:300px;background:var(--ink);border-radius:34px;padding:10px;
+    box-shadow:0 30px 60px -25px rgba(22,36,31,.45);
+  }
+  .phone-screen{background:var(--paper);border-radius:26px;overflow:hidden;min-height:560px;display:flex;flex-direction:column;position:relative;}
+  .phone-notch{height:22px;display:flex;align-items:center;justify-content:center;}
+  .phone-notch .pill-notch{width:70px;height:6px;border-radius:99px;background:var(--ink);opacity:.9;}
+  .phone-content{flex:1;padding:14px 16px 0;overflow:hidden;}
+  .phone-bottomnav{display:flex;justify-content:space-around;align-items:center;padding:9px 6px 14px;border-top:1px solid var(--line);background:var(--paper-raised);}
+  .nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;color:#8B8B85;font-weight:600;}
+  .nav-item svg{width:18px;height:18px;}
+  .nav-item.active{color:var(--teal-deep);}
+  .nav-item.active svg{color:var(--teal);}
+  .nav-item .fab{width:36px;height:36px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;margin-bottom:2px;}
+  .nav-item .fab svg{width:18px;height:18px;color:#fff;}
+
+  .phone-caption{text-align:center;font-size:12px;font-weight:600;color:var(--ink-soft);margin-top:12px;}
+
+  .m-hello{font-size:12px;color:var(--ink-soft);margin:2px 0 0;}
+  .m-name{font-family:'Source Serif 4',serif;font-size:19px;font-weight:600;margin:0;}
+  .m-cta{
+    margin-top:16px;background:var(--teal);color:#fff;border-radius:14px;padding:18px;
+    display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;
+  }
+  .m-cta .m-cta-label{font-size:15px;font-weight:600;}
+  .m-cta .m-cta-sub{font-size:11.5px;color:#CFEBE1;}
+  .m-cta .m-cta-arrow{position:absolute;right:14px;top:14px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;}
+  .m-cta .m-cta-arrow svg{width:13px;height:13px;color:#fff;}
+
+  .m-tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px;}
+  .m-tile{background:var(--paper-raised);border:1px solid var(--line);border-radius:12px;padding:12px 12px 11px;}
+  .m-tile .t-icon{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:8px;}
+  .m-tile .t-icon svg{width:14px;height:14px;}
+  .m-tile .t-label{font-size:12px;font-weight:600;}
+  .m-tile .t-meta{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+
+  /* Your Area — community pulse widget, occupies the footprint of the former
+     My Reports / Notifications tile pair (grid-column: 1 / -1) */
+  .m-pulse{grid-column:1 / -1;background:var(--paper-raised);border:1px solid var(--line);border-radius:12px;padding:12px 0 12px 12px;overflow:hidden;}
+  .m-pulse-head{display:flex;align-items:baseline;justify-content:space-between;padding-right:12px;margin-bottom:10px;}
+  .m-pulse-head .ph-eyebrow{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal-deep);display:flex;align-items:center;gap:5px;}
+  .m-pulse-head .ph-eyebrow svg{width:11px;height:11px;}
+  .m-pulse-head .ph-title{font-size:12.5px;font-weight:600;margin-top:2px;}
+  .m-pulse-head .ph-see{font-size:10.5px;font-weight:600;color:var(--blue);white-space:nowrap;}
+  .m-pulse-scroll{display:flex;gap:9px;overflow-x:auto;padding-right:12px;scrollbar-width:none;}
+  .m-pulse-scroll::-webkit-scrollbar{display:none;}
+  .m-pulse-card{flex:0 0 auto;width:132px;border-radius:11px;padding:10px 11px;display:flex;flex-direction:column;gap:6px;}
+  .m-pulse-card .pc-icon{width:24px;height:24px;border-radius:7px;background:rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;}
+  .m-pulse-card .pc-icon svg{width:13px;height:13px;}
+  .m-pulse-card .pc-label{font-size:9.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;opacity:.75;}
+  .m-pulse-card .pc-body{font-size:11px;font-weight:600;line-height:1.32;}
+  .m-pulse-card .pc-meta{font-size:9.5px;font-weight:500;opacity:.8;line-height:1.3;}
+  .m-pulse-card.poll{background:var(--blue-tint);color:#042C53;}
+  .m-pulse-card.stat{background:var(--sage);color:var(--teal-deep);}
+  .m-pulse-card.trend{background:var(--amber-tint);color:#633806;}
+  .m-pulse-card .pc-yn{display:flex;gap:5px;margin-top:1px;}
+  .m-pulse-card .pc-yn div{flex:1;text-align:center;font-size:9.5px;font-weight:700;padding:4px 0;border-radius:99px;background:rgba(255,255,255,.6);}
+
+  .m-sectiontitle{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-soft);margin:18px 0 8px;}
+  .m-report-card{background:var(--paper-raised);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;}
+  .m-report-card .rc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .m-report-card .rc-title{font-size:12.5px;font-weight:600;}
+  .m-report-card .rc-ref{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+  .m-report-card .rc-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:9px;padding-top:9px;border-top:1px solid var(--line);}
+  .m-report-card .rc-cat{font-size:10.5px;color:var(--ink-soft);}
+  .m-report-card .rc-date{font-size:10.5px;color:var(--ink-soft);}
+
+  .m-reports-filters{display:flex;gap:6px;margin-bottom:14px;overflow:hidden;}
+  .m-filter-chip{font-size:11px;font-weight:700;padding:6px 13px;border-radius:99px;background:var(--paper-raised);border:1px solid var(--line);color:var(--ink-soft);white-space:nowrap;}
+  .m-filter-chip.on{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .m-filter-chip .fc-count{opacity:.7;margin-left:3px;}
+
+  .m-reports-search{display:flex;align-items:center;gap:8px;background:var(--paper-raised);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12px;color:#8B8B85;margin-bottom:12px;}
+  .m-reports-search svg{width:14px;height:14px;color:#B0AFA5;flex:0 0 auto;}
+
+  /* wizard */
+  .m-steps{display:flex;gap:5px;margin-bottom:14px;}
+  .m-step{flex:1;height:4px;border-radius:99px;background:var(--line);}
+  .m-step.done{background:var(--teal);}
+  .m-step.active{background:var(--blue);}
+  .m-field-label{font-size:11px;font-weight:600;color:var(--ink-soft);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.02em;}
+
+  .m-input{background:var(--paper-raised);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:12px;color:var(--ink-soft);}
+  .m-input.filled{color:var(--ink);font-weight:500;}
+  .m-consent-row{display:flex;align-items:flex-start;gap:10px;margin-top:16px;}
+  .m-checkbox{width:19px;height:19px;border-radius:6px;border:1.5px solid var(--line);flex:0 0 auto;margin-top:1px;position:relative;background:var(--paper-raised);}
+  .m-checkbox.checked{background:var(--teal);border-color:var(--teal);}
+  .m-checkbox.checked::after{content:"";position:absolute;left:50%;top:46%;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:translate(-50%,-55%) rotate(45deg);}
+  .m-consent-text{font-size:11px;color:var(--ink-soft);line-height:1.55;}
+  .m-consent-text a{color:var(--blue);font-weight:600;text-decoration:none;}
+  .m-consent-note{font-size:10px;color:#8B8B85;line-height:1.5;margin-top:10px;}
+  .m-submit-btn.disabled{background:#B8CFC7;color:#fff;}
+  .m-org{display:flex;align-items:center;gap:10px;background:var(--paper-raised);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:8px;}
+  .m-org.sel{border-color:var(--teal);background:var(--teal-tint);}
+  .m-org .o-icon{width:30px;height:30px;border-radius:9px;background:var(--sage);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-org .o-icon svg{width:15px;height:15px;color:var(--teal-deep);}
+  .m-org .o-name{font-size:12.5px;font-weight:600;}
+  .m-org .o-type{font-size:10.5px;color:var(--ink-soft);}
+  .m-search{background:var(--paper-raised);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12px;color:#8B8B85;margin-bottom:10px;}
+  .m-otherbtn{text-align:center;font-size:11.5px;font-weight:600;color:var(--blue);padding:10px;border:1px dashed var(--line);border-radius:10px;margin-top:2px;}
+
+  .m-textfield{background:var(--paper-raised);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--ink-soft);min-height:70px;line-height:1.5;}
+  .m-locfield{background:var(--paper-raised);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:12px;display:flex;align-items:center;gap:8px;color:var(--ink-soft);}
+  .m-locfield svg{width:14px;height:14px;color:var(--teal);flex:0 0 auto;}
+  .m-evidence-row{display:flex;gap:8px;margin-top:8px;}
+  .m-evidence-box{flex:1;aspect-ratio:1;background:var(--paper-raised);border:1px dashed var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;}
+  .m-evidence-box svg{width:16px;height:16px;color:#B0AFA5;}
+
+  /* my reports + detail */
+  .detail-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+  .detail-ref{font-family:'Source Serif 4',serif;font-size:15px;font-weight:600;}
+  .detail-cat{font-size:11px;color:var(--ink-soft);margin-top:2px;}
+  .detail-desc{font-size:11.5px;color:var(--ink-soft);line-height:1.55;margin:12px 0 14px;background:var(--paper-raised);border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+  .m-msgbox{display:flex;gap:8px;background:var(--paper-raised);border:1px solid var(--line);border-radius:10px;padding:9px 10px;margin-top:14px;align-items:center;}
+  .m-msgbox input{flex:1;font-size:11.5px;color:#8B8B85;}
+  .m-msgbox svg{width:15px;height:15px;color:var(--teal);}
+
+  /* conversation preview on detail page */
+  .m-convo-preview{display:flex;align-items:center;gap:10px;background:var(--paper-raised);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-top:14px;}
+  .m-convo-preview .cv-avatar{width:32px;height:32px;border-radius:9px;background:var(--sage);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-convo-preview .cv-avatar svg{width:15px;height:15px;color:var(--teal-deep);}
+  .m-convo-preview .cv-body{flex:1;min-width:0;}
+  .m-convo-preview .cv-top{display:flex;justify-content:space-between;gap:6px;}
+  .m-convo-preview .cv-org{font-size:11.5px;font-weight:700;}
+  .m-convo-preview .cv-time{font-size:10px;color:var(--ink-soft);white-space:nowrap;}
+  .m-convo-preview .cv-snippet{font-size:11.5px;color:var(--ink-soft);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .m-convo-preview .cv-unread{width:8px;height:8px;border-radius:50%;background:var(--teal);flex:0 0 auto;margin-top:3px;}
+  .m-convo-preview .cv-chev{color:#B0AFA5;flex:0 0 auto;}
+  .m-convo-preview .cv-chev svg{width:13px;height:13px;}
+
+  /* full chat thread screen */
+  .m-chat-header{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:4px;}
+  .m-chat-header .ch-back{width:26px;height:26px;border-radius:50%;background:var(--paper-raised);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-chat-header .ch-back svg{width:13px;height:13px;}
+  .m-chat-header .ch-title{font-size:13px;font-weight:700;}
+  .m-chat-header .ch-sub{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+
+  .m-chat-daylabel{text-align:center;font-size:10px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;margin:14px 0 10px;}
+  .m-bubble-row{display:flex;margin-bottom:10px;}
+  .m-bubble-row.me{justify-content:flex-end;}
+  .m-bubble-row.org{justify-content:flex-start;align-items:flex-end;gap:7px;}
+  .m-bubble-row .org-avatar{width:22px;height:22px;border-radius:7px;background:var(--sage);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-bubble-row .org-avatar svg{width:11px;height:11px;color:var(--teal-deep);}
+  .m-bubble{max-width:73%;padding:9px 12px;font-size:12px;line-height:1.5;}
+  .m-bubble-row.me .m-bubble{background:var(--teal);color:#fff;border-radius:14px 14px 3px 14px;}
+  .m-bubble-row.org .m-bubble{background:var(--paper-raised);border:1px solid var(--line);border-radius:14px 14px 14px 3px;}
+  .m-bubble-row.org .m-bubble .b-org-name{font-size:10px;font-weight:700;color:var(--teal-deep);margin-bottom:3px;display:block;}
+  .m-bubble-time{font-size:9.5px;color:#B0AFA5;margin-top:4px;}
+  .m-bubble-row.me .m-bubble-wrap{display:flex;flex-direction:column;align-items:flex-end;}
+  .m-bubble-row.org .m-bubble-wrap{display:flex;flex-direction:column;align-items:flex-start;}
+
+  .m-chat-input{display:flex;align-items:center;gap:8px;background:var(--paper-raised);border:1px solid var(--line);border-radius:99px;padding:8px 8px 8px 14px;}
+  .m-chat-input input{flex:1;font-size:12px;color:#8B8B85;}
+  .m-chat-input .ci-send{width:30px;height:30px;border-radius:50%;background:var(--ink);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-chat-input .ci-send svg{width:14px;height:14px;color:#fff;}
+
+  .icon-btn-row{display:flex;gap:8px;margin-top:12px;}
+  .icon-btn{flex:1;text-align:center;font-size:11px;font-weight:600;padding:9px;border-radius:9px;border:1px solid var(--line);color:var(--ink-soft);}
+  .icon-btn.danger{color:#792424;border-color:#E6C3C3;}
+
+  /* single-page report form */
+  .m-formfield{margin-top:14px;}
+  .m-formfield .f-label{font-size:11.5px;font-weight:700;color:var(--teal-deep);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;}
+  .m-formfield .f-label .req{color:var(--red);}
+  .m-dropdown{background:var(--paper-raised);border:1px solid var(--line);border-radius:99px;padding:11px 14px;font-size:12.5px;font-weight:500;color:var(--ink);display:flex;justify-content:space-between;align-items:center;}
+  .m-dropdown svg{width:13px;height:13px;color:#8B8B85;flex:0 0 auto;}
+  .m-toggle-pair{display:flex;background:var(--sage);border-radius:99px;padding:2px;gap:2px;}
+  .m-toggle-btn{font-size:10.5px;font-weight:700;padding:4px 11px;border-radius:99px;color:var(--teal-deep);}
+  .m-toggle-btn.on{background:var(--ink);color:#fff;}
+  .m-textarea-plain{background:var(--paper-raised);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:12px;color:#B0AFA5;min-height:64px;line-height:1.5;}
+  .m-proof-row{display:flex;gap:9px;margin-top:2px;}
+  .m-proof-box{flex:1;background:var(--paper-raised);border:1.5px dashed var(--line);border-radius:12px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .m-proof-box svg{width:17px;height:17px;color:var(--teal);}
+  .m-proof-box .p-label{font-size:11px;font-weight:600;color:var(--ink-soft);}
+  .m-loc-row{display:flex;gap:8px;}
+  .m-loc-input{flex:1;background:var(--paper-raised);border:1px solid var(--line);border-radius:99px;padding:11px 14px;font-size:12.5px;color:var(--ink);}
+  .m-loc-pin{width:38px;height:38px;border-radius:50%;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-loc-pin svg{width:16px;height:16px;color:var(--teal-deep);}
+  .m-loc-hint{font-size:10.5px;color:var(--ink-soft);text-align:center;margin-top:6px;}
+  .m-submit-btn{background:var(--ink);color:#fff;text-align:center;font-size:13px;font-weight:600;padding:13px;border-radius:99px;}
+  .m-contacts-link{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ink-soft);margin-top:12px;}
+  .m-contacts-link svg{width:13px;height:13px;}
+
+  /* ---------- menu page ---------- */
+  .m-menu-card{display:flex;align-items:center;gap:11px;background:var(--paper-raised);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-top:2px;}
+  .m-menu-card .mc-avatar{width:42px;height:42px;border-radius:50%;background:var(--sage-line);display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-size:15px;font-weight:600;color:#173404;flex:0 0 auto;}
+  .m-menu-card .mc-name{font-size:13.5px;font-weight:600;}
+  .m-menu-card .mc-meta{font-size:11px;color:var(--ink-soft);margin-top:1px;}
+  .m-menu-card .mc-chev{margin-left:auto;color:#8B8B85;flex:0 0 auto;}
+  .m-menu-card .mc-chev svg{width:14px;height:14px;}
+
+  .m-menu-group{margin-top:16px;}
+  .m-menu-list{background:var(--paper-raised);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+  .m-menu-item{display:flex;align-items:center;gap:11px;padding:11px 14px;border-top:1px solid var(--line);}
+  .m-menu-item:first-child{border-top:none;}
+  .m-menu-item .mi-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-menu-item .mi-icon svg{width:14px;height:14px;}
+  .m-menu-item .mi-label{font-size:12.5px;font-weight:600;flex:1;}
+  .m-menu-item .mi-badge{font-size:10px;font-weight:700;color:var(--teal-deep);background:var(--teal-tint);border-radius:99px;padding:2px 8px;}
+  .m-menu-item .mi-chev{color:#B0AFA5;flex:0 0 auto;}
+  .m-menu-item .mi-chev svg{width:13px;height:13px;}
+
+  .m-menu-signout{display:flex;align-items:center;justify-content:center;gap:7px;font-size:12.5px;font-weight:700;color:#792424;padding:13px;border:1px solid #E6C3C3;border-radius:14px;margin-top:18px;}
+  .m-menu-signout svg{width:14px;height:14px;}
+  .m-menu-version{text-align:center;font-size:10.5px;color:#B0AFA5;margin-top:12px;}
+
+  /* ---------- profile page ---------- */
+  .m-profile-head{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:6px;}
+  .m-profile-head .ph-avatar{width:64px;height:64px;border-radius:50%;background:var(--sage-line);display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-size:22px;font-weight:600;color:#173404;}
+  .m-profile-head .ph-name{font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;margin-top:10px;}
+  .m-profile-head .ph-meta{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
+  .m-profile-head .ph-edit{margin-top:10px;font-size:11px;font-weight:700;color:var(--teal-deep);background:var(--teal-tint);padding:5px 14px;border-radius:99px;}
+
+  /* ---------- community badges ---------- */
+  .m-badges-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px;}
+  .m-badge-pill{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:var(--teal-deep);background:var(--teal-tint);border-radius:99px;padding:5px 10px;}
+  .m-badge-pill .bp-emoji{width:12px;height:12px;display:flex;}
+  .m-badge-pill .bp-emoji svg{width:12px;height:12px;}
+  .m-badges-empty{font-size:11px;color:var(--ink-soft);margin-top:10px;}
+  .m-badges-addlink{font-size:11px;font-weight:700;color:var(--teal-deep);margin-top:8px;}
+
+  .m-badge-card{display:flex;align-items:flex-start;gap:11px;background:var(--paper-raised);border:1.5px solid var(--line);border-radius:14px;padding:12px 13px;margin-bottom:9px;}
+  .m-badge-card.sel{border-color:var(--teal);background:var(--teal-tint);}
+  .m-badge-card .bc-emoji{width:36px;height:36px;border-radius:10px;background:var(--paper);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-badge-card .bc-emoji svg{width:17px;height:17px;color:var(--teal-deep);}
+  .m-badge-card.sel .bc-emoji{background:#fff;}
+  .m-badge-card .bc-text{flex:1;min-width:0;}
+  .m-badge-card .bc-title{font-size:12.5px;font-weight:700;}
+  .m-badge-card .bc-desc{font-size:11px;color:var(--ink-soft);margin-top:2px;line-height:1.4;}
+  .m-badge-card .bc-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);flex:0 0 auto;margin-top:2px;}
+  .m-badge-card.sel .bc-check{border-color:var(--teal);background:var(--teal);position:relative;}
+  .m-badge-card.sel .bc-check::after{content:"";position:absolute;left:50%;top:50%;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:translate(-50%,-60%) rotate(45deg);}
+
+  .m-badges-note{display:flex;gap:8px;background:var(--sage);border-radius:12px;padding:10px 12px;margin-bottom:14px;}
+  .m-badges-note svg{width:14px;height:14px;color:var(--teal-deep);flex:0 0 auto;margin-top:1px;}
+  .m-badges-note .note-text{font-size:11px;line-height:1.5;color:#1E3A12;}
+
+  .m-profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px;}
+  .m-profile-stat{background:var(--paper-raised);border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center;}
+  .m-profile-stat .ps-value{font-family:'Source Serif 4',serif;font-size:19px;font-weight:600;}
+  .m-profile-stat .ps-label{font-size:9.5px;color:var(--ink-soft);margin-top:2px;line-height:1.3;}
+
+  .m-profile-list{background:var(--paper-raised);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+  .m-profile-row{display:flex;align-items:center;gap:11px;padding:11px 14px;border-top:1px solid var(--line);}
+  .m-profile-row:first-child{border-top:none;}
+  .m-profile-row .pr-icon{width:26px;height:26px;border-radius:8px;background:var(--sage);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-profile-row .pr-icon svg{width:13px;height:13px;color:var(--teal-deep);}
+  .m-profile-row .pr-text{flex:1;min-width:0;}
+  .m-profile-row .pr-label{font-size:10.5px;color:var(--ink-soft);}
+  .m-profile-row .pr-value{font-size:12.5px;font-weight:600;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .m-profile-row .pr-chev{color:#B0AFA5;flex:0 0 auto;}
+  .m-profile-row .pr-chev svg{width:13px;height:13px;}
+
+  .m-profile-toggle-row{display:flex;align-items:center;gap:11px;padding:11px 14px;border-top:1px solid var(--line);}
+  .m-profile-toggle-row:first-child{border-top:none;}
+  .m-profile-toggle-row .pr-icon{width:26px;height:26px;border-radius:8px;background:var(--sage);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-profile-toggle-row .pr-icon svg{width:13px;height:13px;color:var(--teal-deep);}
+  .m-profile-toggle-row .pr-label{font-size:12.5px;font-weight:600;flex:1;}
+  .m-switch{width:34px;height:19px;border-radius:99px;background:var(--teal);position:relative;flex:0 0 auto;}
+  .m-switch::after{content:"";position:absolute;top:2px;right:2px;width:15px;height:15px;border-radius:50%;background:#fff;}
+  .m-switch.off{background:var(--line);}
+  .m-switch.off::after{right:auto;left:2px;}
+
+  /* ---------- safety & emergency ---------- */
+  .m-sos-card{background:var(--red);border-radius:16px;padding:16px;color:#fff;position:relative;overflow:hidden;margin-top:2px;}
+  .m-sos-card .sos-label{font-size:14.5px;font-weight:700;}
+  .m-sos-card .sos-sub{font-size:11px;color:#FBD9D9;margin-top:2px;max-width:75%;}
+  .m-sos-card .sos-btn{display:inline-flex;align-items:center;gap:7px;background:#fff;color:#792424;font-size:12px;font-weight:700;padding:8px 14px;border-radius:99px;margin-top:12px;}
+  .m-sos-card .sos-btn svg{width:13px;height:13px;}
+  .m-sos-card .sos-icon{position:absolute;right:-8px;top:-8px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.12);}
+
+  .m-safety-list{background:var(--paper-raised);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+  .m-safety-row{display:flex;align-items:center;gap:11px;padding:11px 14px;border-top:1px solid var(--line);}
+  .m-safety-row:first-child{border-top:none;}
+  .m-safety-row .sf-icon{width:30px;height:30px;border-radius:9px;background:var(--red-tint);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-safety-row .sf-icon svg{width:14px;height:14px;color:#A32D2D;}
+  .m-safety-row .sf-text{flex:1;min-width:0;}
+  .m-safety-row .sf-label{font-size:12.5px;font-weight:600;}
+  .m-safety-row .sf-number{font-size:11px;color:var(--ink-soft);margin-top:1px;}
+  .m-safety-row .sf-call{width:30px;height:30px;border-radius:50%;background:var(--sage);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-safety-row .sf-call svg{width:13px;height:13px;color:var(--teal-deep);}
+
+  .m-tip-card{display:flex;gap:9px;background:var(--sage);border-radius:12px;padding:11px 12px;margin-bottom:8px;}
+  .m-tip-card svg{width:15px;height:15px;color:var(--teal-deep);flex:0 0 auto;margin-top:1px;}
+  .m-tip-card .tip-text{font-size:11.5px;line-height:1.5;color:#1E3A12;}
+
+  /* ---------- help & faqs ---------- */
+  .m-faq-item{background:var(--paper-raised);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px;}
+  .m-faq-item .faq-q{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12.5px;font-weight:600;}
+  .m-faq-item .faq-q svg{width:14px;height:14px;color:#8B8B85;flex:0 0 auto;}
+  .m-faq-item .faq-a{font-size:11.5px;color:var(--ink-soft);line-height:1.55;margin-top:9px;padding-top:9px;border-top:1px solid var(--line);}
+  .m-faq-item.closed .faq-a{display:none;}
+
+  .m-support-card{display:flex;align-items:center;gap:11px;background:var(--teal-tint);border-radius:14px;padding:13px 14px;margin-top:16px;}
+  .m-support-card .sc-icon{width:34px;height:34px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-support-card .sc-icon svg{width:16px;height:16px;color:var(--teal-deep);}
+  .m-support-card .sc-title{font-size:12.5px;font-weight:700;color:var(--teal-deep);}
+  .m-support-card .sc-sub{font-size:10.5px;color:#1E5245;margin-top:1px;}
+  .m-support-card .sc-arrow{margin-left:auto;color:var(--teal-deep);flex:0 0 auto;}
+  .m-support-card .sc-arrow svg{width:13px;height:13px;}
+
+  /* ---------- contacts ---------- */
+  .m-contact-card{background:var(--paper-raised);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:10px;}
+  .m-contact-card .cc-top{display:flex;align-items:flex-start;gap:10px;}
+  .m-contact-card .cc-icon{width:32px;height:32px;border-radius:9px;background:var(--sage);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-contact-card .cc-icon svg{width:15px;height:15px;color:var(--teal-deep);}
+  .m-contact-card .cc-name{font-size:12.5px;font-weight:700;}
+  .m-contact-card .cc-hours{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+  .m-contact-card .cc-actions{display:flex;gap:8px;margin-top:11px;}
+  .m-contact-card .cc-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;font-weight:700;padding:8px;border-radius:9px;border:1px solid var(--line);color:var(--ink);}
+  .m-contact-card .cc-btn svg{width:12px;height:12px;}
+  .m-contact-card .cc-btn.primary{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  /* ---------- language ---------- */
+  .m-lang-list{background:var(--paper-raised);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+  .m-lang-row{display:flex;align-items:center;gap:11px;padding:13px 14px;border-top:1px solid var(--line);}
+  .m-lang-row:first-child{border-top:none;}
+  .m-lang-row .lg-text{flex:1;}
+  .m-lang-row .lg-name{font-size:12.5px;font-weight:600;}
+  .m-lang-row .lg-native{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+  .m-lang-radio{width:19px;height:19px;border-radius:50%;border:2px solid var(--line);flex:0 0 auto;}
+  .m-lang-radio.on{border-color:var(--teal);background:var(--teal);position:relative;}
+  .m-lang-radio.on::after{content:"";position:absolute;inset:0;margin:auto;width:7px;height:7px;border-radius:50%;background:#fff;top:0;bottom:0;left:0;right:0;}
+
+  /* ---------- beacon (live location sharing) ---------- */
+  .bc-map{position:absolute;inset:0;background:
+    radial-gradient(circle at 30% 26%, rgba(28,140,153,.16), transparent 42%),
+    radial-gradient(circle at 74% 60%, rgba(28,140,153,.10), transparent 40%),
+    linear-gradient(var(--sage),var(--sage));}
+  .bc-map .bc-grid{position:absolute;inset:0;width:100%;height:100%;opacity:.5;}
+  .bc-topbar{position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;justify-content:space-between;}
+  .bc-topbar .bc-title-pill{background:#fff;border-radius:99px;padding:8px 14px;font-size:13px;font-weight:700;box-shadow:0 8px 18px rgba(22,36,31,.16);display:flex;align-items:center;gap:6px;}
+  .bc-topbar .bc-title-pill svg{width:13px;height:13px;color:var(--beacon);}
+  .bc-topbar .bc-add-btn{width:32px;height:32px;border-radius:50%;background:var(--ink);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(22,36,31,.22);flex:0 0 auto;}
+  .bc-topbar .bc-add-btn svg{width:14px;height:14px;color:#fff;}
+
+  .bc-pin{position:absolute;display:flex;flex-direction:column;align-items:center;}
+  .bc-pin .bc-pin-avatar{width:26px;height:26px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 4px 10px rgba(22,36,31,.25);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#fff;}
+  .bc-pin.me .bc-pin-avatar{background:var(--ink);}
+  .bc-pin.live .bc-pin-avatar{background:var(--beacon);}
+  .bc-pin .bc-pin-dot{width:8px;height:8px;border-radius:50%;background:var(--beacon);margin-top:3px;box-shadow:0 0 0 3px rgba(28,140,153,.25);}
+
+  .bc-sheet{position:absolute;left:0;right:0;bottom:0;background:var(--paper-raised);border-radius:20px 20px 0 0;box-shadow:0 -10px 26px rgba(22,36,31,.18);padding:10px 14px 14px;}
+  .bc-sheet-handle{width:34px;height:4px;border-radius:99px;background:var(--line);margin:0 auto 10px;}
+  .bc-cta-share{display:flex;align-items:center;justify-content:center;gap:7px;background:var(--beacon);color:#fff;font-size:12.5px;font-weight:700;padding:11px;border-radius:12px;margin-bottom:12px;}
+  .bc-cta-share svg{width:14px;height:14px;}
+  .bc-tabs{display:flex;gap:6px;margin-bottom:10px;}
+  .bc-tab{flex:1;text-align:center;font-size:11px;font-weight:700;padding:7px;border-radius:9px;color:var(--ink-soft);}
+  .bc-tab.active{background:var(--beacon-tint);color:var(--beacon-deep);}
+
+  .bc-avatar{width:34px;height:34px;border-radius:50%;background:var(--sage-line);display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-size:13px;font-weight:600;color:#173404;flex:0 0 auto;position:relative;}
+  .bc-avatar .bc-live-badge{position:absolute;bottom:-1px;right:-1px;width:11px;height:11px;border-radius:50%;background:var(--beacon);border:2px solid #fff;}
+
+  .bc-member-row{display:flex;align-items:center;gap:10px;padding:9px 2px;border-top:1px solid var(--line);}
+  .bc-member-row:first-child{border-top:none;}
+  .bc-member-row .bc-text{flex:1;min-width:0;}
+  .bc-member-row .bc-name{font-size:12.5px;font-weight:600;}
+  .bc-member-row .bc-status{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+  .bc-member-row .bc-status.live{color:var(--beacon-deep);font-weight:600;}
+  .bc-member-row .bc-msg-btn{width:28px;height:28px;border-radius:50%;background:var(--sage);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .bc-member-row .bc-msg-btn svg{width:13px;height:13px;color:var(--teal-deep);}
+
+  /* add to circle */
+  .bc-invite-card{border:1.5px dashed var(--sage-line);border-radius:14px;padding:14px;text-align:center;background:var(--sage);margin-top:14px;}
+  .bc-invite-card .bc-qr{width:64px;height:64px;margin:6px auto 10px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;}
+  .bc-invite-card .bc-qr svg{width:44px;height:44px;color:var(--ink);}
+  .bc-request-row{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--line);}
+  .bc-request-row:first-child{border-top:none;}
+  .bc-request-row .bc-avatar{width:32px;height:32px;font-size:12px;}
+  .bc-request-row .bc-text{flex:1;min-width:0;}
+  .bc-request-row .bc-name{font-size:12px;font-weight:600;}
+  .bc-request-row .bc-meta{font-size:10px;color:var(--ink-soft);margin-top:1px;}
+  .bc-request-row .bc-pillbtn{font-size:10.5px;font-weight:700;padding:6px 11px;border-radius:99px;flex:0 0 auto;white-space:nowrap;}
+  .bc-request-row .bc-pillbtn.primary{background:var(--beacon);color:#fff;}
+  .bc-request-row .bc-pillbtn.ghost{border:1px solid var(--line);color:var(--ink-soft);}
+  .bc-request-actions{display:flex;gap:6px;flex:0 0 auto;}
+
+  /* beacon chat */
+  .bc-share-card{background:var(--beacon-tint);border-radius:14px;padding:10px 13px;margin:4px auto 12px;max-width:86%;text-align:center;}
+  .bc-share-card .bc-share-label{font-size:10px;font-weight:700;color:var(--beacon-deep);text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;justify-content:center;gap:5px;}
+  .bc-share-card .bc-share-label svg{width:11px;height:11px;}
+  .bc-share-card .bc-share-sub{font-size:11px;color:#134044;margin-top:3px;}
+
+  /* active session */
+  .bc-session-card{position:absolute;left:12px;right:12px;top:12px;background:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 14px 30px rgba(22,36,31,.2);}
+  .bc-session-card .bcs-row{display:flex;align-items:center;gap:8px;}
+  .bc-session-card .bcs-avatars{display:flex;}
+  .bc-session-card .bcs-avatars .bc-avatar{width:24px;height:24px;font-size:10px;border:2px solid #fff;margin-left:-7px;}
+  .bc-session-card .bcs-avatars .bc-avatar:first-child{margin-left:0;}
+  .bc-session-card .bcs-title{font-size:12px;font-weight:700;}
+  .bc-session-card .bcs-sub{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+  .bc-session-card .bcs-stop{margin-top:10px;text-align:center;font-size:11.5px;font-weight:700;color:#792424;border:1px solid #E6C3C3;border-radius:10px;padding:9px;}
+  .bc-route-dot{width:12px;height:12px;border-radius:50%;background:var(--beacon);border:3px solid #fff;box-shadow:0 3px 8px rgba(22,36,31,.3);position:absolute;}
+
+  /* ---------- alerts / notifications ---------- */
+  .m-alerts-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .m-alerts-head .mark-read{font-size:11px;font-weight:700;color:var(--teal-deep);}
+
+  .m-alert-daylabel{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-soft);margin:16px 0 8px;}
+  .m-alert-daylabel:first-child{margin-top:0;}
+
+  .m-alert-item{display:flex;gap:10px;background:var(--paper-raised);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:8px;position:relative;}
+  .m-alert-item.unread{border-color:#BFE0D3;background:var(--teal-tint);}
+  .m-alert-item .al-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-alert-item .al-icon svg{width:15px;height:15px;}
+  .m-alert-item .al-body{flex:1;min-width:0;}
+  .m-alert-item .al-title{font-size:12px;font-weight:700;line-height:1.4;}
+  .m-alert-item .al-desc{font-size:11.5px;color:var(--ink-soft);line-height:1.45;margin-top:2px;}
+  .m-alert-item .al-time{font-size:10px;color:var(--ink-soft);margin-top:5px;}
+  .m-alert-item .al-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);position:absolute;top:12px;right:12px;}
+
+  /* ---- Quick Poll ---- */
+  .poll-card{background:var(--paper-raised);border:1px solid var(--line);border-radius:14px;padding:16px;}
+  .poll-loc{font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--blue);display:flex;align-items:center;gap:5px;}
+  .poll-loc svg{width:11px;height:11px;}
+  .poll-q{font-family:'Source Serif 4',serif;font-size:16.5px;font-weight:600;margin:8px 0 6px;line-height:1.3;}
+  .poll-ctx{font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin-bottom:14px;}
+  .poll-voted-tag{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:var(--teal-deep);background:var(--teal-tint);padding:4px 10px;border-radius:99px;margin-bottom:10px;}
+  .poll-voted-tag svg{width:10px;height:10px;}
+  .poll-bar-row{margin-bottom:10px;}
+  .poll-bar-toprow{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:5px;}
+  .poll-bar-track{height:9px;border-radius:99px;background:var(--paper);overflow:hidden;}
+  .poll-bar-fill{height:100%;border-radius:99px;}
+  .poll-meta{font-size:10.5px;color:var(--ink-soft);margin-top:2px;}
+  .poll-close{font-size:11px;color:var(--ink-soft);margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
+  .m-poll-mini{display:flex;align-items:center;gap:10px;background:var(--paper-raised);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:8px;}
+  .m-poll-mini .pm-icon{width:28px;height:28px;border-radius:8px;background:var(--blue-tint);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .m-poll-mini .pm-icon svg{width:13px;height:13px;color:#185FA5;}
+  .m-poll-mini .pm-text{flex:1;min-width:0;}
+  .m-poll-mini .pm-q{font-size:11.5px;font-weight:600;line-height:1.3;}
+  .m-poll-mini .pm-meta{font-size:10px;color:var(--ink-soft);margin-top:2px;}
+
+  /* ---- Community Pulse ---- */
+  .pulse-hero{background:var(--sage);border-radius:14px;padding:18px 16px;text-align:center;margin-bottom:16px;}
+  .pulse-hero-value{font-family:'Source Serif 4',serif;font-size:42px;font-weight:600;color:var(--teal-deep);line-height:1;}
+  .pulse-hero-sub{font-size:12px;font-weight:600;color:var(--teal-deep);margin-top:6px;max-width:220px;margin-left:auto;margin-right:auto;line-height:1.4;}
+  .pulse-hero-trend{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;color:var(--teal-deep);background:rgba(255,255,255,.6);padding:3px 9px;border-radius:99px;margin-top:9px;}
+  .pulse-cat-row{margin-bottom:12px;}
+  .pulse-cat-toprow{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;}
+  .pulse-cat-toprow .cat-name{font-weight:600;}
+  .pulse-cat-toprow .cat-pct{font-weight:700;color:var(--teal-deep);}
+  .pulse-cat-track{height:7px;border-radius:99px;background:var(--paper-raised);border:1px solid var(--line);overflow:hidden;}
+  .pulse-cat-fill{height:100%;border-radius:99px;background:var(--teal);}
+  .pulse-foot-note{font-size:10.5px;color:var(--ink-soft);line-height:1.5;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);}
+
+  /* ---- Trending Issues ---- */
+  .trend-row{display:flex;align-items:center;gap:11px;background:var(--paper-raised);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:8px;}
+  .trend-rank{width:22px;height:22px;border-radius:7px;background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ink-soft);flex:0 0 auto;}
+  .trend-row.r1 .trend-rank{background:var(--amber);color:#fff;}
+  .trend-icon{width:30px;height:30px;border-radius:9px;background:var(--sage);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .trend-icon svg{width:14px;height:14px;color:var(--teal-deep);}
+  .trend-text{flex:1;min-width:0;}
+  .trend-name{font-size:12.5px;font-weight:700;}
+  .trend-count{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+  .trend-delta{font-size:10.5px;font-weight:700;display:flex;align-items:center;gap:2px;flex:0 0 auto;}
+  .trend-delta svg{width:10px;height:10px;}
+  .trend-delta.up{color:#A32D2D;}
+  .trend-delta.down{color:var(--teal-deep);}
+
+  /* ---- Modals: bottom sheet + centered confirm dialog ---- */
+  .modal-backdrop{position:absolute;inset:0;background:rgba(22,36,31,.5);display:flex;align-items:flex-end;z-index:5;border-radius:26px;overflow:hidden;}
+  .modal-backdrop.center{align-items:center;justify-content:center;padding:0 18px;}
+  .modal-backdrop .dim{opacity:.5;filter:saturate(.7);}
+
+  .sheet{background:var(--paper-raised);border-radius:20px 20px 0 0;padding:14px 18px 20px;width:100%;box-shadow:0 -12px 30px rgba(0,0,0,.18);}
+  .sheet-handle{width:34px;height:4px;border-radius:99px;background:var(--line);margin:0 auto 14px;}
+  .sheet-title{font-family:'Source Serif 4',serif;font-size:16px;font-weight:600;}
+  .sheet-sub{font-size:11px;color:var(--ink-soft);margin-top:2px;margin-bottom:14px;line-height:1.45;}
+
+  .dialog{background:var(--paper-raised);border-radius:16px;padding:22px 18px 18px;width:100%;box-shadow:0 25px 50px rgba(0,0,0,.3);}
+  .dialog-icon{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;}
+  .dialog-icon.warn{background:var(--red-tint);}
+  .dialog-icon.warn svg{width:20px;height:20px;color:#A32D2D;}
+  .dialog-title{font-family:'Source Serif 4',serif;font-size:16px;font-weight:600;text-align:center;margin-bottom:6px;}
+  .dialog-body{font-size:11.5px;color:var(--ink-soft);text-align:center;line-height:1.55;margin-bottom:14px;}
+  .dialog-input{border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:11.5px;color:var(--ink-soft);margin-bottom:14px;background:var(--paper);text-align:center;}
+  .dialog-input.confirm-word{font-weight:700;color:var(--ink);letter-spacing:.04em;text-align:center;}
+  .btn-row{display:flex;gap:8px;}
+  .btn-flat{flex:1;text-align:center;font-size:12px;font-weight:700;padding:11px;border-radius:10px;}
+  .btn-flat.ghost{border:1px solid var(--line);color:var(--ink-soft);background:var(--paper-raised);}
+  .btn-flat.danger{background:#A32D2D;color:#fff;}
+  .btn-flat.primary{background:var(--teal);color:#fff;}
+  .btn-flat.danger.disabled{background:#E7CFCF;color:#fff;}
+
+  /* ---- Static Privacy Policy page ---- */
+  .page-back{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:600;color:var(--ink-soft);margin-bottom:12px;}
+  .page-back svg{width:14px;height:14px;}
+  .policy-h{font-size:12px;font-weight:700;margin:16px 0 6px;}
+  .policy-h:first-of-type{margin-top:0;}
+  .policy-p{font-size:11.5px;color:var(--ink-soft);line-height:1.6;}
+  .policy-updated{font-size:10px;color:#8B8B85;margin-bottom:14px;}
+
+*{box-sizing:border-box;}
+html,body{margin:0;}
+body{background:#EDEAE0;font-family:'Public Sans',sans-serif;}
+#page-title{font-family:'Source Serif 4',serif;font-weight:600;font-size:20px;color:#16241F;padding:22px 28px 4px;}
+#page-sub{font-size:12.5px;color:#3E4A44;padding:0 28px 18px;max-width:760px;line-height:1.6;}
+#legend{display:flex;flex-wrap:wrap;gap:14px;padding:0 28px 18px;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:#3E4A44;}
+.legend-swatch{width:18px;height:3px;border-radius:2px;}
+#viewport{overflow:auto;padding:0 28px 60px;}
+#canvas{position:relative;}
+.flow-row{margin-bottom:78px;position:relative;}
+.flow-row-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#0F6E56;margin-bottom:10px;padding-bottom:6px;border-bottom:1px dashed #DAD5C6;}
+.flow-row-nodes{display:flex;gap:34px;align-items:flex-start;}
+.node{position:relative;overflow:hidden;flex:0 0 auto;background:transparent;}
+.node-inner{position:absolute;top:0;left:0;transform-origin:top left;}
+#connector-svg{position:absolute;top:0;left:0;pointer-events:none;overflow:visible;}
+.edge-label{font-size:9.5px;font-weight:700;font-family:'Public Sans',sans-serif;}
+.edge-label-bg{fill:#F6F4EE;opacity:0.92;}
+
+/* ---------- top-left Menu button (every signed-in screen) ---------- */
+.m-topbar{display:flex;align-items:center;justify-content:flex-start;padding:4px 14px 0;height:32px;flex:0 0 auto;}
+.m-menubtn{display:inline-flex;align-items:center;gap:6px;background:var(--paper-raised);border:1px solid var(--line);border-radius:99px;padding:5px 11px 5px 9px;font-size:10.5px;font-weight:700;color:var(--ink);}
+.m-menubtn svg{width:13px;height:13px;}
+.m-menubtn.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+
+/* ---------- Lifeline: one-tap group calling ---------- */
+:root{--ll:#B03060;--ll-deep:#6E1636;--ll-tint:#FBE8EF;}
+.ll-title{font-family:'Source Serif 4',serif;font-size:19px;font-weight:600;margin:0;}
+.ll-sub{font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin-top:3px;}
+.ll-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+.ll-card{border-radius:16px;padding:12px 12px 11px;position:relative;display:flex;flex-direction:column;gap:3px;min-height:128px;}
+.ll-card .ll-ic{width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.65);display:flex;align-items:center;justify-content:center;}
+.ll-card .ll-ic svg{width:17px;height:17px;}
+.ll-card .ll-name{font-size:14.5px;font-weight:700;margin-top:7px;}
+.ll-card .ll-meta{font-size:10px;font-weight:500;opacity:.85;line-height:1.35;}
+.ll-card .ll-edit{position:absolute;top:9px;right:9px;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;}
+.ll-card .ll-edit svg{width:11px;height:11px;}
+.ll-card .ll-ring{margin-top:auto;display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;background:rgba(255,255,255,.75);padding:4px 9px;border-radius:99px;align-self:flex-start;}
+.ll-card .ll-ring svg{width:10px;height:10px;}
+.ll-card.crime{background:#E6F1FB;color:#042C53;}
+.ll-card.fire{background:#FBE4D3;color:#5A2008;}
+.ll-card.sick{background:#E1F5EE;color:#085041;}
+.ll-card.gbv{background:#EEE8F8;color:#3A2570;}
+.ll-card.mine{background:var(--sage);color:#1E3A12;}
+.ll-card.crime .ll-ic svg{color:#185FA5;}
+.ll-card.fire .ll-ic svg{color:#C2501A;}
+.ll-card.sick .ll-ic svg{color:#0F6E56;}
+.ll-card.gbv .ll-ic svg{color:#6B4FA0;}
+.ll-card.mine .ll-ic svg{color:#3B6D11;}
+.ll-newcard{display:flex;align-items:center;justify-content:center;gap:7px;border:1.5px dashed var(--sage-line);background:var(--paper-raised);border-radius:16px;font-size:12px;font-weight:700;color:var(--teal-deep);min-height:128px;flex-direction:column;text-align:center;padding:0 10px;}
+.ll-newcard .ll-plus{width:32px;height:32px;border-radius:50%;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;}
+.ll-newcard .ll-plus svg{width:16px;height:16px;}
+.ll-note{display:flex;gap:8px;background:var(--ll-tint);border-radius:12px;padding:10px 12px;margin-top:14px;}
+.ll-note svg{width:14px;height:14px;color:var(--ll);flex:0 0 auto;margin-top:1px;}
+.ll-note .ll-note-text{font-size:11px;line-height:1.5;color:var(--ll-deep);}
+
+.ll-person{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line);}
+.ll-person:first-child{border-top:none;}
+.ll-avatar{width:32px;height:32px;border-radius:50%;background:var(--sage-line);display:flex;align-items:center;justify-content:center;font-family:'Source Serif 4',serif;font-size:12.5px;font-weight:600;color:#173404;flex:0 0 auto;}
+.ll-avatar.org{background:var(--blue-tint);color:#042C53;}
+.ll-person .lp-text{flex:1;min-width:0;}
+.ll-person .lp-name{font-size:12.5px;font-weight:600;}
+.ll-person .lp-num{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+.ll-person .lp-tag{font-size:9.5px;font-weight:700;color:var(--ink-soft);background:var(--paper);border-radius:99px;padding:3px 8px;flex:0 0 auto;}
+.ll-person .lp-x{width:22px;height:22px;border-radius:50%;background:var(--paper);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:#8B8B85;}
+.ll-person .lp-x svg{width:11px;height:11px;}
+.ll-list{background:var(--paper-raised);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+.ll-addrow{display:flex;gap:8px;margin-top:10px;}
+.ll-addbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;font-weight:700;padding:9px 6px;border-radius:10px;border:1px solid var(--line);background:var(--paper-raised);color:var(--ink);}
+.ll-addbtn svg{width:12px;height:12px;}
+.ll-addbtn.primary{background:var(--ink);border-color:var(--ink);color:#fff;}
+
+.ll-chip{font-size:10px;font-weight:700;padding:4px 9px;border-radius:99px;flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;}
+.ll-chip .d{width:6px;height:6px;border-radius:50%;}
+.ll-chip.ok{background:var(--teal-tint);color:var(--teal-deep);}
+.ll-chip.ok .d{background:var(--teal);}
+.ll-chip.ring{background:var(--blue-tint);color:#042C53;}
+.ll-chip.ring .d{background:var(--blue);}
+.ll-chip.miss{background:var(--amber-tint);color:#633806;}
+.ll-chip.miss .d{background:var(--amber);}
+
+.ll-count{width:62px;height:62px;border-radius:50%;border:4px solid var(--ll);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-family:'Source Serif 4',serif;font-size:28px;font-weight:600;color:var(--ll-deep);background:var(--ll-tint);}
+.ll-callhead{background:var(--ll);color:#fff;border-radius:16px;padding:14px;margin-top:2px;position:relative;overflow:hidden;}
+.ll-callhead .ch-t{font-size:15px;font-weight:700;}
+.ll-callhead .ch-s{font-size:11px;color:#F8D3E0;margin-top:2px;}
+.ll-callhead .ch-bubble{position:absolute;right:-10px;top:-10px;width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.12);}
+.ll-endbtn{background:#A32D2D;color:#fff;text-align:center;font-size:13px;font-weight:700;padding:13px;border-radius:99px;}
+
+.ll-iconrow{display:flex;gap:8px;}
+.ll-iconpick{width:38px;height:38px;border-radius:12px;background:var(--paper-raised);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;}
+.ll-iconpick svg{width:17px;height:17px;color:var(--ink-soft);}
+.ll-iconpick.sel{border-color:var(--teal);background:var(--teal-tint);}
+.ll-iconpick.sel svg{color:var(--teal-deep);}
+.ll-swatches{display:flex;gap:9px;}
+.ll-swatch{width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1.5px var(--line);}
+.ll-swatch.sel{box-shadow:0 0 0 2px var(--ink);}
+
+.ll-pick-row{display:flex;align-items:center;gap:10px;padding:9px 2px;border-top:1px solid var(--line);}
+.ll-pick-row:first-child{border-top:none;}
+.ll-pick-row .lp-text{flex:1;min-width:0;}
+.ll-pick-row .lp-name{font-size:12.5px;font-weight:600;}
+.ll-pick-row .lp-num{font-size:10.5px;color:var(--ink-soft);margin-top:1px;}
+.ll-letter{font-size:10px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 2px;}
+.ll-chiprow{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 10px;}
+.ll-selchip{display:inline-flex;align-items:center;gap:5px;background:var(--teal-tint);color:var(--teal-deep);font-size:10.5px;font-weight:700;padding:5px 9px;border-radius:99px;}
+.ll-selchip svg{width:9px;height:9px;}
+
+/* ---------- Snap & Say: AI voice + photo reporting ---------- */
+:root{--sn:#3F51B5;--sn-deep:#232F7A;--sn-tint:#E8EBFA;}
+.m-cta.snap{background:linear-gradient(135deg,#0F6E56 0%,#0B5E7A 100%);padding:16px 16px 14px;}
+.m-cta.snap .sn-top{display:flex;align-items:center;gap:7px;}
+.m-cta.snap .sn-badge{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:rgba(255,255,255,.2);padding:3px 8px;border-radius:99px;}
+.m-cta.snap .sn-badge svg{width:10px;height:10px;}
+.m-cta.snap .sn-icons{display:flex;gap:8px;margin-top:6px;}
+.m-cta.snap .sn-ic{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;}
+.m-cta.snap .sn-ic.main{background:#fff;}
+.m-cta.snap .sn-ic svg{width:19px;height:19px;color:#fff;}
+.m-cta.snap .sn-ic.main svg{color:var(--teal-deep);}
+.sn-formlink{text-align:center;font-size:11px;font-weight:700;color:var(--ink-soft);margin-top:10px;}
+.snap-fab{position:absolute;right:14px;bottom:78px;width:48px;height:48px;border-radius:50%;background:var(--teal);box-shadow:0 8px 18px rgba(15,110,86,.4);display:flex;align-items:center;justify-content:center;z-index:3;}
+.snap-fab svg{width:21px;height:21px;color:#fff;}
+
+.sn-lang{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;background:var(--paper-raised);border:1px solid var(--line);border-radius:99px;padding:5px 9px;margin-left:auto;}
+.sn-lang svg{width:10px;height:10px;}
+.sn-micwrap{display:flex;flex-direction:column;align-items:center;margin-top:12px;}
+.sn-mic{width:82px;height:82px;border-radius:50%;background:var(--sn);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 10px rgba(63,81,181,.14),0 0 0 22px rgba(63,81,181,.07);}
+.sn-mic svg{width:34px;height:34px;color:#fff;}
+.sn-state{font-size:12px;font-weight:700;color:var(--sn-deep);margin-top:26px;}
+.sn-wave{display:flex;align-items:center;gap:3px;height:22px;margin-top:8px;}
+.sn-wave span{width:3px;border-radius:99px;background:var(--sn);}
+.sn-transcript{background:var(--paper-raised);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:14px;font-size:12px;line-height:1.55;}
+.sn-transcript .sn-t-label{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px;}
+.sn-transcript .cur{display:inline-block;width:2px;height:12px;background:var(--sn);vertical-align:middle;margin-left:1px;}
+.sn-actions{display:flex;gap:8px;margin-top:10px;}
+.sn-act{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;font-weight:700;padding:10px 6px;border-radius:12px;border:1px solid var(--line);background:var(--paper-raised);color:var(--ink);}
+.sn-act svg{width:13px;height:13px;}
+.sn-act.done{background:var(--teal-tint);border-color:#BFE0D3;color:var(--teal-deep);}
+
+.sn-tags{display:flex;flex-wrap:wrap;gap:6px;}
+.sn-tag{font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:99px;background:var(--sn-tint);color:var(--sn-deep);}
+.sn-tag.cat{background:var(--blue-tint);color:#042C53;}
+.sn-tag.hi{background:var(--red-tint);color:#501313;}
+.sn-ai{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;color:var(--sn-deep);background:var(--sn-tint);border-radius:10px;padding:7px 10px;margin:4px 0 12px;}
+.sn-ai svg{width:12px;height:12px;flex:0 0 auto;}
+.sn-card{background:var(--paper-raised);border:1px solid var(--line);border-radius:14px;padding:12px 13px;margin-bottom:9px;}
+.sn-card .sn-k{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;}
+.sn-card .sn-k svg{width:11px;height:11px;color:#8B8B85;}
+.sn-card .sn-v{font-size:12px;line-height:1.5;}
+.sn-media{display:flex;gap:10px;align-items:center;}
+.sn-thumb{width:58px;height:58px;border-radius:10px;background:linear-gradient(135deg,#B8CFC7,#97C459);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.sn-thumb svg{width:20px;height:20px;color:#fff;}
+.sn-minimap{height:64px;border-radius:10px;position:relative;overflow:hidden;background:radial-gradient(circle at 40% 40%,rgba(15,110,86,.16),transparent 45%),var(--sage);margin-bottom:8px;}
+.sn-minimap svg.grid{position:absolute;inset:0;width:100%;height:100%;opacity:.5;}
+.sn-minimap .pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-90%);}
+.sn-minimap .pin svg{width:24px;height:24px;color:var(--teal-deep);fill:var(--teal-deep);}
+.sn-route{font-size:11px;color:var(--ink-soft);line-height:1.45;}
+.sn-route b{color:var(--ink);}
+.sn-bubble-ai{background:var(--paper-raised);border:1px solid var(--line);border-radius:14px 14px 14px 3px;padding:10px 12px;font-size:12px;line-height:1.5;margin-top:10px;max-width:90%;}
+.sn-choice{display:block;text-align:center;font-size:12px;font-weight:700;padding:11px;border-radius:12px;border:1px solid var(--line);background:var(--paper-raised);margin-top:8px;}
+.sn-choice.sel{border-color:var(--sn);background:var(--sn-tint);color:var(--sn-deep);}
+
+/* Home first row: Snap & Say + Report an issue */
+.m-quick-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:16px;}
+.m-quick{border-radius:14px;padding:12px 12px 11px;min-height:122px;display:flex;flex-direction:column;position:relative;}
+.m-quick.snap{background:linear-gradient(135deg,#0F6E56 0%,#0B5E7A 100%);color:#fff;}
+.m-quick.form{background:var(--paper-raised);border:1px solid var(--line);color:var(--ink);}
+.m-quick .q-badge{position:absolute;top:10px;right:10px;display:inline-flex;align-items:center;gap:3px;font-size:8.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:rgba(255,255,255,.22);padding:2px 7px;border-radius:99px;}
+.m-quick .q-badge svg{width:9px;height:9px;}
+.m-quick .q-icons{display:flex;gap:6px;}
+.m-quick .q-ic{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;}
+.m-quick .q-ic svg{width:16px;height:16px;color:#fff;}
+.m-quick .q-ic.main{background:#fff;}
+.m-quick .q-ic.main svg{color:var(--teal-deep);}
+.m-quick .q-ic.form-ic{background:var(--teal-tint);}
+.m-quick .q-ic.form-ic svg{color:var(--teal-deep);}
+.m-quick .q-label{font-size:14px;font-weight:700;margin-top:auto;}
+.m-quick .q-sub{font-size:10.5px;opacity:.85;margin-top:2px;line-height:1.35;}
+.m-quick.form .q-sub{color:var(--ink-soft);opacity:1;}
+
+/* shared contacts permission */
+:root{--sh:#7A6A1F;--sh-tint:#F6F0D4;}
+.sh-hero{width:56px;height:56px;border-radius:18px;background:var(--blue-tint);display:flex;align-items:center;justify-content:center;margin:6px auto 12px;}
+.sh-hero svg{width:26px;height:26px;color:#185FA5;}
+.sh-use{display:flex;gap:11px;background:var(--paper-raised);border:1px solid var(--line);border-radius:14px;padding:12px 13px;margin-bottom:9px;}
+.sh-use .u-ic{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.sh-use .u-ic svg{width:16px;height:16px;}
+.sh-use .u-t{font-size:12.5px;font-weight:700;}
+.sh-use .u-d{font-size:11px;color:var(--ink-soft);line-height:1.45;margin-top:2px;}
+.sh-once{display:flex;gap:8px;background:var(--sh-tint);border-radius:12px;padding:10px 12px;margin-top:4px;}
+.sh-once svg{width:14px;height:14px;color:var(--sh);flex:0 0 auto;margin-top:1px;}
+.sh-once .t{font-size:11px;line-height:1.5;color:#4A400F;}
+
+.anat-wrap{padding:0 28px 10px;}
+.anat-grid{display:flex;gap:44px;flex-wrap:wrap;align-items:flex-start;}
+.anat{background:#fff;border:1px solid #DAD5C6;border-radius:14px;padding:22px 24px 24px;}
+.anat h3{font-family:'Source Serif 4',serif;font-size:16px;font-weight:600;margin:0 0 3px;}
+.anat .sub{font-size:12px;color:#3E4A44;margin-bottom:16px;max-width:560px;line-height:1.5;}
+.anat-body{display:flex;gap:0;align-items:flex-start;}
+.anat-stage{position:relative;flex:0 0 auto;}
+.anat-phone{transform-origin:top left;width:320px;}
+.anat-svg{position:absolute;left:0;top:0;pointer-events:none;overflow:visible;}
+.anat-key{margin-left:64px;display:flex;flex-direction:column;gap:11px;width:300px;}
+.anat-key .k{display:flex;gap:10px;font-size:12px;line-height:1.45;color:#3E4A44;}
+.anat-key .k b{color:#16241F;display:block;font-size:12.5px;}
+.anat-key .num,.anat-badge{width:20px;height:20px;border-radius:50%;background:#085041;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.anat-key .k.gap .num{background:#BA7517;}
+.anat-key .tag{display:inline-block;font-size:10px;font-weight:700;background:#E1F5EE;color:#085041;border-radius:99px;padding:1px 7px;margin-top:3px;}
+.anat-key .tag.gap{background:#FAEEDA;color:#633806;}
+.anat-badge{position:absolute;}
+.flow-row{margin-bottom:150px !important;}
+.sec-title{font-family:'Source Serif 4',serif;font-weight:600;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:#3E4A44;padding:26px 28px 12px;}
+</style>
+</head>
+<body>
+
+<div id="page-title">CivicNeuro resident app — Reports tab layout map</div>
+<div id="page-sub">Everything behind the <strong>Reports</strong> item in the bottom nav: the anatomy of the two core screens, then every screen a resident can reach from that tab and where each tap leads. Click any arrow to highlight it. Built from screens in flow map v7.</div>
+<div id="legend">
+  <div class="legend-item"><span class="legend-swatch" style="background:#8B8B85;"></span>Bottom-nav</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#085041;"></span>Report lifecycle</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#0F6E56;"></span>Home &amp; Your area</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#3F51B5;"></span>Snap &amp; Say</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#B5541A;"></span>Pilot mode</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#9C3D7B;"></span>System states</div>
+</div>
+<div class="sec-title">1 · Screen anatomy</div><div class="anat-wrap"><div class="anat-grid"><div class="anat" id="anat-list" data-sels='[".m-topbar", ".phone-content > div:first-child", ".m-reports-search", ".m-reports-filters", ".m-report-card", ".snap-fab", ".phone-bottomnav .nav-item.active"]' data-gaps='[false, false, false, false, false, false, false]'>
+<h3>Reports tab — My reports (list)</h3><div class="sub">The landing screen when a resident taps Reports in the bottom nav.</div>
+<div class="anat-body"><div class="anat-stage"><div class="anat-phone"><div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content">
+<div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;margin-bottom:12px;">My reports</div>
+<div class="m-reports-search"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>Search your reports…</div>
+<div class="m-reports-filters">
+<div class="m-filter-chip on">All<span class="fc-count">6</span></div>
+<div class="m-filter-chip">Active<span class="fc-count">3</span></div>
+<div class="m-filter-chip">Resolved<span class="fc-count">2</span></div>
+<div class="m-filter-chip">Escalated<span class="fc-count">1</span></div>
+</div>
+<div style="max-height:610px;overflow:hidden;">
+<div class="m-report-card">
+<div class="rc-top">
+<div><div class="rc-title">Pothole cluster</div><div class="rc-ref">CN-2026-04452</div></div>
+<span class="pill pill-review"><span class="dot"></span>Review</span>
+</div>
+<div class="rc-bottom"><span class="rc-cat">Roads · Florida Rd</span><span class="rc-date">Mon, 07:40</span></div>
+</div>
+<div class="m-report-card">
+<div class="rc-top">
+<div><div class="rc-title">Burst water pipe</div><div class="rc-ref">CN-2026-04431</div></div>
+<span class="pill pill-progress"><span class="dot"></span>In progress</span>
+</div>
+<div class="rc-bottom"><span class="rc-cat">Water &amp; Sanitation · Downtown</span><span class="rc-date">Sat, 14:02</span></div>
+</div>
+<div class="m-report-card">
+<div class="rc-top">
+<div><div class="rc-title">Streetlight out</div><div class="rc-ref">CN-2026-04398</div></div>
+<span class="pill pill-progress"><span class="dot"></span>In progress</span>
+</div>
+<div class="rc-bottom"><span class="rc-cat">Electricity · Ridge Rd</span><span class="rc-date">Thu, 19:30</span></div>
+</div>
+<div class="m-report-card">
+<div class="rc-top">
+<div><div class="rc-title">Illegal dumping</div><div class="rc-ref">CN-2026-04360</div></div>
+<span class="pill pill-escalated"><span class="dot"></span>Escalated</span>
+</div>
+<div class="rc-bottom"><span class="rc-cat">Sanitation · Bellair Rd</span><span class="rc-date">Tue, 08:15</span></div>
+</div>
+<div class="m-report-card">
+<div class="rc-top">
+<div><div class="rc-title">Blocked stormwater drain</div><div class="rc-ref">CN-2026-04289</div></div>
+<span class="pill pill-resolved"><span class="dot"></span>Resolved</span>
+</div>
+<div class="rc-bottom"><span class="rc-cat">Water &amp; Sanitation · Musgrave Rd</span><span class="rc-date">22 Aug</span></div>
+</div>
+<div class="m-report-card">
+<div class="rc-top">
+<div><div class="rc-title">Fallen tree branch</div><div class="rc-ref">CN-2026-04201</div></div>
+<span class="pill pill-resolved"><span class="dot"></span>Resolved</span>
+</div>
+<div class="rc-bottom"><span class="rc-cat">Parks &amp; Roads · Innes Rd</span><span class="rc-date">14 Aug</span></div>
+</div>
+</div>
+</div>
+<div class="snap-fab"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4"></path></svg></div><div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+</div>
+</div></div>
+</div><svg class="anat-svg"></svg></div>
+<div class="anat-key"><div class="k"><span class="num">1</span><div><b>Top bar — Menu button</b>Same on every screen. Opens Menu (profile, help, safety info, language).<br><span class="tag">→ Menu</span></div></div><div class="k"><span class="num">2</span><div><b>Page title</b>“My reports”. No count here — counts live on the filter chips.</div></div><div class="k"><span class="num">3</span><div><b>Search</b>Searches title, reference number and location across all your reports.</div></div><div class="k"><span class="num">4</span><div><b>Filter chips with counts</b>All · Active · Resolved · Escalated. Chip counts update live as statuses change.<br><span class="tag">Empty → “0 reports” state</span></div></div><div class="k"><span class="num">5</span><div><b>Report card (repeats, newest first)</b>Title + reference, status pill, category · location, last-update time.<br><span class="tag">Tap → Report detail</span></div></div><div class="k"><span class="num">6</span><div><b>Floating mic button</b>Starts Snap &amp; Say (voice + photo reporting) without leaving the tab.<br><span class="tag">→ Snap &amp; Say</span></div></div><div class="k"><span class="num">7</span><div><b>Bottom nav — Reports active</b>Lifeline · Home · <b style="display:inline">Reports</b> · Alerts · Beacon. Always visible.</div></div></div></div></div><div class="anat" id="anat-detail" data-sels='[".m-topbar", ".detail-head", ".detail-desc", ".route-line", ".m-convo-preview", ".icon-btn:nth-child(1)", ".icon-btn:nth-child(2)", ".icon-btn.danger"]' data-gaps='[false, false, false, false, false, false, true, false]'>
+<h3>Report detail</h3><div class="sub">Opened from a report card, a report alert, a trending issue, or right after submitting.</div>
+<div class="anat-body"><div class="anat-stage"><div class="anat-phone"><div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content">
+<div class="detail-head">
+<div><div class="detail-ref">CN-2026-04452</div><div class="detail-cat">Pothole cluster · Florida Rd</div></div>
+<span class="pill pill-review"><span class="dot"></span>Review</span>
+</div>
+<div class="detail-desc">Large pothole in the left lane, about 40cm wide. Two cars have already swerved to avoid it this morning.</div>
+<div class="m-sectiontitle">Status</div>
+<div class="route-line">
+<div class="route-step done"><div class="r-label">Submitted</div><div class="r-meta">Mon, 07:40</div></div>
+<div class="route-step done"><div class="r-label">Received</div><div class="r-meta">Mon, 07:41</div></div>
+<div class="route-step current"><div class="r-label">Under review</div><div class="r-meta">Mon, 09:15</div></div>
+<div class="route-step upcoming"><div class="r-label">In progress</div></div>
+<div class="route-step upcoming"><div class="r-label">Resolved</div></div>
+</div>
+<div class="m-sectiontitle">Conversation</div>
+<div class="m-convo-preview">
+<div class="cv-avatar"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M14 9h1M14 13h1"></path></svg></div>
+<div class="cv-body">
+<div class="cv-top"><span class="cv-org">eThekwini Roads Dept</span><span class="cv-time">Mon, 10:22</span></div>
+<div class="cv-snippet">Thanks for the details — a crew has been assigned and will inspect within 48 hours.</div>
+</div>
+<div class="cv-unread"></div>
+<div class="cv-chev"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg></div>
+</div>
+<div style="font-size:9.5px;color:var(--ink-soft);margin-top:8px;line-height:1.4;">Escalates automatically if the SLA for this category is breached, or tap Escalate to request it manually.</div>
+<div class="icon-btn-row">
+<div class="icon-btn">Add information</div>
+<div class="icon-btn">Escalate</div>
+<div class="icon-btn danger">Withdraw</div>
+</div>
+</div>
+<div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+</div>
+</div></div>
+</div><svg class="anat-svg"></svg></div>
+<div class="anat-key"><div class="k"><span class="num">1</span><div><b>Top bar — Menu button</b>Same Menu entry point as the list. There is no back arrow; the Reports tab is the way back.</div></div><div class="k"><span class="num">2</span><div><b>Header — reference, category, status pill</b>Reference number, “category · location”, and the current status as a pill.</div></div><div class="k"><span class="num">3</span><div><b>Description</b>What the resident wrote (and any photo/video proof, if attached).</div></div><div class="k"><span class="num">4</span><div><b>Status timeline</b>Submitted → Received → Under review → In progress → Resolved, each with a timestamp.<br><span class="tag">Resolved → Close-the-loop prompt</span></div></div><div class="k"><span class="num">5</span><div><b>Conversation preview</b>Latest message from the organisation, unread dot, chevron.<br><span class="tag">Tap → Conversation thread</span></div></div><div class="k"><span class="num">6</span><div><b>Add information</b>Attach extra text or photos to an open report.<br><span class="tag">→ Add information sheet</span></div></div><div class="k gap"><span class="num">7</span><div><b>Escalate (manual)</b>Asks for escalation before the SLA is breached. Automatic escalation still fires on SLA breach.<br><span class="tag gap">No destination screen mocked yet</span></div></div><div class="k"><span class="num">8</span><div><b>Withdraw</b>Cancels the report after a confirm step.<br><span class="tag">→ Withdraw confirm</span></div></div></div></div></div></div></div><div class="sec-title">2 · Where every tap leads</div>
+<div id="viewport"><div id="canvas">
+<div class="flow-row"><div class="flow-row-label">Reports tab — entry, empty / error / offline states</div><div class="flow-row-nodes"><div class="node" id="node-home" style="width:134px;height:292px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content">
+<div class="m-hello">Good afternoon</div>
+<div class="m-name">Kagiso</div>
+<div class="m-quick-row"><div class="m-quick snap"><div class="q-icons"><div class="q-ic main"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4"></path></svg></div><div class="q-ic"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg></div></div><div class="q-label">Snap &amp; Say</div><div class="q-sub">AI voice + photo — say it, snap it</div></div><div class="m-quick form"><div class="q-icons"><div class="q-ic form-ic"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M12 11v6M9 14h6"></path></svg></div></div><div class="q-label">Report an issue</div><div class="q-sub">Fill in a form · about 2 min</div></div></div>
+<div class="m-tiles">
+<div class="m-pulse">
+<div class="m-pulse-head">
+<div>
+<div class="ph-eyebrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>Your area</div>
+<div class="ph-title">What's happening around you</div>
+</div>
+<div class="ph-see">See all ›</div>
+</div>
+<div class="m-pulse-scroll">
+<div class="m-pulse-card poll">
+<div class="pc-icon"><svg fill="none" stroke="#185FA5" stroke-width="2" viewbox="0 0 24 24"><path d="M9 12h6M9 16h6M4 21V8l8-5 8 5v13"></path><path d="M4 21h16"></path></svg></div>
+<div class="pc-label">Quick poll</div>
+<div class="pc-body">Should this park get more lighting?</div>
+<div class="pc-yn"><div>Yes</div><div>No</div></div>
+</div>
+<div class="m-pulse-card stat">
+<div class="pc-icon"><svg fill="none" stroke="#0F6E56" stroke-width="2" viewbox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7"></path></svg></div>
+<div class="pc-label">Community pulse</div>
+<div class="pc-body">72% say waste collection is improving</div>
+<div class="pc-meta">Based on 340 responses</div>
+</div>
+<div class="m-pulse-card trend">
+<div class="pc-icon"><svg fill="none" stroke="#BA7517" stroke-width="2" viewbox="0 0 24 24"><path d="M23 6l-9.5 9.5-5-5L1 18"></path><path d="M17 6h6v6"></path></svg></div>
+<div class="pc-label">Trending issue</div>
+<div class="pc-body">Streetlights — #1 reported this week</div>
+<div class="pc-meta">Tap to view or report</div>
+</div>
+</div>
+</div>
+<div class="m-tile">
+<div class="t-icon" style="background:var(--blue-tint);"><svg fill="none" stroke="#185FA5" stroke-width="2" viewbox="0 0 24 24"><path d="M4 22V4a2 2 0 0 1 2-2h9l5 5v15a0 0 0 0 1 0 0H6a2 2 0 0 1-2-2Z"></path><path d="M8 8h6M8 12h8M8 16h8"></path></svg></div>
+<div class="t-label">News</div>
+<div class="t-meta">4 new</div>
+</div>
+<div class="m-tile">
+<div class="t-icon" style="background:var(--sage);"><svg fill="none" stroke="#0F6E56" stroke-width="2" viewbox="0 0 24 24"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></div>
+<div class="t-label">Surveys</div>
+<div class="t-meta">1 open</div>
+</div>
+
+
+</div>
+</div>
+<div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+</div>
+</div></div>
+<div class="phone-caption">Home</div>
+</div></div>
+</div>
+<div class="node" id="node-myreports" style="width:134px;height:356px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content">
+<div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;margin-bottom:12px;">My reports</div>
+<div class="m-reports-search"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>Search your reports…</div>
+<div class="m-reports-filters">
+<div class="m-filter-chip on">All<span class="fc-count">6</span></div>
+<div class="m-filter-chip">Active<span class="fc-count">3</span></div>
+<div class="m-filter-chip">Resolved<span class="fc-count">2</span></div>
+<div class="m-filter-chip">Escalated<span class="fc-count">1</span></div>
+</div>
+<div style="max-height:610px;overflow:hidden;">
+<div class="m-report-card">
+<div class="rc-top">
+<div><div class="rc-title">Pothole cluster</div><div class="rc-ref">CN-2026-04452</div></div>
+<span class="pill pill-review"><span class="dot"></span>Review</span>
+</div>
+<div class="rc-bottom"><span class="rc-cat">Roads · Florida Rd</span><span class="rc-date">Mon, 07:40</span></div>
+</div>
+<div class="m-report-card">
+<div class="rc-top">
+<div><div class="rc-title">Burst water pipe</div><div class="rc-ref">CN-2026-04431</div></div>
+<span class="pill pill-progress"><span class="dot"></span>In progress</span>
+</div>
+<div class="rc-bottom"><span class="rc-cat">Water &amp; Sanitation · Downtown</span><span class="rc-date">Sat, 14:02</span></div>
+</div>
+<div class="m-report-card">
+<div class="rc-top">
+<div><div class="rc-title">Streetlight out</div><div class="rc-ref">CN-2026-04398</div></div>
+<span class="pill pill-progress"><span class="dot"></span>In progress</span>
+</div>
+<div class="rc-bottom"><span class="rc-cat">Electricity · Ridge Rd</span><span class="rc-date">Thu, 19:30</span></div>
+</div>
+<div class="m-report-card">
+<div class="rc-top">
+<div><div class="rc-title">Illegal dumping</div><div class="rc-ref">CN-2026-04360</div></div>
+<span class="pill pill-escalated"><span class="dot"></span>Escalated</span>
+</div>
+<div class="rc-bottom"><span class="rc-cat">Sanitation · Bellair Rd</span><span class="rc-date">Tue, 08:15</span></div>
+</div>
+<div class="m-report-card">
+<div class="rc-top">
+<div><div class="rc-title">Blocked stormwater drain</div><div class="rc-ref">CN-2026-04289</div></div>
+<span class="pill pill-resolved"><span class="dot"></span>Resolved</span>
+</div>
+<div class="rc-bottom"><span class="rc-cat">Water &amp; Sanitation · Musgrave Rd</span><span class="rc-date">22 Aug</span></div>
+</div>
+<div class="m-report-card">
+<div class="rc-top">
+<div><div class="rc-title">Fallen tree branch</div><div class="rc-ref">CN-2026-04201</div></div>
+<span class="pill pill-resolved"><span class="dot"></span>Resolved</span>
+</div>
+<div class="rc-bottom"><span class="rc-cat">Parks &amp; Roads · Innes Rd</span><span class="rc-date">14 Aug</span></div>
+</div>
+</div>
+</div>
+<div class="snap-fab"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4"></path></svg></div><div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+</div>
+</div></div>
+<div class="phone-caption">My reports — list (6 reports)</div>
+</div></div>
+</div>
+<div class="node" id="node-emptystate" style="width:134px;height:290px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content">
+<div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;margin-bottom:12px;">My reports</div>
+<div class="m-reports-search"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>Search your reports…</div>
+<div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:40px;">
+<div style="width:52px;height:52px;border-radius:50%;background:var(--paper);border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;">
+<svg fill="none" stroke="#8B8B85" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+</div>
+<div style="font-size:13px;font-weight:600;margin-top:14px;">No reports yet</div>
+<div style="font-size:11px;color:var(--ink-soft);margin-top:4px;max-width:200px;">When you report an issue it'll show up here so you can track it.</div>
+</div>
+</div>
+<div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+</div>
+</div></div>
+<div class="phone-caption">Empty-state pattern (new) — same treatment needed on My reports, Alerts, Help search, Trending, Pulse, poll list…</div>
+</div></div>
+</div>
+<div class="node" id="node-errorstate" style="width:134px;height:275px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="phone-content" style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:40px;">
+<div style="width:52px;height:52px;border-radius:50%;background:var(--red-tint);display:flex;align-items:center;justify-content:center;">
+<svg fill="none" stroke="#A32D2D" stroke-width="2" viewbox="0 0 24 24"><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.86 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.86a2 2 0 0 0-3.4 0Z"></path></svg>
+</div>
+<div style="font-size:13px;font-weight:600;margin-top:14px;">Couldn't submit report</div>
+<div style="font-size:11px;color:var(--ink-soft);margin-top:4px;max-width:200px;line-height:1.5;">Something went wrong on our end. Your details are still filled in below — try again.</div>
+</div>
+<div style="padding:6px 16px 16px;">
+<div class="m-submit-btn">Try again</div>
+<div class="m-otherbtn" style="margin-top:8px;">Save offline instead</div>
+</div>
+</div></div>
+<div class="phone-caption">Error-state pattern (new) — needed for every failed submit/load: reportform, signin, my reports, thread…</div>
+</div></div>
+</div>
+<div class="node" id="node-offlinequeued" style="width:134px;height:270px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content" style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:28px;">
+<div style="width:52px;height:52px;border-radius:50%;background:var(--amber-tint);display:flex;align-items:center;justify-content:center;">
+<svg fill="none" stroke="#BA7517" stroke-width="2" viewbox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg>
+</div>
+<div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;margin-top:14px;">Saved — no connection</div>
+<div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;line-height:1.5;">Your report is queued on this device and will submit automatically once you're back online. You won't get a reference number until then.</div>
+</div>
+<div style="padding:6px 16px 16px;">
+<div class="m-submit-btn">Back to My reports</div>
+</div>
+</div></div>
+<div class="phone-caption">Offline / queued-submission state (new — core to an outage-reporting app)</div>
+</div></div>
+</div></div></div>
+<div class="flow-row"><div class="flow-row-label">Report lifecycle — one report (entry points: report card, report alert, trending issue)</div><div class="flow-row-nodes"><div class="node" id="node-alerts" style="width:134px;height:426px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content">
+<div class="m-alerts-head">
+<div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;">Alerts</div>
+<div class="mark-read">Mark all read</div>
+</div>
+<div class="m-reports-filters">
+<div class="m-filter-chip on">All<span class="fc-count">6</span></div>
+<div class="m-filter-chip">Reports</div>
+<div class="m-filter-chip">Community</div>
+</div>
+<div class="m-alert-daylabel">Today</div>
+<div class="m-alert-item unread">
+<div class="al-icon" style="background:var(--blue-tint);"><svg fill="none" stroke="#185FA5" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></div>
+<div class="al-body">
+<div class="al-title">CN-2026-04452 moved to Under review</div>
+<div class="al-desc">Your pothole cluster report is now being reviewed by eThekwini Roads Dept.</div>
+<div class="al-time">Today, 09:15</div>
+</div>
+<div class="al-dot"></div>
+</div>
+<div class="m-alert-item unread">
+<div class="al-icon" style="background:var(--teal-tint);"><svg fill="none" stroke="#0F6E56" stroke-width="2" viewbox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"></path></svg></div>
+<div class="al-body">
+<div class="al-title">New reply from eThekwini Roads Dept</div>
+<div class="al-desc">"Thanks for the details — a crew has been assigned and will inspect within 48 hours."</div>
+<div class="al-time">Today, 10:22</div>
+</div>
+<div class="al-dot"></div>
+</div>
+<div class="m-alert-item">
+<div class="al-icon" style="background:var(--amber-tint);"><svg fill="none" stroke="#BA7517" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg></div>
+<div class="al-body">
+<div class="al-title">Load shedding schedule updated</div>
+<div class="al-desc">Stage 2 load shedding now applies to Ward 12 from 6 September.</div>
+<div class="al-time">Today, 07:00</div>
+</div>
+</div>
+<div class="m-alert-daylabel">Earlier this week</div>
+<div class="m-alert-item">
+<div class="al-icon" style="background:var(--teal-tint);"><svg fill="none" stroke="#0F6E56" stroke-width="2" viewbox="0 0 24 24"><path d="m9 12 2 2 4-4"></path><circle cx="12" cy="12" r="9"></circle></svg></div>
+<div class="al-body">
+<div class="al-title">CN-2026-04289 marked as Resolved</div>
+<div class="al-desc">Blocked stormwater drain on Musgrave Rd has been cleared.</div>
+<div class="al-time">Thu, 16:40</div>
+</div>
+</div>
+<div class="m-alert-item">
+<div class="al-icon" style="background:var(--red-tint);"><svg fill="none" stroke="#A32D2D" stroke-width="2" viewbox="0 0 24 24"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"></path></svg></div>
+<div class="al-body">
+<div class="al-title">Water outage: Musgrave Rd</div>
+<div class="al-desc">Planned maintenance completed. Supply has been fully restored.</div>
+<div class="al-time">Wed, 08:12</div>
+</div>
+</div>
+<div class="m-alert-item">
+<div class="al-icon" style="background:var(--blue-tint);"><svg fill="none" stroke="#185FA5" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></div>
+<div class="al-body">
+<div class="al-title">CN-2026-04398 moved to In progress</div>
+<div class="al-desc">A technician has been dispatched to fix the streetlight on Ridge Rd.</div>
+<div class="al-time">Tue, 13:05</div>
+</div>
+</div>
+</div>
+<div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+</div>
+</div></div>
+<div class="phone-caption">Alerts — same feed as Home's Notifications tile</div>
+</div></div>
+</div>
+<div class="node" id="node-trending" style="width:134px;height:270px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content">
+<div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;margin-bottom:2px;">Trending this week</div>
+<div style="font-size:11.5px;color:var(--ink-soft);margin-bottom:14px;">Most reported issue types near you</div>
+<div class="trend-row r1">
+<div class="trend-rank">1</div>
+<div class="trend-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg></div>
+<div class="trend-text"><div class="trend-name">Streetlights</div><div class="trend-count">128 reports this week</div></div>
+<div class="trend-delta up"><svg fill="none" stroke="currentColor" stroke-width="3" viewbox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>18%</div>
+</div>
+<div class="trend-row">
+<div class="trend-rank">2</div>
+<div class="trend-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M4 19h16M6 19V9a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v10"></path><circle cx="9" cy="13" r="1"></circle><circle cx="15" cy="13" r="1"></circle></svg></div>
+<div class="trend-text"><div class="trend-name">Potholes</div><div class="trend-count">94 reports this week</div></div>
+<div class="trend-delta up"><svg fill="none" stroke="currentColor" stroke-width="3" viewbox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>6%</div>
+</div>
+<div class="trend-row">
+<div class="trend-rank">3</div>
+<div class="trend-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0-1 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 6"></path></svg></div>
+<div class="trend-text"><div class="trend-name">Illegal dumping</div><div class="trend-count">61 reports this week</div></div>
+<div class="trend-delta down"><svg fill="none" stroke="currentColor" stroke-width="3" viewbox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"></path></svg>9%</div>
+</div>
+<div class="trend-row">
+<div class="trend-rank">4</div>
+<div class="trend-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 21s-6-5.6-6-10a6 6 0 0 1 12 0c0 4.4-6 10-6 10Z"></path></svg></div>
+<div class="trend-text"><div class="trend-name">Water leaks</div><div class="trend-count">40 reports this week</div></div>
+<div class="trend-delta down"><svg fill="none" stroke="currentColor" stroke-width="3" viewbox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"></path></svg>3%</div>
+</div>
+<div class="trend-row">
+<div class="trend-rank">5</div>
+<div class="trend-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 6h18l-2 13H5L3 6Z"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></div>
+<div class="trend-text"><div class="trend-name">Overflowing bins</div><div class="trend-count">22 reports this week</div></div>
+<div class="trend-delta up"><svg fill="none" stroke="currentColor" stroke-width="3" viewbox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>2%</div>
+</div>
+<div class="pulse-foot-note">Tap any issue to see nearby reports, or report a new one yourself.</div>
+</div>
+<div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+</div>
+</div></div>
+<div class="phone-caption">Your area → Trending issues</div>
+</div></div>
+</div>
+<div class="node" id="node-reportdetail" style="width:134px;height:315px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content">
+<div class="detail-head">
+<div><div class="detail-ref">CN-2026-04452</div><div class="detail-cat">Pothole cluster · Florida Rd</div></div>
+<span class="pill pill-review"><span class="dot"></span>Review</span>
+</div>
+<div class="detail-desc">Large pothole in the left lane, about 40cm wide. Two cars have already swerved to avoid it this morning.</div>
+<div class="m-sectiontitle">Status</div>
+<div class="route-line">
+<div class="route-step done"><div class="r-label">Submitted</div><div class="r-meta">Mon, 07:40</div></div>
+<div class="route-step done"><div class="r-label">Received</div><div class="r-meta">Mon, 07:41</div></div>
+<div class="route-step current"><div class="r-label">Under review</div><div class="r-meta">Mon, 09:15</div></div>
+<div class="route-step upcoming"><div class="r-label">In progress</div></div>
+<div class="route-step upcoming"><div class="r-label">Resolved</div></div>
+</div>
+<div class="m-sectiontitle">Conversation</div>
+<div class="m-convo-preview">
+<div class="cv-avatar"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M14 9h1M14 13h1"></path></svg></div>
+<div class="cv-body">
+<div class="cv-top"><span class="cv-org">eThekwini Roads Dept</span><span class="cv-time">Mon, 10:22</span></div>
+<div class="cv-snippet">Thanks for the details — a crew has been assigned and will inspect within 48 hours.</div>
+</div>
+<div class="cv-unread"></div>
+<div class="cv-chev"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg></div>
+</div>
+<div style="font-size:9.5px;color:var(--ink-soft);margin-top:8px;line-height:1.4;">Escalates automatically if the SLA for this category is breached, or tap Escalate to request it manually.</div>
+<div class="icon-btn-row">
+<div class="icon-btn">Add information</div>
+<div class="icon-btn">Escalate</div>
+<div class="icon-btn danger">Withdraw</div>
+</div>
+</div>
+<div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+</div>
+</div></div>
+<div class="phone-caption">Report detail — now with a manual Escalate action alongside the automatic SLA trigger</div>
+</div></div>
+</div>
+<div class="node" id="node-thread" style="width:134px;height:336px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content" style="display:flex;flex-direction:column;padding-bottom:10px;">
+<div class="m-chat-header">
+<div class="ch-back"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg></div>
+<div>
+<div class="ch-title">eThekwini Roads Dept</div>
+<div class="ch-sub">CN-2026-04452 · Pothole cluster</div>
+</div>
+</div>
+<div style="flex:1;overflow:hidden;padding-top:6px;">
+<div class="m-chat-daylabel">Monday</div>
+<div class="m-bubble-row me">
+<div class="m-bubble-wrap">
+<div class="m-bubble">Large pothole in the left lane, about 40cm wide. Two cars have already swerved to avoid it this morning.</div>
+<div class="m-bubble-time">07:40</div>
+</div>
+</div>
+<div class="m-bubble-row org">
+<div class="org-avatar"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"></path></svg></div>
+<div class="m-bubble-wrap">
+<div class="m-bubble"><span class="b-org-name">eThekwini Roads Dept</span>Thanks for reporting this, Kagiso. We've logged it as CN-2026-04452 and it's now with our roads team for review.</div>
+<div class="m-bubble-time">07:41</div>
+</div>
+</div>
+<div class="m-bubble-row me">
+<div class="m-bubble-wrap">
+<div class="m-bubble">Is there a rough timeline? It's getting worse with the rain.</div>
+<div class="m-bubble-time">08:50</div>
+</div>
+</div>
+<div class="m-bubble-row org">
+<div class="org-avatar"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"></path></svg></div>
+<div class="m-bubble-wrap">
+<div class="m-bubble"><span class="b-org-name">eThekwini Roads Dept</span>Thanks for the details — a crew has been assigned and will inspect within 48 hours.</div>
+<div class="m-bubble-time">Mon, 10:22</div>
+</div>
+</div>
+</div>
+<div class="m-chat-input">
+<input placeholder="Write a message…" readonly=""/>
+<div class="ci-send"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"></path></svg></div>
+</div>
+</div>
+<div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+</div>
+</div></div>
+<div class="phone-caption">Report detail — conversation thread</div>
+</div></div>
+</div>
+<div class="node" id="node-addinfo" style="width:134px;height:255px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="phone-content dim">
+<div class="detail-head">
+<div><div class="detail-ref">CN-2026-04452</div><div class="detail-cat">Pothole cluster · Florida Rd</div></div>
+<span class="pill pill-review"><span class="dot"></span>Review</span>
+</div>
+<div class="detail-desc">Large pothole in the left lane, about 40cm wide. Two cars have already swerved to avoid it this morning.</div>
+<div class="m-sectiontitle">Status</div>
+<div class="route-line">
+<div class="route-step done"><div class="r-label">Submitted</div><div class="r-meta">Mon, 07:40</div></div>
+<div class="route-step current"><div class="r-label">Under review</div><div class="r-meta">Mon, 09:15</div></div>
+<div class="route-step upcoming"><div class="r-label">Resolved</div></div>
+</div>
+</div>
+<div class="modal-backdrop">
+<div class="sheet">
+<div class="sheet-handle"></div>
+<div class="sheet-title">Add information</div>
+<div class="sheet-sub">This will be added to CN-2026-04452 and sent to eThekwini Roads Dept.</div>
+<div class="m-field-label" style="margin-top:0;">Details</div>
+<div class="m-textfield" style="min-height:64px;">The pothole has grown wider since I first reported it — now closer to 60cm…</div>
+<div class="m-field-label">Add evidence <span style="font-weight:400;text-transform:none;color:#B0AFA5;">(optional)</span></div>
+<div class="m-evidence-row">
+<div class="m-evidence-box"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg></div>
+<div class="m-evidence-box"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M23 7l-7 5 7 5V7Z"></path><rect height="14" rx="2" width="15" x="1" y="5"></rect></svg></div>
+<div class="m-evidence-box"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4"></path></svg></div>
+</div>
+<div class="btn-row" style="margin-top:16px;">
+<div class="btn-flat ghost">Cancel</div>
+<div class="btn-flat primary">Submit</div>
+</div>
+</div>
+</div>
+</div></div>
+<div class="phone-caption">Report detail → "Add information" sheet</div>
+</div></div>
+</div>
+<div class="node" id="node-withdraw" style="width:134px;height:255px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="phone-content dim">
+<div class="detail-head">
+<div><div class="detail-ref">CN-2026-04452</div><div class="detail-cat">Pothole cluster · Florida Rd</div></div>
+<span class="pill pill-review"><span class="dot"></span>Review</span>
+</div>
+<div class="detail-desc">Large pothole in the left lane, about 40cm wide. Two cars have already swerved to avoid it this morning.</div>
+<div class="m-sectiontitle">Status</div>
+<div class="route-line">
+<div class="route-step done"><div class="r-label">Submitted</div><div class="r-meta">Mon, 07:40</div></div>
+<div class="route-step current"><div class="r-label">Under review</div><div class="r-meta">Mon, 09:15</div></div>
+<div class="route-step upcoming"><div class="r-label">Resolved</div></div>
+</div>
+</div>
+<div class="modal-backdrop center">
+<div class="dialog">
+<div class="dialog-icon warn"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.86 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.86a2 2 0 0 0-3.4 0Z"></path></svg></div>
+<div class="dialog-title">Withdraw this report?</div>
+<div class="dialog-body">eThekwini Roads Dept will stop work on CN-2026-04452. This can't be undone, but you can submit a new report anytime.</div>
+<div class="m-field-label" style="margin-top:0;">Reason (optional)</div>
+<div class="m-textfield" style="min-height:44px;margin-bottom:14px;">Already fixed by the time a crew arrived…</div>
+<div class="btn-row">
+<div class="btn-flat ghost">Cancel</div>
+<div class="btn-flat danger">Withdraw report</div>
+</div>
+</div>
+</div>
+</div></div>
+<div class="phone-caption">Report detail → "Withdraw" confirm</div>
+</div></div>
+</div></div></div>
+<div class="flow-row"><div class="flow-row-label">Closing the loop — resolved, satisfied or disputed</div><div class="flow-row-nodes"><div class="node" id="node-satisfaction" style="width:134px;height:275px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="phone-content dim">
+<div class="detail-head">
+<div><div class="detail-ref">CN-2026-04289</div><div class="detail-cat">Blocked stormwater drain · Musgrave Rd</div></div>
+<span class="pill pill-resolved"><span class="dot"></span>Resolved</span>
+</div>
+</div>
+<div class="modal-backdrop center">
+<div class="dialog">
+<div class="dialog-icon warn" style="background:var(--teal-tint);"><svg fill="none" stroke="var(--teal-deep)" stroke-width="2.2" viewbox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg></div>
+<div class="dialog-title">Marked as resolved</div>
+<div class="dialog-body">eThekwini Water &amp; Sanitation says this has been fixed. Was it resolved to your satisfaction?</div>
+<div class="btn-row">
+<div class="btn-flat ghost">No, still an issue</div>
+<div class="btn-flat primary">Yes, all good</div>
+</div>
+</div>
+</div>
+</div></div>
+<div class="phone-caption">Close-the-loop prompt, shown when a report moves to Resolved (new)</div>
+</div></div>
+</div>
+<div class="node" id="node-reopen" style="width:134px;height:275px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="phone-content dim">
+<div class="detail-head">
+<div><div class="detail-ref">CN-2026-04289</div><div class="detail-cat">Blocked stormwater drain · Musgrave Rd</div></div>
+<span class="pill pill-resolved"><span class="dot"></span>Resolved</span>
+</div>
+</div>
+<div class="modal-backdrop">
+<div class="sheet">
+<div class="sheet-handle"></div>
+<div class="sheet-title">Tell us what's still wrong</div>
+<div class="sheet-sub">This reopens CN-2026-04289 and escalates it to eThekwini Water &amp; Sanitation's supervisor queue.</div>
+<div class="m-field-label" style="margin-top:0;">Details</div>
+<div class="m-textfield" style="min-height:64px;">The drain is clear but water is still pooling after rain…</div>
+<div class="btn-row" style="margin-top:16px;">
+<div class="btn-flat ghost">Cancel</div>
+<div class="btn-flat primary">Reopen report</div>
+</div>
+</div>
+</div>
+</div></div>
+<div class="phone-caption">Dispute a Resolved status → reopen &amp; escalate (new). Escalation also triggers automatically on SLA breach — both paths land in the same escalated queue.</div>
+</div></div>
+</div></div></div>
+<div class="flow-row"><div class="flow-row-label">Creating a report — the two ways in (floating mic, or Home → Report an issue)</div><div class="flow-row-nodes"><div class="node" id="node-snap-listening" style="width:134px;height:440px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div><div class="phone-content"><div class="m-chat-header" style="border-bottom:none;padding-bottom:2px;"><div class="ch-back"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg></div><div><div class="ch-title">Snap &amp; Say</div><div class="ch-sub">Say what's happening</div></div><div class="sn-lang">isiZulu<svg fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></div></div><div class="sn-micwrap"><div class="sn-mic"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4"></path></svg></div><div class="sn-state">Listening… release to finish</div><div class="sn-wave"><span style="height:6px;"></span><span style="height:12px;"></span><span style="height:18px;"></span><span style="height:10px;"></span><span style="height:20px;"></span><span style="height:8px;"></span><span style="height:15px;"></span><span style="height:22px;"></span><span style="height:9px;"></span><span style="height:14px;"></span><span style="height:6px;"></span></div></div><div class="sn-transcript"><div class="sn-t-label">What we heard</div>There's a burst pipe on Florida Road, water is flooding the street outside number 14<span class="cur"></span></div><div class="sn-actions"><div class="sn-act done"><svg fill="none" stroke="currentColor" stroke-width="2.6" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg>1 photo added</div><div class="sn-act"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg>Photo</div><div class="sn-act"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"></rect><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"></path></svg>Type instead</div></div><div class="m-consent-note" style="text-align:center;">Speak in English, isiZulu, isiXhosa or Afrikaans. Your location is added automatically.</div></div><div style="padding:6px 16px 16px;"><div class="m-submit-btn">Done</div></div><div class="phone-bottomnav"><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div><div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div></div>
+</div></div>
+<div class="phone-caption">Snap & Say — hold to talk (or type), add a photo; live transcript on screen (new)</div>
+</div></div>
+</div>
+<div class="node" id="node-snap-confirm" style="width:134px;height:520px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div><div class="phone-content"><div class="m-chat-header" style="border-bottom:none;padding-bottom:2px;"><div class="ch-back"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg></div><div><div class="ch-title">Check before sending</div><div class="ch-sub">Nothing is sent until you tap Send</div></div></div><div class="sn-ai"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"></path><path d="M19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7Z"></path></svg>Written by AI from what you said — please check it's right.</div><div class="sn-card"><div class="sn-k">Type of issue</div><div class="sn-tags"><span class="sn-tag cat">Water &amp; Sanitation</span><span class="sn-tag cat">Burst pipe</span><span class="sn-tag hi">High urgency</span></div><div class="sn-tags" style="margin-top:7px;"><span class="sn-tag">water</span><span class="sn-tag">flooding</span><span class="sn-tag">road</span></div></div><div class="sn-card"><div class="sn-k">Description<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></div><div class="sn-v">Burst water pipe on Florida Road, outside number 14. Water is flooding the street and running down the road.</div></div><div class="sn-card"><div class="sn-k">Photo evidence<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></div><div class="sn-media"><div class="sn-thumb"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path></svg></div><div class="sn-v" style="font-size:11px;color:var(--ink-soft);">1 photo · taken just now</div></div></div><div class="sn-card"><div class="sn-k">Location<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg></div><div class="sn-minimap"><svg class="grid" fill="none" stroke="#97C459" stroke-width="1" viewBox="0 0 100 64" preserveAspectRatio="none"><path d="M0 21 H100 M0 43 H100 M25 0 V64 M50 0 V64 M75 0 V64"></path></svg><div class="pin"><svg fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></div></div><div class="sn-v">14 Florida Rd, Ward 12 <span style="color:var(--ink-soft);font-size:10.5px;">· GPS ±6 m</span></div></div><div class="sn-card" style="background:var(--sage);border-color:var(--sage-line);"><div class="sn-route">Will be sent to <b>eThekwini Water &amp; Sanitation</b> · Berea Depot</div></div></div><div style="padding:6px 16px 16px;"><div class="m-submit-btn">Send report</div><div class="icon-btn-row"><div class="icon-btn">Edit details</div><div class="icon-btn">Start over</div></div></div><div class="phone-bottomnav"><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div><div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div></div>
+</div></div>
+<div class="phone-caption">Snap & Say → check before sending — AI summary, category, location and evidence; resident confirms (new)</div>
+</div></div>
+</div>
+<div class="node" id="node-snap-sent" style="width:134px;height:295px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div><div class="phone-content" style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:18px;"><div style="width:52px;height:52px;border-radius:50%;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;"><svg fill="none" stroke="var(--teal-deep)" stroke-width="2.2" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg></div><div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;margin-top:14px;">Report sent</div><div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">Your reference number</div><div style="font-family:'Source Serif 4',serif;font-size:21px;font-weight:600;color:var(--teal-deep);margin-top:2px;">CN-2026-04513</div><div class="sn-card" style="margin-top:16px;width:100%;text-align:left;"><div class="sn-route">Sent to <b>eThekwini Water &amp; Sanitation</b><br/>Burst pipe · Florida Rd · photo attached</div></div><div style="font-size:10.5px;color:var(--ink-soft);margin-top:2px;">You'll get updates under Alerts.</div></div><div style="padding:6px 16px 16px;"><div class="m-submit-btn">View report</div><div class="btn-flat ghost" style="margin-top:8px;border-radius:99px;">Back to Home</div></div><div class="phone-bottomnav"><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div><div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div></div>
+</div></div>
+<div class="phone-caption">Snap & Say → Send — report filed and routed; same reference number and status tracking as any report (new)</div>
+</div></div>
+</div>
+<div class="node" id="node-reportform" style="width:134px;height:280px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content" style="padding-bottom:6px;">
+<div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;">Report an issue</div>
+<div class="m-formfield">
+<div class="f-label">Organisation</div>
+<div class="m-dropdown">Unsure / Not specified<svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></div>
+</div>
+<div class="m-formfield">
+<div class="f-label">Branch <span style="font-weight:400;color:var(--ink-soft);">(shown once an organisation is picked)</span></div>
+<div class="m-dropdown">Auto-detected from pin<svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></div>
+</div>
+<div class="m-formfield">
+<div class="f-label">Type of issue</div>
+<div class="m-dropdown">Water &amp; Sanitation<svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></div>
+</div>
+<div class="m-formfield">
+<div class="f-label">Description <span class="req">*</span>
+<span class="m-toggle-pair"><span class="m-toggle-btn on">Text</span><span class="m-toggle-btn">Audio</span></span>
+</div>
+<div class="m-textarea-plain">Describe the issue, location details…</div>
+</div>
+<div class="m-formfield">
+<div class="f-label">Reference / proof <span style="font-weight:400;color:var(--ink-soft);">(optional)</span></div>
+<div class="m-proof-row">
+<div class="m-proof-box"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><rect height="18" rx="2" width="18" x="3" y="3"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="m21 15-5-5L5 21"></path></svg><div class="p-label">Photo</div></div>
+<div class="m-proof-box"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg><div class="p-label">Video</div></div>
+</div>
+</div>
+<div class="m-formfield">
+<div class="f-label">Location <span class="req">*</span></div>
+<div class="m-loc-row">
+<div class="m-loc-input">Downtown</div>
+<div class="m-loc-pin"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></div>
+</div>
+<div class="m-loc-hint">Drop a pin on the map, or write an address above</div>
+</div>
+</div>
+<div style="padding:6px 16px 16px;">
+<div class="m-submit-btn">Submit report</div>
+<div class="m-contacts-link"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path></svg>Contacts</div>
+</div>
+</div></div>
+<div class="phone-caption">Report an issue — single-page form</div>
+</div></div>
+</div>
+<div class="node" id="node-duplicatecheck" style="width:134px;height:310px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content">
+<div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;margin-bottom:2px;">Similar reports nearby</div>
+<div style="font-size:11.5px;color:var(--ink-soft);margin-bottom:12px;">3 reports close to your pin already mention this. Is one of these the same issue?</div>
+<div class="m-report-card">
+<div class="rc-top"><div><div class="rc-title">Pothole cluster</div><div class="rc-ref">CN-2026-04452 · 30m away</div></div><span class="pill pill-review"><span class="dot"></span>Review</span></div>
+</div>
+<div class="m-report-card">
+<div class="rc-top"><div><div class="rc-title">Road surface damage</div><div class="rc-ref">CN-2026-04440 · 80m away</div></div><span class="pill pill-progress"><span class="dot"></span>In progress</span></div>
+</div>
+<div class="m-badges-note" style="background:var(--sage);">
+<svg fill="none" stroke="#0F6E56" stroke-width="2" viewbox="0 0 24 24"><path d="M9 11l3 3L22 4"></path></svg>
+<div class="note-text">Confirming an existing report instead of filing a new one helps it get resolved faster.</div>
+</div>
+</div>
+<div style="padding:6px 16px 16px;">
+<div class="m-submit-btn">This is my issue — add me to it</div>
+<div class="btn-flat ghost" style="margin-top:8px;border-radius:99px;">No, it's different — file as new</div>
+</div>
+</div></div>
+<div class="phone-caption">Report form → duplicate-detection step before submit (new)</div>
+</div></div>
+</div>
+<div class="node" id="node-reportsentpilot" style="width:134px;height:295px;">
+  <div class="node-inner" style="width:320px;transform:scale(0.42);"><div>
+<div class="phone"><div class="phone-screen">
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="phone-content dim">
+<div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;">Report an issue</div>
+</div>
+<div class="modal-backdrop center">
+<div class="dialog">
+<div class="dialog-icon warn" style="background:var(--teal-tint);"><svg fill="none" stroke="var(--teal-deep)" stroke-width="2.2" viewbox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg></div>
+<div class="dialog-title">Organisation notified</div>
+<div class="dialog-body"><b>eThekwini Roads &amp; Stormwater</b> has been notified through our reporting system. If this matter is urgent, please contact them directly on <b>031 311 2000</b>.</div>
+<div class="m-badges-note" style="background:var(--paper);margin-top:4px;">
+<div class="note-text" style="text-align:left;">Report <b>#1042</b> · Branch <b>Berea Depot</b><br/>Urgency <b>Critical — sent now</b></div>
+</div>
+<div class="btn-row" style="margin-top:12px;">
+<div class="btn-flat primary" style="width:100%;">Done</div>
+</div>
+</div>
+</div></div></div>
+<div class="phone-caption">Shown instead of a normal reference number when the report matches a Pilot-mode organisation (new)</div>
+</div></div>
+</div></div></div>
+<svg id="connector-svg"></svg>
+</div></div>
+<script>
+const edges = [
+  ["home","myreports","Reports tab","#8B8B85"],
+  ["myreports","home","Home tab","#8B8B85"],
+  ["home","reportform","Report an issue card","#0F6E56"],
+  ["trending","reportdetail","Tap to view report (fixed)","#0F6E56"],
+  ["reportform","duplicatecheck","Submit report","#085041"],
+  ["duplicatecheck","reportdetail","This is my issue (new)","#085041"],
+  ["duplicatecheck","reportdetail","File as new — matches a real org (new)","#085041"],
+  ["duplicatecheck","reportsentpilot","File as new — matches a Pilot-mode org (new)","#B5541A"],
+  ["reportsentpilot","reportdetail","Done","#B5541A"],
+  ["myreports","reportdetail","tap report card","#085041"],
+  ["myreports","emptystate","0 reports (new)","#9C3D7B"],
+  ["alerts","reportdetail","Tap a report alert (fixed)","#085041"],
+  ["reportdetail","thread","tap message area","#085041"],
+  ["reportdetail","addinfo","Add information","#085041"],
+  ["reportdetail","withdraw","Withdraw","#085041"],
+  ["reportdetail","satisfaction","Status → Resolved (new)","#085041"],
+  ["withdraw","myreports","confirm withdraw","#085041"],
+  ["withdraw","reportdetail","Cancel","#085041"],
+  ["addinfo","thread","Submit","#085041"],
+  ["reportform","offlinequeued","Submit with no connection (new)","#085041"],
+  ["offlinequeued","myreports","Auto-submits when back online (new)","#085041"],
+  ["reportform","errorstate","Submission fails (new)","#9C3D7B"],
+  ["satisfaction","myreports","Yes, all good (new)","#085041"],
+  ["satisfaction","reopen","No, still an issue (new)","#085041"],
+  ["reopen","thread","Reopen report (new)","#085041"],
+  ["myreports","snap-listening","Floating mic button","#3F51B5"],
+  ["snap-listening","snap-confirm","Done","#3F51B5"],
+  ["snap-confirm","snap-sent","Send report","#3F51B5"],
+  ["snap-sent","reportdetail","View report","#3F51B5"],
+  ["snap-sent","home","Back to Home","#3F51B5"],
+];
+function rectRel(el, canvasRect) {
+  const r = el.getBoundingClientRect();
+  return {
+    left: r.left - canvasRect.left,
+    top: r.top - canvasRect.top,
+    right: r.right - canvasRect.left,
+    bottom: r.bottom - canvasRect.top,
+    width: r.width,
+    height: r.height,
+    cx: r.left - canvasRect.left + r.width/2,
+    cy: r.top - canvasRect.top + r.height/2,
+  };
+}
+
+// Build a routed, right-angle-only path between two screens that never
+// crosses over any other screen: it always leaves/enters through the
+// TOP or BOTTOM of a phone card into the empty band between rows, travels
+// horizontally only inside that empty band (or past the far right edge of
+// every row, for a "trunk" lane), and only ever approaches a card
+// vertically, in the empty column directly above/below that one card.
+function buildRouter(canvas, canvasRect) {
+  const rowEls = Array.from(canvas.querySelectorAll('.flow-row'));
+  const rowOf = {};          // nodeId -> row index
+  const rowRect = [];        // row index -> {top, bottom} across all its nodes
+  rowEls.forEach((rowEl, ri) => {
+    let top = Infinity, bottom = -Infinity;
+    rowEl.querySelectorAll('.node').forEach(nodeEl => {
+      const id = nodeEl.id.replace(/^node-/, '');
+      rowOf[id] = ri;
+      const r = rectRel(nodeEl, canvasRect);
+      top = Math.min(top, r.top);
+      bottom = Math.max(bottom, r.bottom);
+    });
+    rowRect.push({top, bottom});
+  });
+
+  // y-level of the empty band between row i and row i+1 (also used as the
+  // "below its own row" band for same-row edges), with a lane counter so
+  // several edges sharing a band fan out instead of overlapping.
+  const numGaps = Math.max(rowRect.length - 1, 1);
+  const gapBase = rowRect.slice(0, numGaps).map((r, i) => (r.bottom + rowRect[i+1].top) / 2);
+  const gapLane = new Array(numGaps).fill(0);
+  function gapY(i, dir) {
+    // dir: +1 nudges the lane further from row i (deeper into the gap
+    // going down), -1 nudges it further from row i+1 (higher in the gap)
+    const lane = gapLane[i]++;
+    const offset = (lane % 8) * 4 * (dir || 1);
+    return gapBase[i] + offset;
+  }
+
+  // Right-hand "trunk" lane, clear of every row's widest extent, used only
+  // for edges that jump two or more rows apart.
+  let maxRight = 0;
+  rowEls.forEach(rowEl => {
+    rowEl.querySelectorAll('.node').forEach(nodeEl => {
+      maxRight = Math.max(maxRight, rectRel(nodeEl, canvasRect).right);
+    });
+  });
+  let trunkLane = 0;
+  function nextTrunkX() { return maxRight + 26 + (trunkLane++ % 10) * 7; }
+
+  return {rowOf, rowRect, gapY, nextTrunkX, numGaps, maxRight};
+}
+
+function draw() {
+  const canvas = document.getElementById('canvas');
+  const svg = document.getElementById('connector-svg');
+  const canvasRect = canvas.getBoundingClientRect();
+
+  // Pre-compute how many edges touch each (node, side) so we can spread
+  // their anchor points evenly across that edge of the card.
+  const sideUse = {};
+  function sideKey(id, side) { return id + '|' + side; }
+  function noteSide(id, side) {
+    const k = sideKey(id, side);
+    sideUse[k] = sideUse[k] || {count: 0};
+    return sideUse[k].count++;
+  }
+
+  const router = buildRouter(canvas, canvasRect);
+  const { rowOf } = router;
+
+  // Decide, for every edge, which side of the source/target it leaves from,
+  // so we can pre-count fan-out slots before drawing anything.
+  const plans = edges.map(([fromId, toId, label, color]) => {
+    const rs = rowOf[fromId], rt = rowOf[toId];
+    let fromSide, toSide;
+    if (rs === rt) { fromSide = 'bottom'; toSide = 'bottom'; }
+    else if (rt > rs) { fromSide = 'bottom'; toSide = 'top'; }
+    else { fromSide = 'top'; toSide = 'bottom'; }
+    // last row has nothing below it, first row has nothing above it —
+    // flip to whichever band actually exists.
+    if (fromSide === 'bottom' && rs === router.rowRect.length - 1) fromSide = 'top';
+    if (toSide === 'bottom' && rt === router.rowRect.length - 1) toSide = 'top';
+    if (fromSide === 'top' && rs === 0) fromSide = 'bottom';
+    if (toSide === 'top' && rt === 0) toSide = 'bottom';
+    return {fromId, toId, label, color, rs, rt, fromSide, toSide};
+  });
+
+  plans.forEach(p => {
+    p.fromSlot = noteSide(p.fromId, p.fromSide);
+    p.toSlot = noteSide(p.toId, p.toSide);
+  });
+
+  // Size the SVG from the actual node layout, not canvas.scrollWidth/Height.
+  // The old code used canvas.scrollWidth here, but the SVG is an absolutely
+  // positioned child of #canvas, so once it had a width, that width itself
+  // became part of canvas.scrollWidth on the *next* draw (window resize,
+  // etc). Each redraw measured a bigger canvas, so it set an even bigger
+  // SVG width, and so on — the page kept growing to the right/down forever,
+  // which is why lines ended up running off past the visible screen with
+  // nothing at the far end.
+  const totalW = router.maxRight + 140; // room for the right-hand trunk lanes
+  const h = router.rowRect[router.rowRect.length - 1].bottom + 40;
+  svg.setAttribute('width', totalW);
+  svg.setAttribute('height', h);
+  svg.setAttribute('viewBox', `0 0 ${totalW} ${h}`);
+  svg.innerHTML = '';
+
+  const colors = [...new Set(edges.map(e => e[3]))];
+  const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
+  colors.forEach((c,i) => {
+    const marker = document.createElementNS('http://www.w3.org/2000/svg','marker');
+    marker.setAttribute('id', 'arrow-'+i);
+    marker.setAttribute('viewBox','0 0 10 10');
+    marker.setAttribute('refX','8');
+    marker.setAttribute('refY','5');
+    marker.setAttribute('markerWidth','7');
+    marker.setAttribute('markerHeight','7');
+    marker.setAttribute('orient','auto-start-reverse');
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d','M 0 0 L 10 5 L 0 10 z');
+    path.setAttribute('fill', c);
+    marker.appendChild(path);
+    defs.appendChild(marker);
+  });
+  svg.appendChild(defs);
+
+  function fanX(rect, slot, count) {
+    const n = count + 1;
+    const frac = (slot + 1) / n;
+    return rect.left + rect.width * frac;
+  }
+
+  function drawPath(points, color, label, idx) {
+    const d = points.map((pt,i) => (i===0?'M':'L') + pt[0] + ' ' + pt[1]).join(' ');
+    const colorIdx = colors.indexOf(color);
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', d);
+    path.setAttribute('stroke', color);
+    path.setAttribute('stroke-width', '1.6');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-linecap','round');
+    path.setAttribute('stroke-linejoin','round');
+    path.setAttribute('opacity', '0.62');
+    path.setAttribute('class','edge-path');
+    path.style.transition = 'stroke-width .12s ease, opacity .12s ease';
+    path.setAttribute('marker-end', `url(#arrow-${colorIdx})`);
+    svg.appendChild(path);
+
+    // place the label on the longest horizontal run of the path
+    let best = null, bestLen = -1;
+    for (let i=0;i<points.length-1;i++){
+      const [x1,y1] = points[i], [x2,y2] = points[i+1];
+      if (Math.abs(y1-y2) < 0.5) {
+        const len = Math.abs(x2-x1);
+        if (len > bestLen) { bestLen = len; best = {x:(x1+x2)/2, y:y1}; }
+      }
+    }
+    if (!best) { const [x,y] = points[Math.floor(points.length/2)]; best = {x,y}; }
+
+    const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+    text.setAttribute('x', best.x);
+    text.setAttribute('y', best.y);
+    text.setAttribute('class','edge-label');
+    text.setAttribute('fill', color);
+    text.setAttribute('text-anchor','middle');
+    text.setAttribute('dominant-baseline','middle');
+    text.style.transition = 'opacity .12s ease';
+    text.textContent = label;
+    svg.appendChild(text);
+    const bbox = text.getBBox();
+    const bgRect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    bgRect.setAttribute('x', bbox.x - 3);
+    bgRect.setAttribute('y', bbox.y - 1.5);
+    bgRect.setAttribute('width', bbox.width + 6);
+    bgRect.setAttribute('height', bbox.height + 3);
+    bgRect.setAttribute('rx', 3);
+    bgRect.setAttribute('class','edge-label-bg');
+    bgRect.style.transition = 'opacity .12s ease';
+    svg.insertBefore(bgRect, text);
+
+    // a fat, invisible copy of the same path just for easy clicking/tapping —
+    // the visible line stays thin, but the clickable target is generous
+    const hit = document.createElementNS('http://www.w3.org/2000/svg','path');
+    hit.setAttribute('d', d);
+    hit.setAttribute('stroke', color);
+    hit.setAttribute('stroke-width', '14');
+    hit.setAttribute('fill', 'none');
+    hit.setAttribute('opacity', '0');
+    hit.setAttribute('pointer-events', 'stroke');
+    hit.style.cursor = 'pointer';
+    svg.appendChild(hit);
+
+    const onPick = (e) => { e.stopPropagation(); selectEdge(idx); };
+    hit.addEventListener('click', onPick);
+    bgRect.style.pointerEvents = 'auto';
+    bgRect.style.cursor = 'pointer';
+    bgRect.addEventListener('click', onPick);
+
+    edgeRefs[idx] = {path, text, bgRect};
+  }
+
+  edgeRefs.length = 0;
+  plans.forEach((p, idx) => {
+    const fromEl = document.getElementById('node-'+p.fromId);
+    const toEl = document.getElementById('node-'+p.toId);
+    if (!fromEl || !toEl) { console.warn('missing', p.fromId, p.toId); return; }
+    const a = rectRel(fromEl, canvasRect);
+    const b = rectRel(toEl, canvasRect);
+    const aCount = sideUse[sideKey(p.fromId, p.fromSide)].count;
+    const bCount = sideUse[sideKey(p.toId, p.toSide)].count;
+    const ax = fanX(a, p.fromSlot, aCount);
+    const bx = fanX(b, p.toSlot, bCount);
+    const ay = p.fromSide === 'bottom' ? a.bottom : a.top;
+    const by = p.toSide === 'bottom' ? b.bottom : b.top;
+    const rowSpan = Math.abs(p.rt - p.rs);
+
+    let points;
+    if (rowSpan <= 1) {
+      // Direct elbow through the single empty band between the rows
+      // involved (or below a shared row) — that band is always clear.
+      let gapIndex;
+      if (p.rs === p.rt) {
+        gapIndex = (p.fromSide === 'bottom') ? p.rs : Math.max(p.rs - 1, 0);
+      } else {
+        gapIndex = Math.min(p.rs, p.rt);
+      }
+      gapIndex = Math.min(gapIndex, router.numGaps - 1);
+      const dir = (p.fromSide === 'bottom') ? 1 : -1;
+      const y = router.gapY(gapIndex, dir);
+      points = [[ax,ay],[ax,y],[bx,y],[bx,by]];
+    } else {
+      // Rows are far apart: dodge out to the right of every screen, run
+      // the trunk down/up past all intervening rows (nothing sits out
+      // there), then come back in to the target's own band.
+      const gapS = p.fromSide === 'bottom'
+        ? Math.min(p.rs, router.numGaps - 1)
+        : Math.max(p.rs - 1, 0);
+      const gapT = p.toSide === 'bottom'
+        ? Math.min(p.rt, router.numGaps - 1)
+        : Math.max(p.rt - 1, 0);
+      const dirS = (p.fromSide === 'bottom') ? 1 : -1;
+      const dirT = (p.toSide === 'bottom') ? 1 : -1;
+      const ys = router.gapY(gapS, dirS);
+      const yt = router.gapY(gapT, dirT);
+      const trunkX = router.nextTrunkX();
+      points = [[ax,ay],[ax,ys],[trunkX,ys],[trunkX,yt],[bx,yt],[bx,by]];
+    }
+    drawPath(points, p.color, p.label, idx);
+  });
+
+  applySelection();
+}
+
+// Selection state persists across redraws (resize) since edge index order
+// is stable — each edge is at the same position in `edges` every time.
+let selectedIdx = null;
+let edgeRefs = [];
+
+function selectEdge(i) {
+  selectedIdx = (selectedIdx === i) ? null : i; // click again to clear
+  applySelection();
+}
+
+function applySelection() {
+  edgeRefs.forEach((ref, i) => {
+    if (!ref) return;
+    const isSelected = (i === selectedIdx);
+    const isDimmed = (selectedIdx !== null && !isSelected);
+    ref.path.setAttribute('stroke-width', isSelected ? '3.4' : '1.6');
+    ref.path.setAttribute('opacity', isSelected ? '1' : (isDimmed ? '0.12' : '0.62'));
+    ref.text.style.opacity = isDimmed ? '0.15' : '1';
+    ref.text.style.fontWeight = isSelected ? '800' : '700';
+    ref.bgRect.style.opacity = isDimmed ? '0.15' : '0.92';
+    // bring the selected line to the front so its thicker stroke isn't
+    // partly covered by neighbouring lines
+    if (isSelected) ref.path.parentNode.appendChild(ref.path);
+  });
+}
+
+// clicking empty canvas space clears the current selection
+document.addEventListener('click', () => { selectedIdx = null; applySelection(); });
+
+function fitNodes(){document.querySelectorAll('.node').forEach(n=>{const i=n.querySelector('.node-inner');if(i)n.style.height=Math.ceil(i.getBoundingClientRect().height)+'px';});}
+window.addEventListener('resize', () => setTimeout(draw, 60));
+
+function drawAnatomy(){
+  document.querySelectorAll('.anat').forEach(box=>{
+    const sels = JSON.parse(box.dataset.sels), gaps = JSON.parse(box.dataset.gaps);
+    const stage = box.querySelector('.anat-stage'), ph = stage.querySelector('.anat-phone');
+    const svg = stage.querySelector('.anat-svg');
+    ph.style.transform = 'scale(0.9)';
+    const sr = stage.getBoundingClientRect();
+    const pr0 = ph.getBoundingClientRect();
+    stage.style.width = pr0.width + 'px'; stage.style.height = pr0.height + 'px';
+    const sr2 = stage.getBoundingClientRect();
+    svg.setAttribute('width', pr0.width + 60); svg.setAttribute('height', pr0.height);
+    svg.innerHTML = '';
+    stage.querySelectorAll('.anat-badge').forEach(b=>b.remove());
+    const phoneRight = pr0.width;
+    sels.forEach((sel,i)=>{
+      const el = ph.querySelector(sel); if(!el) return;
+      const r = el.getBoundingClientRect();
+      const x1 = r.right - sr2.left, y = r.top - sr2.top + Math.min(r.height/2, 26);
+      const col = gaps[i] ? '#BA7517' : '#085041';
+      const inline = sel.indexOf('.icon-btn') === 0;
+      // outline of the region
+      const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      rect.setAttribute('x', r.left - sr2.left - 2); rect.setAttribute('y', r.top - sr2.top - 2);
+      rect.setAttribute('width', r.width + 4); rect.setAttribute('height', r.height + 4);
+      rect.setAttribute('rx', 6); rect.setAttribute('fill', 'none');
+      rect.setAttribute('stroke', col); rect.setAttribute('stroke-width', 1.4); rect.setAttribute('stroke-dasharray','4 3');
+      svg.appendChild(rect);
+      if (inline) {
+        const bi = document.createElement('div');
+        bi.className = 'anat-badge'; bi.textContent = i+1; bi.style.background = col;
+        bi.style.left = (r.left - sr2.left - 8) + 'px'; bi.style.top = (r.top - sr2.top - 12) + 'px';
+        stage.appendChild(bi);
+        return;
+      }
+      const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('x1', x1+2); ln.setAttribute('y1', y); ln.setAttribute('x2', phoneRight + 24); ln.setAttribute('y2', y);
+      ln.setAttribute('stroke', col); ln.setAttribute('stroke-width', 1.2);
+      svg.appendChild(ln);
+      const b = document.createElement('div');
+      b.className = 'anat-badge'; b.textContent = i+1; b.style.background = col;
+      b.style.left = (phoneRight + 24) + 'px'; b.style.top = (y - 10) + 'px';
+      stage.appendChild(b);
+    });
+    stage.style.width = (pr0.width + 50) + 'px';
+  });
+}
+
+window.addEventListener('load', () => { (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(() => { drawAnatomy(); fitNodes(); draw(); }, 80)); });
+
+</script>
+</body>
+</html>

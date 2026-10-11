@@ -1,0 +1,123 @@
+.cn-contacts-page {
+  box-sizing: border-box;
+  padding: 0 16px 16px;
+  background: var(--paper, #F6F4EE);
+  color: var(--ink, #16241F);
+  font-family: var(--font-body, 'Public Sans', sans-serif);
+}
+
+.cn-contacts-title {
+  margin: 0 0 12px;
+  color: var(--ink, #16241F);
+  font: 600 18px/1.3 var(--font-serif, 'Source Serif 4', serif);
+}
+
+.cn-contacts-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 10px;
+  background: #fff;
+  margin-bottom: 12px;
+}
+
+.cn-contacts-search__icon {
+  color: var(--muted-icons, #B0AFA5);
+  font-size: 14px;
+}
+
+.cn-contacts-input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  font: 400 12px/1.4 var(--font-body, 'Public Sans', sans-serif);
+  color: var(--ink, #16241F);
+}
+
+.cn-contacts-input:focus {
+  outline: none;
+}
+
+.cn-department-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cn-department-card {
+  padding: 13px 14px;
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.cn-department-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cn-department-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--sage, #EAF3DE);
+  color: var(--teal-deep, #085041);
+  font-size: 15px;
+  font-weight: 700;
+  flex: 0 0 32px;
+}
+
+.cn-department-meta {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.cn-department-name {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.cn-department-hours {
+  margin-top: 1px;
+  color: var(--ink-soft, #3E4A44);
+  font-size: 10.5px;
+}
+
+.cn-department-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 11px;
+}
+
+.cn-department-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1 1 0;
+  min-height: 34px;
+  padding: 8px;
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--ink, #16241F);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.cn-department-action--primary {
+  background: var(--ink, #16241F);
+  border-color: var(--ink, #16241F);
+  color: #fff;
+}
+
+.cn-department-action__icon {
+  font-size: 12px;
+}

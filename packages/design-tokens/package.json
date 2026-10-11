@@ -1,0 +1,12 @@
+{
+  "name": "@civicneuro/design-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./reset.css": "./src/reset.css",
+    "./themes-light-dark.css": "./src/themes-light-dark.css",
+    "./tokens.css": "./src/tokens.css",
+    "./typography.css": "./src/typography.css"
+  }
+}

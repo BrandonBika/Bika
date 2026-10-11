@@ -1,0 +1,17 @@
+.cn-consent-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px 0;
+}
+.cn-consent-checkbox {
+  margin-top: 3px;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+.cn-consent-label {
+  font-size: 0.8125rem;
+  color: var(--cn-color-text, #172b4d);
+  line-height: 1.4;
+}

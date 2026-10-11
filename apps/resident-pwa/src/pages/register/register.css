@@ -1,0 +1,65 @@
+@import '../sign-in/sign-in.css';
+@import '../../components/consent-checkbox/consent-checkbox.css';
+
+.cn-register-page {
+	min-height: calc(100dvh - 32px);
+	padding-bottom: 24px;
+}
+
+.cn-register-page .cn-auth-sub {
+	margin-bottom: 10px;
+}
+
+.cn-register-page .cn-input-group {
+	margin-bottom: 8px;
+}
+
+.cn-register-page .cn-input {
+	min-height: 40px;
+}
+
+.cn-register-page .cn-consent-group {
+	gap: 9px;
+	margin: 8px 0;
+}
+
+.cn-register-page .cn-consent-checkbox,
+.cn-register-page .cn-register-updates-input {
+	flex: 0 0 18px;
+	min-width: 18px;
+	min-height: 18px;
+	width: 18px;
+	height: 18px;
+	margin: 2px 0 0;
+	accent-color: #0F6E56;
+}
+
+.cn-register-page .cn-consent-label,
+.cn-register-updates-label {
+	color: #16241F;
+	font-size: 10px;
+	line-height: 1.45;
+}
+
+.cn-register-updates {
+	display: flex;
+	align-items: flex-start;
+	gap: 9px;
+	margin: 4px 0 8px;
+}
+
+.cn-register-note {
+	margin: 4px 0 10px;
+	color: #5E6A64;
+	font-size: 9.5px;
+	line-height: 1.45;
+}
+
+.cn-register-page .cn-auth-submit {
+	margin-top: 4px;
+}
+
+.cn-register-note--verify {
+	margin-top: 8px;
+	text-align: center;
+}

@@ -1,0 +1,183 @@
+/**
+ * @file apps/resident-pwa/src/pages/beacon-share-session/beacon-share-session.css
+ * Screen D: Live session & Screen D2: Off-path alert styles.
+ */
+
+.cn-beacon-session-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: calc(100vh - 22px);
+  min-height: calc(100dvh - 22px);
+  overflow: hidden;
+  background-color: var(--sage, #EAF3DE);
+  box-sizing: border-box;
+}
+
+.bc-map-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.bc-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  isolation: isolate;
+}
+
+/* Floating Session Card */
+.bc-session-card {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 12px;
+  background: var(--paper-raised, #FFFFFF);
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: 0 14px 30px rgba(22, 36, 31, 0.2);
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+.bc-session-card .bcs-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bc-session-card .bcs-avatars {
+  display: flex;
+}
+
+.bc-session-card .bcs-avatars .bc-avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+  border: 2px solid #FFFFFF;
+  margin-left: -7px;
+  flex: 0 0 24px;
+}
+
+.bc-session-card .bcs-avatars .bc-avatar:first-child {
+  margin-left: 0;
+}
+
+.bc-session-card .bcs-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink, #16241F);
+}
+
+.bc-session-card .bcs-sub {
+  font-size: 10.5px;
+  color: var(--ink-soft, #3E4A44);
+  margin-top: 1px;
+}
+
+.bc-location-accuracy-status {
+  margin-top: 9px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: var(--amber-tint, #FAEEDA);
+  color: #633806;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.bc-location-accuracy-status[hidden] {
+  display: none;
+}
+
+/* Off-Path Alert Banner */
+.offpath-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--amber-tint, #FAEEDA);
+  border-radius: 10px;
+  padding: 9px 10px;
+  margin-top: 10px;
+}
+
+.offpath-banner svg {
+  width: 14px;
+  height: 14px;
+  color: var(--amber, #BA7517);
+  flex: 0 0 14px;
+  margin-top: 1px;
+}
+
+.offpath-banner-text {
+  font-size: 11px;
+  line-height: 1.45;
+  color: #633806;
+}
+
+.offpath-banner-text b {
+  font-weight: 700;
+}
+
+.offpath-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.offpath-update-btn {
+  flex: 1;
+  text-align: center;
+  padding: 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 10px;
+  border: 1px solid var(--line, #DAD5C6);
+  background: var(--paper-raised, #FFFFFF);
+  color: var(--ink-soft, #3E4A44);
+  cursor: pointer;
+}
+
+.offpath-ok-btn {
+  flex: 1;
+  text-align: center;
+  padding: 9px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border-radius: 10px;
+  border: none;
+  background: var(--beacon, #1C8C99);
+  color: #FFFFFF;
+  cursor: pointer;
+}
+
+.bc-session-card .bcs-stop {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #792424;
+  border: 1px solid #E6C3C3;
+  border-radius: 10px;
+  padding: 9px;
+  cursor: pointer;
+  background: var(--paper-raised, #FFFFFF);
+  transition: background 0.15s ease;
+}
+
+.bc-session-card .bcs-stop:hover {
+  background: #FFF5F5;
+}
+
+/* Route Line and Dot */
+.beacon-offpath-tooltip {
+  background: var(--amber-tint, #FAEEDA);
+  color: #633806;
+  border: 0;
+  border-radius: 99px;
+  font-size: 9.5px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}

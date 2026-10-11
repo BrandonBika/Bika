@@ -1,0 +1,77 @@
+.cn-circle-member-row {
+	display: flex;
+	min-height: 52px;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 3px;
+	border-top: 1px solid #DAD5C6;
+}
+
+.cn-circle-member-avatar {
+	display: flex;
+	width: 28px;
+	height: 28px;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: #97C459;
+	color: #173404;
+	font: 600 11px 'Source Serif 4', Georgia, serif;
+}
+
+.cn-circle-member-avatar.is-sharing {
+	background: #1C8C99;
+	color: #FFFFFF;
+}
+
+.cn-circle-member-info {
+	display: flex;
+	min-width: 0;
+	flex: 1;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.cn-circle-member-name {
+	overflow: hidden;
+	color: #16241F;
+	font-size: 10px;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cn-circle-member-status {
+	overflow: hidden;
+	color: #3E4A44;
+	font-size: 9px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.cn-circle-member-status.is-sharing {
+	color: #0E5961;
+	font-weight: 600;
+}
+
+.cn-circle-member-action {
+	display: flex;
+	min-width: 30px;
+	min-height: 30px;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	padding: 4px 8px;
+	border: 0;
+	border-radius: 8px;
+	background: #E3F3F5;
+	color: #0E5961;
+	font: 700 10px 'Public Sans', sans-serif;
+	cursor: pointer;
+}
+
+.cn-circle-member-row button:focus-visible {
+	outline: 2px solid #185FA5;
+	outline-offset: 2px;
+}
