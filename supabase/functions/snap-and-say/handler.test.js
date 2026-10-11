@@ -68,7 +68,7 @@ function createGeminiFetch(geminiJson) {
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
     if (String(url).includes('/rest/v1/reports')) {
-      return new Response(JSON.stringify([{ id: 'report-test-id' }]), { status: 201, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify([{ id: 'report-test-id', tracking_number: 'CN-2026-000123' }]), { status: 201, headers: { 'Content-Type': 'application/json' } });
     }
     return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
   };
@@ -124,7 +124,9 @@ test('rejects unsupported audio mime types', async () => {
 
 test('falls back to manual review when Gemini output is malformed', async () => {
   let attempts = 0;
+  const calls = [];
   const fetchImpl = async (url) => {
+    calls.push(String(url));
     if (String(url).includes('generativelanguage.googleapis.com')) {
       attempts += 1;
       return new Response(JSON.stringify({
@@ -142,6 +144,14 @@ test('falls back to manual review when Gemini output is malformed', async () => 
   const body = await response.json();
   assert.equal(body.report.status, 'Needs Review');
   assert.match(body.report.review_reason, /malformed/i);
+  assert.equal(calls.filter((url) => url.includes('/storage/v1/object/report-evidence/')).length, 2);
+  assert.equal(calls.filter((url) => url.endsWith('/rest/v1/reports')).length, 1);
+  assert.equal(calls.filter((url) => url.endsWith('/rest/v1/report_evidence')).length, 2);
+  assert.equal(calls.filter((url) => url.endsWith('/rest/v1/ai_runs')).length, 1);
+  assert.deepEqual(
+    calls.filter((url) => url.endsWith('/rest/v1/rpc/log_report_event')).length,
+    2
+  );
 });
 
 test('accepts codec-suffixed webm and audio/mp4 media types', async () => {
@@ -166,11 +176,12 @@ test('accepts codec-suffixed webm and audio/mp4 media types', async () => {
     const response = await handleSnapAndSay(createRequest({ audioType }), testContext(createGeminiFetch(validResult)));
     assert.equal(response.status, 200, audioType);
     const body = await response.json();
-    assert.equal(body.report.audio_url.startsWith('https://supabase.test/storage/v1/object/audio-reports/'), true);
+    assert.equal(body.report.evidence[0].bucket, 'report-evidence');
+    assert.match(body.report.evidence[0].path, /^[0-9a-f-]+\/[0-9a-f-]+\/audio-/);
   }
 });
 
-test('uploads private media and persists URLs, coordinates, and verified resident ID', async () => {
+test('uploads private evidence to the report path and persists evidence metadata', async () => {
   const residentId = 'd1c82fc5-5ff2-4a79-a83c-829ba872e1f6';
   const calls = [];
   const validResult = {
@@ -201,7 +212,7 @@ test('uploads private media and persists URLs, coordinates, and verified residen
       }), { status: 200 });
     }
     if (String(url).includes('/rest/v1/reports')) {
-      return new Response(JSON.stringify([{ id: 'report-persisted-id' }]), { status: 201 });
+      return new Response(JSON.stringify([{ id: JSON.parse(options.body).id, tracking_number: 'CN-2026-000123' }]), { status: 201 });
     }
     return new Response('{}', { status: 200 });
   };
@@ -213,22 +224,58 @@ test('uploads private media and persists URLs, coordinates, and verified residen
 
   assert.equal(response.status, 200);
   const report = (await response.json()).report;
+  assert.equal(report.tracking_number, 'CN-2026-000123');
   const uploadCalls = calls.filter((call) => call.url.includes('/storage/v1/object/'));
   assert.equal(uploadCalls.length, 2);
-  assert.ok(uploadCalls.every((call) => call.url.includes(`/${residentId}/`)));
+  assert.ok(uploadCalls.every((call) => call.url.includes('/storage/v1/object/report-evidence/')));
   assert.ok(uploadCalls.every((call) => call.options.headers['x-upsert'] === 'false'));
-  assert.ok(report.audio_url.endsWith('.wav'));
-  assert.ok(report.image_url.endsWith('.jpg'));
 
   const authCall = calls.find((call) => call.url.endsWith('/auth/v1/user'));
   assert.equal(authCall.options.headers.Authorization, 'Bearer resident-session');
   const reportCall = calls.find((call) => call.url.includes('/rest/v1/reports'));
   const row = JSON.parse(reportCall.options.body);
-  assert.equal(row.resident_id, residentId);
-  assert.equal(row.audio_url, report.audio_url);
-  assert.equal(row.image_url, report.image_url);
+  assert.equal(row.reporter_id, residentId);
+  assert.equal(row.source, 'snap_and_say');
+  assert.equal(row.id, report.id);
+  assert.equal('audio_url' in row, false);
+  const evidenceCalls = calls.filter((call) => call.url.endsWith('/rest/v1/report_evidence'));
+  assert.equal(evidenceCalls.length, 2);
+  const evidenceRows = evidenceCalls.map((call) => JSON.parse(call.options.body));
+  assert.ok(evidenceRows.every((evidence) => evidence.bucket === 'report-evidence'));
+  assert.ok(evidenceRows.every((evidence) => evidence.report_id === report.id));
+  assert.ok(evidenceRows.every((evidence) => evidence.path.startsWith(`${residentId}/${report.id}/`)));
+  assert.deepEqual(report.evidence.map(({ kind }) => kind), ['audio', 'image']);
+  const eventCalls = calls.filter((call) => call.url.endsWith('/rest/v1/rpc/log_report_event'));
+  assert.deepEqual(eventCalls.map((call) => JSON.parse(call.options.body).p_event_type), ['ai_classified', 'routed']);
+  const aiRunCall = calls.find((call) => call.url.endsWith('/rest/v1/ai_runs'));
+  assert.ok(aiRunCall);
+  const aiRun = JSON.parse(aiRunCall.options.body);
+  assert.equal(aiRun.model, 'gemini-2.5-flash');
+  assert.equal(aiRun.prompt_version, 'snap-and-say-v1');
+  assert.ok(aiRun.raw_output);
+  assert.equal(aiRun.error, null);
   assert.equal(row.latitude, -29.85);
   assert.equal(row.longitude, 31.02);
+});
+
+test('removes the report and uploaded evidence if evidence metadata cannot be saved', async () => {
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    const target = String(url);
+    calls.push({ url: target, method: options.method || 'GET' });
+    if (target.endsWith('/rest/v1/reports') && options.method === 'POST') {
+      return new Response(JSON.stringify([{ id: JSON.parse(options.body).id }]), { status: 201 });
+    }
+    if (target.endsWith('/rest/v1/report_evidence')) {
+      return new Response('metadata unavailable', { status: 500 });
+    }
+    return new Response('{}', { status: 200 });
+  };
+
+  const response = await handleSnapAndSay(createRequest({}), testContext(fetchImpl));
+  assert.equal(response.status, 500);
+  assert.equal(calls.filter((call) => call.method === 'DELETE' && call.url.includes('/rest/v1/reports?id=')).length, 1);
+  assert.equal(calls.filter((call) => call.method === 'DELETE' && call.url.includes('/storage/v1/object/report-evidence/')).length, 2);
 });
 
 test('missing Gemini key stores the report as Needs Review and logs configuration error', async () => {

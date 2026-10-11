@@ -21,13 +21,8 @@ create table if not exists public.organizations (
   jurisdiction_level text not null,
   province text,
   municipality text,
-  dispatch_contact_name text,
-  dispatch_contact_phone text,
-  dispatch_contact_email text,
   boundary extensions.geography(MultiPolygon, 4326),
   is_active boolean not null default true,
-  verification_status text not null default 'verify'
-    check (verification_status in ('verify', 'verified')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -37,36 +32,20 @@ alter table public.organizations
   add column if not exists jurisdiction_level text,
   add column if not exists province text,
   add column if not exists municipality text,
-  add column if not exists dispatch_contact_name text,
-  add column if not exists dispatch_contact_phone text,
-  add column if not exists dispatch_contact_email text,
   add column if not exists boundary extensions.geography(MultiPolygon, 4326),
   add column if not exists is_active boolean not null default true,
-  add column if not exists verification_status text not null default 'verify',
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
 
-update public.organizations
-set verification_status = 'verify'
-where verification_status is null
-   or verification_status not in ('verify', 'verified');
-
-do $$
-begin
-  if not exists (
-    select 1 from pg_constraint
-    where conrelid = 'public.organizations'::regclass
-      and conname = 'organizations_verification_status_check'
-  ) then
-    alter table public.organizations
-      add constraint organizations_verification_status_check
-      check (verification_status in ('verify', 'verified'));
-  end if;
-end;
-$$;
+alter table public.organizations
+  drop column if exists dispatch_contact_name,
+  drop column if exists dispatch_contact_phone,
+  drop column if exists dispatch_contact_email,
+  drop column if exists verification_status;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
+  full_name text,
   title text,
   first_name text,
   last_name text,
@@ -85,6 +64,7 @@ create table if not exists public.profiles (
 );
 
 alter table public.profiles
+  add column if not exists full_name text,
   add column if not exists title text,
   add column if not exists first_name text,
   add column if not exists last_name text,
@@ -101,9 +81,10 @@ alter table public.profiles
   add column if not exists created_at timestamptz not null default now(),
   add column if not exists updated_at timestamptz not null default now();
 
-insert into public.profiles (id, first_name, last_name, email, phone, address, created_at, updated_at)
+insert into public.profiles (id, full_name, first_name, last_name, email, phone, address, created_at, updated_at)
 select
   rp.id,
+  rp.full_name,
   nullif(split_part(trim(rp.full_name), ' ', 1), ''),
   nullif(trim(substr(trim(rp.full_name), length(split_part(trim(rp.full_name), ' ', 1)) + 1)), ''),
   rp.email,
@@ -113,11 +94,12 @@ select
   rp.updated_at
 from public.resident_profiles rp
 on conflict (id) do update
-set first_name = coalesce(public.profiles.first_name, excluded.first_name),
-    last_name = coalesce(public.profiles.last_name, excluded.last_name),
-    email = coalesce(public.profiles.email, excluded.email),
-    phone = coalesce(public.profiles.phone, excluded.phone),
-    address = coalesce(public.profiles.address, excluded.address),
+set full_name = excluded.full_name,
+    first_name = coalesce(nullif(public.profiles.first_name, ''), excluded.first_name),
+    last_name = coalesce(nullif(public.profiles.last_name, ''), excluded.last_name),
+    email = excluded.email,
+    phone = excluded.phone,
+    address = excluded.address,
     updated_at = greatest(public.profiles.updated_at, excluded.updated_at);
 
 create or replace function public.sync_resident_profile_to_profiles()
@@ -127,9 +109,10 @@ security definer
 set search_path = ''
 as $$
 begin
-  insert into public.profiles (id, first_name, last_name, email, phone, address)
+  insert into public.profiles (id, full_name, first_name, last_name, email, phone, address)
   values (
     new.id,
+    new.full_name,
     nullif(split_part(trim(new.full_name), ' ', 1), ''),
     nullif(trim(substr(trim(new.full_name), length(split_part(trim(new.full_name), ' ', 1)) + 1)), ''),
     new.email,
@@ -137,11 +120,13 @@ begin
     new.address
   )
   on conflict (id) do update
-  set first_name = excluded.first_name,
-      last_name = excluded.last_name,
+  set full_name = excluded.full_name,
+      first_name = coalesce(nullif(public.profiles.first_name, ''), excluded.first_name),
+      last_name = coalesce(nullif(public.profiles.last_name, ''), excluded.last_name),
       email = excluded.email,
       phone = excluded.phone,
-      address = excluded.address;
+      address = excluded.address,
+      updated_at = now();
   return new;
 end;
 $$;
@@ -153,6 +138,8 @@ create trigger resident_profiles_sync_profiles
   after insert or update of full_name, email, phone, address
   on public.resident_profiles
   for each row execute function public.sync_resident_profile_to_profiles();
+
+drop trigger if exists profiles_sync_resident_profile on public.profiles;
 
 create sequence if not exists public.report_tracking_number_seq;
 
@@ -167,6 +154,14 @@ create table if not exists public.reports (
   location_lng numeric,
   location_name text,
   media_url text,
+  audio_url text,
+  image_url text,
+  original_transcription text,
+  english_translation text,
+  photo_matches_report boolean default true,
+  issue_category text,
+  urgency text,
+  recommended_organization jsonb,
   source text not null,
   legacy boolean not null default false,
   reporter_id uuid references auth.users (id) on delete set null,
@@ -182,6 +177,7 @@ create table if not exists public.reports (
   user_reported_address text,
   user_selected_organization text,
   user_selected_branch text,
+  recommended_organization_text text,
   contact_preference text,
   status text not null default 'Pending Dispatch',
   location extensions.geography(Point, 4326),
@@ -208,22 +204,26 @@ create table if not exists public.reports (
   updated_at timestamptz not null default now(),
   constraint reports_reporter_type_check
     check (reporter_type in ('resident', 'guest', 'anonymous')),
+  constraint reports_source_check
+    check (source in ('snap_and_say', 'report_form', 'guest_report') or legacy),
   constraint reports_report_level_check
     check (report_level in ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),
   constraint reports_user_selected_level_check
     check (user_selected_level is null or user_selected_level in ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),
   constraint reports_status_check
-    check (status in (
-      'New',
-      'Pending Dispatch',
-      'Needs Review',
-      'Dispatched',
-      'Acknowledged',
-      'In Progress',
-      'Resolved',
-      'Rejected',
-      'Duplicate'
-    ))
+    check (
+      status in (
+        'Pending Dispatch',
+        'Needs Review',
+        'Dispatched',
+        'Acknowledged',
+        'In Progress',
+        'Resolved',
+        'Rejected',
+        'Duplicate'
+      )
+      or (legacy and status = 'New')
+    )
 );
 
 alter table public.reports
@@ -236,6 +236,26 @@ alter table public.reports
   add column if not exists location_lng numeric,
   add column if not exists location_name text,
   add column if not exists media_url text,
+  add column if not exists audio_url text,
+  add column if not exists image_url text,
+  add column if not exists location_accuracy double precision,
+  add column if not exists device_timestamp timestamptz,
+  add column if not exists original_transcription text,
+  add column if not exists detected_language text,
+  add column if not exists english_translation text,
+  add column if not exists visual_evidence_summary text,
+  add column if not exists photo_matches_report boolean default true,
+  add column if not exists issue_category text,
+  add column if not exists urgency text,
+  add column if not exists requires_immediate_dispatch boolean not null default false,
+  add column if not exists extracted_location text,
+  add column if not exists recommended_organization jsonb,
+  add column if not exists alternative_organizations jsonb not null default '[]'::jsonb,
+  add column if not exists classification_confidence double precision,
+  add column if not exists routing_confidence double precision,
+  add column if not exists needs_human_review boolean not null default false,
+  add column if not exists review_reason text,
+  add column if not exists gps_status text,
   add column if not exists source text,
   add column if not exists legacy boolean not null default false,
   add column if not exists reporter_id uuid references auth.users (id) on delete set null,
@@ -247,28 +267,17 @@ alter table public.reports
   add column if not exists report_level text not null default 'MEDIUM',
   add column if not exists description_original text,
   add column if not exists description_english text,
-  add column if not exists detected_language text,
   add column if not exists user_reported_address text,
   add column if not exists user_selected_organization text,
   add column if not exists user_selected_branch text,
+  add column if not exists recommended_organization_text text,
   add column if not exists contact_preference text,
   add column if not exists status text not null default 'Pending Dispatch',
   add column if not exists location extensions.geography(Point, 4326),
   add column if not exists latitude double precision,
   add column if not exists longitude double precision,
-  add column if not exists location_accuracy double precision,
-  add column if not exists gps_status text,
-  add column if not exists extracted_location text,
-  add column if not exists visual_evidence_summary text,
-  add column if not exists requires_immediate_dispatch boolean not null default false,
   add column if not exists recommended_organization_id uuid references public.organizations (id) on delete set null,
   add column if not exists assigned_organization_id uuid references public.organizations (id) on delete set null,
-  add column if not exists alternative_organizations jsonb not null default '[]'::jsonb,
-  add column if not exists classification_confidence double precision,
-  add column if not exists routing_confidence double precision,
-  add column if not exists needs_human_review boolean not null default false,
-  add column if not exists review_reason text,
-  add column if not exists device_timestamp timestamptz,
   add column if not exists resolved_at timestamptz,
   add column if not exists duplicate_of uuid references public.reports (id) on delete set null,
   add column if not exists incident_id uuid,
@@ -348,6 +357,19 @@ begin
     where table_schema = 'public' and table_name = 'reports' and column_name = 'issue_category'
   ) then
     execute 'update public.reports set ai_category = coalesce(ai_category, issue_category) where issue_category is not null';
+  end if;
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'reports' and column_name = 'recommended_organization'
+  ) then
+    execute $backfill$
+      update public.reports
+      set recommended_organization_text = coalesce(
+        recommended_organization_text,
+        recommended_organization ->> 'organization_name'
+      )
+      where jsonb_typeof(recommended_organization) = 'object'
+    $backfill$;
   end if;
   if exists (
     select 1 from information_schema.columns
@@ -437,6 +459,14 @@ begin
   end if;
   if not exists (
     select 1 from pg_constraint
+    where conrelid = 'public.reports'::regclass and conname = 'reports_source_check'
+  ) then
+    alter table public.reports
+      add constraint reports_source_check
+      check (source in ('snap_and_say', 'report_form', 'guest_report') or legacy);
+  end if;
+  if not exists (
+    select 1 from pg_constraint
     where conrelid = 'public.reports'::regclass and conname = 'reports_report_level_check'
   ) then
     alter table public.reports
@@ -457,22 +487,25 @@ begin
   ) then
     alter table public.reports
       add constraint reports_status_check
-      check (status in (
-        'New',
-        'Pending Dispatch',
-        'Needs Review',
-        'Dispatched',
-        'Acknowledged',
-        'In Progress',
-        'Resolved',
-        'Rejected',
-        'Duplicate'
-      ));
+      check (
+        status in (
+          'Pending Dispatch',
+          'Needs Review',
+          'Dispatched',
+          'Acknowledged',
+          'In Progress',
+          'Resolved',
+          'Rejected',
+          'Duplicate'
+        )
+        or (legacy and status = 'New')
+      );
   end if;
 end;
 $$;
 
 alter table public.reports validate constraint reports_reporter_type_check;
+alter table public.reports validate constraint reports_source_check;
 alter table public.reports validate constraint reports_report_level_check;
 alter table public.reports validate constraint reports_user_selected_level_check;
 alter table public.reports validate constraint reports_status_check;
@@ -501,6 +534,8 @@ insert into public.report_evidence (
 select
   r.id,
   case
+    when media.kind = 'audio' then 'audio'
+    when media.kind = 'image' then 'image'
     when o.metadata ->> 'mimetype' like 'audio/%' then 'audio'
     when o.metadata ->> 'mimetype' like 'video/%' then 'video'
     else 'image'
@@ -508,18 +543,28 @@ select
   o.bucket_id,
   o.name,
   o.metadata ->> 'mimetype',
-  coalesce(nullif(o.metadata ->> 'size', '')::bigint, 0)
+  case
+    when o.metadata ->> 'size' ~ '^[0-9]{1,18}$'
+      then (o.metadata ->> 'size')::bigint
+    else 0
+  end
 from public.reports r
+cross join lateral (values
+  ('media'::text, r.media_url),
+  ('audio'::text, r.audio_url),
+  ('image'::text, r.image_url)
+) as media(kind, reference)
 join storage.objects o
-  on r.media_url = o.name
-  or right(r.media_url, length('/storage/v1/object/' || o.bucket_id || '/' || o.name))
+  on media.reference = o.name
+  or right(media.reference, length('/storage/v1/object/' || o.bucket_id || '/' || o.name))
     = '/storage/v1/object/' || o.bucket_id || '/' || o.name
-  or right(r.media_url, length('/storage/v1/object/public/' || o.bucket_id || '/' || o.name))
+  or right(media.reference, length('/storage/v1/object/public/' || o.bucket_id || '/' || o.name))
     = '/storage/v1/object/public/' || o.bucket_id || '/' || o.name
-  or right(r.media_url, length('/storage/v1/object/sign/' || o.bucket_id || '/' || o.name))
+  or right(media.reference, length('/storage/v1/object/sign/' || o.bucket_id || '/' || o.name))
     = '/storage/v1/object/sign/' || o.bucket_id || '/' || o.name
-where r.media_url is not null
-  and btrim(r.media_url) <> ''
+join storage.buckets b on b.id = o.bucket_id and b.public = false
+where media.reference is not null
+  and btrim(media.reference) <> ''
   and (o.metadata ->> 'mimetype' like 'audio/%'
     or o.metadata ->> 'mimetype' like 'video/%'
     or o.metadata ->> 'mimetype' like 'image/%')
@@ -529,12 +574,39 @@ create table if not exists public.report_events (
   id uuid primary key default gen_random_uuid(),
   report_id uuid not null references public.reports (id) on delete cascade,
   event_type text not null,
+  note text,
   actor_id uuid references auth.users (id) on delete set null,
   from_status text,
   to_status text,
   from_organization_id uuid references public.organizations (id) on delete set null,
   to_organization_id uuid references public.organizations (id) on delete set null,
   created_at timestamptz not null default now()
+);
+
+alter table public.report_events
+  add column if not exists note text;
+
+create table if not exists public.ai_runs (
+  id uuid primary key default gen_random_uuid(),
+  report_id uuid not null references public.reports (id) on delete cascade,
+  model text not null,
+  prompt_version text not null,
+  raw_output jsonb,
+  latency_ms integer check (latency_ms is null or latency_ms >= 0),
+  tokens jsonb,
+  error text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.consents (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  consent_type text not null,
+  policy_version text not null,
+  granted_at timestamptz not null default now(),
+  revoked_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 create index if not exists reports_location_gist_idx
@@ -554,25 +626,49 @@ create index if not exists report_evidence_report_id_idx
 create index if not exists report_events_report_id_created_at_idx
   on public.report_events (report_id, created_at desc);
 
-insert into storage.buckets (id, name, public)
-values ('report-evidence', 'report-evidence', false)
-on conflict (id) do update set public = false;
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'report-evidence',
+  'report-evidence',
+  false,
+  25 * 1024 * 1024,
+  array[
+    'audio/aac', 'audio/mp3', 'audio/mpeg', 'audio/mp4', 'audio/ogg',
+    'audio/wav', 'audio/webm', 'audio/x-wav',
+    'image/heic', 'image/heif', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+    'video/3gpp', 'video/mp4', 'video/quicktime', 'video/webm'
+  ]
+)
+on conflict (id) do update
+set public = false,
+    file_size_limit = excluded.file_size_limit,
+    allowed_mime_types = excluded.allowed_mime_types;
 
 alter table public.organizations enable row level security;
 alter table public.profiles enable row level security;
 alter table public.reports enable row level security;
 alter table public.report_evidence enable row level security;
 alter table public.report_events enable row level security;
+alter table public.ai_runs enable row level security;
+alter table public.consents enable row level security;
 
 revoke all on public.organizations, public.profiles, public.reports,
-  public.report_evidence, public.report_events from anon, authenticated;
-grant select on public.organizations to anon, authenticated;
-grant select, update (title, first_name, last_name, phone, preferred_language, address,
-  address_line_2, suburb, municipality, province, postal_code, home_location)
+  public.report_evidence, public.report_events, public.ai_runs, public.consents
+  from anon, authenticated;
+revoke all on public.organizations from anon, authenticated;
+grant select (name, type, jurisdiction_level, province, municipality, is_active)
+  on public.organizations to anon, authenticated;
+grant select on public.profiles to authenticated;
+revoke update (first_name, last_name, email, phone, address)
+  on public.profiles from authenticated;
+grant update (title, preferred_language, address_line_2, suburb, municipality, province,
+  postal_code, home_location)
   on public.profiles to authenticated;
+grant select, insert on public.consents to authenticated;
+grant update (revoked_at) on public.consents to authenticated;
 grant select on public.reports, public.report_evidence to authenticated;
 grant all on public.organizations, public.profiles, public.reports,
-  public.report_evidence, public.report_events to service_role;
+  public.report_evidence, public.report_events, public.ai_runs, public.consents to service_role;
 grant usage, select on sequence public.report_tracking_number_seq to service_role;
 
 drop policy if exists organizations_select_active on public.organizations;
@@ -591,15 +687,58 @@ create policy profiles_update_own
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
-drop policy if exists reports_select_own on public.reports;
-drop policy if exists "Authenticated users view reports" on public.reports;
-drop policy if exists "Residents can view their own reports" on public.reports;
-drop policy if exists "Residents can insert their own reports" on public.reports;
-drop policy if exists "Residents can update their own reports" on public.reports;
-drop policy if exists "Service Role Full Access reports" on public.reports;
-create policy reports_select_own
-  on public.reports for select to authenticated
-  using (reporter_id = auth.uid());
+drop policy if exists consents_select_own on public.consents;
+create policy consents_select_own
+  on public.consents for select to authenticated
+  using (user_id = auth.uid());
+
+drop policy if exists consents_insert_own on public.consents;
+create policy consents_insert_own
+  on public.consents for insert to authenticated
+  with check (user_id = auth.uid());
+
+drop policy if exists consents_revoke_own on public.consents;
+create policy consents_revoke_own
+  on public.consents for update to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+do $$
+declare
+  policy_record record;
+begin
+  for policy_record in
+    select policyname
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'reports'
+      and policyname not in ('reports_select_own', 'reports_service_role_all')
+  loop
+    execute format('drop policy %I on public.reports', policy_record.policyname);
+  end loop;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'reports'
+      and policyname = 'reports_select_own'
+  ) then
+    create policy reports_select_own
+      on public.reports for select to authenticated
+      using (reporter_id = auth.uid());
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public' and tablename = 'reports'
+      and policyname = 'reports_service_role_all'
+  ) then
+    create policy reports_service_role_all
+      on public.reports for all to service_role
+      using (true)
+      with check (true);
+  end if;
+end;
+$$;
 
 drop policy if exists report_evidence_select_own on public.report_evidence;
 create policy report_evidence_select_own
@@ -613,10 +752,23 @@ create policy report_evidence_select_own
 
 revoke all on public.report_events from service_role;
 grant select on public.report_events to service_role;
+revoke all on public.report_events from public, anon, authenticated;
 drop policy if exists report_events_select_service_role on public.report_events;
 create policy report_events_select_service_role
   on public.report_events for select to service_role
   using (true);
+
+drop policy if exists ai_runs_service_role_all on public.ai_runs;
+create policy ai_runs_service_role_all
+  on public.ai_runs for all to service_role
+  using (true)
+  with check (true);
+
+drop policy if exists consents_service_role_all on public.consents;
+create policy consents_service_role_all
+  on public.consents for all to service_role
+  using (true)
+  with check (true);
 
 drop policy if exists organizations_service_role_all on public.organizations;
 create policy organizations_service_role_all
@@ -626,11 +778,6 @@ create policy organizations_service_role_all
 drop policy if exists profiles_service_role_all on public.profiles;
 create policy profiles_service_role_all
   on public.profiles for all to service_role
-  using (true)
-  with check (true);
-drop policy if exists reports_service_role_all on public.reports;
-create policy reports_service_role_all
-  on public.reports for all to service_role
   using (true)
   with check (true);
 drop policy if exists report_evidence_service_role_all on public.report_evidence;
@@ -688,6 +835,37 @@ $$;
 
 revoke all on function public.record_report_event() from public, anon, authenticated;
 
+create or replace function public.log_report_event(
+  p_report_id uuid,
+  p_event_type text,
+  p_note text,
+  p_actor uuid
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  event_id uuid;
+begin
+  if p_event_type not in ('ai_classified', 'routed', 'human_override') then
+    raise exception 'Unsupported report event type';
+  end if;
+
+  insert into public.report_events (report_id, event_type, note, actor_id)
+  values (p_report_id, p_event_type, p_note, p_actor)
+  returning id into event_id;
+
+  return event_id;
+end;
+$$;
+
+revoke all on function public.log_report_event(uuid, text, text, uuid)
+  from public, anon, authenticated;
+grant execute on function public.log_report_event(uuid, text, text, uuid)
+  to service_role;
+
 create or replace function public.generate_report_tracking_number()
 returns trigger
 language plpgsql
@@ -723,6 +901,10 @@ drop trigger if exists organizations_updated_at on public.organizations;
 create trigger organizations_updated_at
   before update on public.organizations
   for each row execute function public.set_updated_at();
+drop trigger if exists consents_updated_at on public.consents;
+create trigger consents_updated_at
+  before update on public.consents
+  for each row execute function public.set_updated_at();
 
 drop trigger if exists reports_record_events on public.reports;
 create trigger reports_record_events
@@ -742,5 +924,11 @@ create policy report_evidence_objects_select_own
         and r.reporter_id = auth.uid()
     )
   );
+
+select policyname, cmd, roles, qual, with_check
+from pg_policies
+where schemaname = 'public'
+  and tablename = 'reports'
+order by policyname;
 
 notify pgrst, 'reload schema';

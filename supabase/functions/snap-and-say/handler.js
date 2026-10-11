@@ -7,6 +7,8 @@ const CORS_HEADERS = {
 
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const GEMINI_MODEL = 'gemini-2.5-flash';
+const PROMPT_VERSION = 'snap-and-say-v1';
 const ALLOWED_AUDIO_TYPES = new Set([
   'audio/mpeg',
   'audio/mp3',
@@ -285,21 +287,22 @@ async function resolveResidentId(request, env, fetchImpl, resolver) {
   return user.id;
 }
 
-async function uploadReportMedia(payload, residentId, env, fetchImpl) {
+async function uploadReportMedia(payload, reporterId, reportId, env, fetchImpl) {
   const projectUrl = env.get('SUPABASE_URL');
   const serviceRole = env.get('SUPABASE_SERVICE_ROLE_KEY') || env.get('SUPABASE_SERVICE_ROLE');
   if (!projectUrl || !serviceRole) {
     throw Object.assign(new Error('Report media storage is not configured.'), { status: 503, code: 'STORAGE_UNAVAILABLE' });
   }
-  const urls = { audio_url: null, image_url: null };
+  const evidence = [];
   const items = [
-    { field: 'audio', bucket: 'audio-reports', base64: payload.audio_base64, mime: payload.audio_mime_type },
-    { field: 'image', bucket: 'image-reports', base64: payload.image_base64, mime: payload.image_mime_type }
+    { field: 'audio', kind: 'audio', base64: payload.audio_base64, mime: payload.audio_mime_type, duration: payload.duration_seconds },
+    { field: 'image', kind: 'image', base64: payload.image_base64, mime: payload.image_mime_type, duration: null }
   ];
   for (const item of items) {
     if (!item.base64 || !item.mime) continue;
-    const objectPath = `${residentId}/${crypto.randomUUID()}.${mimeToExtension(item.mime)}`;
-    const response = await fetchImpl(`${projectUrl}/storage/v1/object/${item.bucket}/${objectPath}`, {
+    const objectPath = `${reporterId}/${reportId}/${item.field}-${crypto.randomUUID()}.${mimeToExtension(item.mime)}`;
+    const bytes = Buffer.from(item.base64, 'base64');
+    const response = await fetchImpl(`${projectUrl}/storage/v1/object/report-evidence/${objectPath}`, {
       method: 'POST',
       headers: {
         apikey: serviceRole,
@@ -307,7 +310,7 @@ async function uploadReportMedia(payload, residentId, env, fetchImpl) {
         'Content-Type': item.mime,
         'x-upsert': 'false'
       },
-      body: Buffer.from(item.base64, 'base64')
+      body: bytes
     });
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
@@ -316,63 +319,71 @@ async function uploadReportMedia(payload, residentId, env, fetchImpl) {
         code: 'MEDIA_UPLOAD_FAILED'
       });
     }
-    urls[`${item.field}_url`] = `${projectUrl}/storage/v1/object/${item.bucket}/${objectPath}`;
-  }
-  return urls;
-}
-
-async function _saveRawMedia(payload) {
-  const projectUrl = process?.env?.SUPABASE_URL;
-  const serviceRole = process?.env?.SUPABASE_SERVICE_ROLE_KEY || process?.env?.SUPABASE_SERVICE_ROLE;
-  if (!projectUrl || !serviceRole) return { stored: false };
-
-  const storageBuckets = ['audio-reports', 'image-reports'];
-  for (const bucket of storageBuckets) {
-    const fileBase64 = bucket === 'audio-reports' ? payload.audio_base64 : payload.image_base64;
-    const mimeType = bucket === 'audio-reports' ? payload.audio_mime_type : payload.image_mime_type;
-    if (!fileBase64 || !mimeType) continue;
-    const buffer = Buffer.from(fileBase64, 'base64');
-    const objectName = `${Date.now()}-${Math.random().toString(16).slice(2)}.${mimeToExtension(mimeType)}`;
-    const storageResponse = await fetch(`${projectUrl}/storage/v1/object/${bucket}/${objectName}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${serviceRole}`,
-        apikey: serviceRole,
-        'Content-Type': mimeType
-      },
-      body: buffer
+    evidence.push({
+      kind: item.kind,
+      bucket: 'report-evidence',
+      path: objectPath,
+      mime_type: item.mime,
+      size_bytes: bytes.length,
+      duration_seconds: item.duration
     });
-    if (!storageResponse.ok) {
-      throw new Error('Unable to store raw media');
-    }
   }
-
-  return { stored: true };
+  return evidence;
 }
 
-async function persistReport(payload, residentId, env, fetchImpl) {
+async function deleteUploadedEvidence(evidence, projectUrl, serviceRole, fetchImpl) {
+  const errors = [];
+  for (const item of evidence) {
+    const response = await fetchImpl(`${projectUrl}/storage/v1/object/${item.bucket}/${item.path}`, {
+      method: 'DELETE',
+      headers: { apikey: serviceRole, Authorization: `Bearer ${serviceRole}` }
+    });
+    if (!response.ok) errors.push(`${item.path} (${response.status})`);
+  }
+  return errors;
+}
+
+async function deleteFailedReport(reportId, evidence, projectUrl, serviceRole, fetchImpl) {
+  const errors = [];
+  const response = await fetchImpl(
+    `${projectUrl}/rest/v1/reports?id=eq.${encodeURIComponent(reportId)}`,
+    {
+      method: 'DELETE',
+      headers: { apikey: serviceRole, Authorization: `Bearer ${serviceRole}` }
+    }
+  );
+  if (!response.ok) errors.push(`report ${reportId} (${response.status})`);
+  errors.push(...await deleteUploadedEvidence(evidence, projectUrl, serviceRole, fetchImpl));
+  return errors;
+}
+
+async function persistReport(payload, residentId, reportId, evidence, env, fetchImpl) {
   const projectUrl = env.get('SUPABASE_URL');
   const serviceRole = env.get('SUPABASE_SERVICE_ROLE_KEY') || env.get('SUPABASE_SERVICE_ROLE');
   if (!projectUrl || !serviceRole) {
-    return { id: `local-${Date.now()}`, status: payload.status || 'Needs Review', stored: false };
+    throw Object.assign(new Error('Report database writes are not configured.'), {
+      status: 503,
+      code: 'REPORT_DATABASE_UNAVAILABLE'
+    });
   }
 
   const row = {
-    resident_id: residentId,
-    audio_url: payload.audio_url,
-    image_url: payload.image_url,
+    id: reportId,
+    reporter_id: residentId,
+    reporter_type: 'resident',
+    source: 'snap_and_say',
     latitude: payload.latitude,
     longitude: payload.longitude,
-    original_transcription: payload.original_transcription || '',
+    description_original: payload.original_transcription || '',
+    description_english: payload.english_translation || '',
     detected_language: payload.detected_language || 'unknown',
-    english_translation: payload.english_translation || '',
     visual_evidence_summary: payload.visual_evidence_summary || '',
-    photo_matches_report: Boolean(payload.photo_matches_report),
-    issue_category: payload.issue_category || 'Unclear report',
-    urgency: payload.urgency || 'MEDIUM',
+    ai_category: payload.issue_category || 'Unclear report',
+    report_level: payload.urgency || 'MEDIUM',
     requires_immediate_dispatch: Boolean(payload.requires_immediate_dispatch),
     extracted_location: payload.extracted_location || '',
     recommended_organization: payload.recommended_organization || { organization_name: 'Municipal dispatch desk', jurisdiction_level: 'municipal', reasoning: '' },
+    recommended_organization_text: payload.recommended_organization?.organization_name || 'Municipal dispatch desk',
     alternative_organizations: payload.alternative_organizations || [],
     classification_confidence: payload.classification_confidence ?? 0,
     routing_confidence: payload.routing_confidence ?? 0,
@@ -389,6 +400,7 @@ async function persistReport(payload, residentId, env, fetchImpl) {
     headers: {
       'Content-Type': 'application/json',
       apikey: serviceRole,
+      Prefer: 'return=representation',
       Authorization: `Bearer ${serviceRole}`
     },
     body: JSON.stringify(row)
@@ -396,12 +408,95 @@ async function persistReport(payload, residentId, env, fetchImpl) {
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
+    const cleanupErrors = await deleteUploadedEvidence(evidence, projectUrl, serviceRole, fetchImpl);
+    if (cleanupErrors.length) {
+      throw Object.assign(new Error(`${detail || 'Could not save the report row'} Evidence cleanup failed: ${cleanupErrors.join('; ')}`), {
+        status: 500,
+        code: 'EVIDENCE_CLEANUP_FAILED'
+      });
+    }
     throw Object.assign(new Error(detail || 'Could not save the report row'), { status: 500 });
   }
 
   const data = await response.json();
   const saved = Array.isArray(data) ? data[0] : data;
-  return { id: saved?.id || `row-${Date.now()}`, ...saved, stored: true };
+  const persistedEvidence = [];
+  for (const item of evidence) {
+    const evidenceResponse = await fetchImpl(`${projectUrl}/rest/v1/report_evidence`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: serviceRole,
+        Authorization: `Bearer ${serviceRole}`,
+      },
+      body: JSON.stringify({ report_id: reportId, ...item })
+    });
+    if (!evidenceResponse.ok) {
+      const detail = await evidenceResponse.text().catch(() => '');
+      const cleanupErrors = await deleteFailedReport(reportId, evidence, projectUrl, serviceRole, fetchImpl);
+      if (cleanupErrors.length) {
+        throw Object.assign(new Error(`${detail || 'Could not save report evidence metadata'} Cleanup failed: ${cleanupErrors.join('; ')}`), {
+          status: 500,
+          code: 'REPORT_CLEANUP_FAILED'
+        });
+      }
+      throw Object.assign(new Error(detail || 'Could not save report evidence metadata.'), { status: 500 });
+    }
+    persistedEvidence.push(item);
+  }
+  return { id: saved?.id || reportId, ...saved, evidence: persistedEvidence, stored: true };
+}
+
+async function logReportEvent(reportId, eventType, note, actorId, env, fetchImpl) {
+  const projectUrl = env.get('SUPABASE_URL');
+  const serviceRole = env.get('SUPABASE_SERVICE_ROLE_KEY') || env.get('SUPABASE_SERVICE_ROLE');
+  const response = await fetchImpl(`${projectUrl}/rest/v1/rpc/log_report_event`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: serviceRole,
+      Authorization: `Bearer ${serviceRole}`,
+    },
+    body: JSON.stringify({
+      p_report_id: reportId,
+      p_event_type: eventType,
+      p_note: note,
+      p_actor: actorId
+    })
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw Object.assign(new Error(detail || `Could not log ${eventType} report event.`), { status: 500 });
+  }
+}
+
+async function persistAiRun(reportId, run, env, fetchImpl) {
+  const projectUrl = env.get('SUPABASE_URL');
+  const serviceRole = env.get('SUPABASE_SERVICE_ROLE_KEY') || env.get('SUPABASE_SERVICE_ROLE');
+  const response = await fetchImpl(`${projectUrl}/rest/v1/ai_runs`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: serviceRole,
+      Authorization: `Bearer ${serviceRole}`
+    },
+    body: JSON.stringify({
+      report_id: reportId,
+      model: GEMINI_MODEL,
+      prompt_version: PROMPT_VERSION,
+      raw_output: run.rawOutput,
+      latency_ms: run.latencyMs,
+      tokens: run.tokens,
+      error: run.error
+    })
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw Object.assign(new Error(detail || 'Could not save AI run metadata.'), {
+      status: 500,
+      code: 'AI_RUN_SAVE_FAILED'
+    });
+  }
 }
 
 async function parseReport(request) {
@@ -487,44 +582,84 @@ async function handleSnapAndSay(request, context = {}) {
   try {
     const payload = await parseReport(request);
     const residentId = await resolveResidentId(request, env, fetchImpl, context.resolveUserId);
-    const mediaUrls = await uploadReportMedia(payload, residentId, env, fetchImpl);
-    Object.assign(payload, mediaUrls);
+    const reportId = crypto.randomUUID();
+    const evidence = await uploadReportMedia(payload, residentId, reportId, env, fetchImpl);
     let result;
+    let rawAiOutput = null;
+    let aiError = null;
+    const aiStartedAt = Date.now();
     try {
       const geminiResponse = await callGemini({ env, fetchImpl, payload });
+      rawAiOutput = geminiResponse;
       result = geminiResponse?.status === 'Needs Review'
         ? { ...payload, ...geminiResponse }
         : finalizeGeminiResult(payload, parseGeminiJson(geminiResponse));
-    } catch (error) {
-      let attempts = 0;
-      while (attempts < 1) {
-        try {
-          const geminiResponse = await callGemini({ env, fetchImpl, payload });
-          result = geminiResponse?.status === 'Needs Review'
-            ? { ...payload, ...geminiResponse }
-            : finalizeGeminiResult(payload, parseGeminiJson(geminiResponse));
-          break;
-        } catch (retryError) {
-          attempts += 1;
-          const fallback = buildFallbackResponse({
+      if (geminiResponse?.status === 'Needs Review') {
+        aiError = String(geminiResponse.review_reason || 'AI analysis unavailable.');
+      }
+    } catch (firstError) {
+      aiError = firstError.message;
+      try {
+        const geminiResponse = await callGemini({ env, fetchImpl, payload });
+        rawAiOutput = geminiResponse;
+        result = geminiResponse?.status === 'Needs Review'
+          ? { ...payload, ...geminiResponse }
+          : finalizeGeminiResult(payload, parseGeminiJson(geminiResponse));
+        if (geminiResponse?.status === 'Needs Review') {
+          aiError = String(geminiResponse.review_reason || aiError);
+        } else {
+          aiError = `Recovered after retry: ${aiError}`;
+        }
+      } catch (retryError) {
+        aiError = retryError.message || aiError;
+        result = {
+          ...payload,
+          ...buildFallbackResponse({
             ...payload,
-            status: 'Needs Review',
             gps_status: payload.gps_status,
             reason: 'Gemini output was malformed.'
-          }, 'Gemini returned malformed JSON after a retry and the raw media was saved for manual triage.');
-          const persisted = await persistReport({ ...payload, ...fallback, ...mediaUrls }, residentId, env, fetchImpl);
-          return jsonResponse({ ok: true, report: publicReport({ ...fallback, ...mediaUrls, id: persisted.id }), queued: false }, 200);
-        }
-      }
-      if (!result) {
-        const fallback = buildFallbackResponse({ ...payload, gps_status: payload.gps_status }, 'The Gemini response was malformed and the raw media was preserved for review.');
-        const persisted = await persistReport({ ...payload, ...fallback, ...mediaUrls }, residentId, env, fetchImpl);
-        return jsonResponse({ ok: true, report: publicReport({ ...fallback, ...mediaUrls, id: persisted.id }), queued: false }, 200);
+          }, 'Gemini returned malformed output after a retry; the report and original evidence were saved for manual review.')
+        };
       }
     }
 
-    const persisted = await persistReport(result, residentId, env, fetchImpl);
-    return jsonResponse({ ok: true, report: publicReport({ ...result, id: persisted.id }), queued: false }, 200);
+    const persisted = await persistReport(result, residentId, reportId, evidence, env, fetchImpl);
+    if (persisted.stored) {
+      await persistAiRun(reportId, {
+        rawOutput: rawAiOutput,
+        latencyMs: Math.max(0, Date.now() - aiStartedAt),
+        tokens: rawAiOutput?.usageMetadata || null,
+        error: aiError
+      }, env, fetchImpl);
+    }
+    if (persisted.stored) {
+      await logReportEvent(
+        reportId,
+        'ai_classified',
+        `AI category: ${result.issue_category}; level: ${result.urgency}.`,
+        residentId,
+        env,
+        fetchImpl
+      );
+      await logReportEvent(
+        reportId,
+        'routed',
+        `Recommended organization: ${result.recommended_organization?.organization_name || 'unassigned'}.`,
+        residentId,
+        env,
+        fetchImpl
+      );
+    }
+    return jsonResponse({
+      ok: true,
+      report: publicReport({
+        ...result,
+        evidence: persisted.evidence,
+        id: persisted.id,
+        tracking_number: persisted.tracking_number
+      }),
+      queued: false
+    }, 200);
   } catch (error) {
     const status = Number(error?.status || 500);
     return jsonResponse({ ok: false, code: error?.code || 'INVALID_REPORT', message: error?.message || 'Unable to process the report.' }, status);

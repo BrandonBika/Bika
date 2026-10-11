@@ -708,12 +708,12 @@ export class PageSnapAndSay extends BaseElement {
     const card = createElement('div');
     card.style.cssText = 'background:#fff;border-radius:20px;padding:22px 18px;box-shadow:0 12px 30px rgba(0,0,0,0.08);';
 
-    const outcome = this._result?.failure ? 'Not submitted' : this._result?.queued ? 'Queued offline' : 'Report sent';
+    const outcome = this._result?.failure ? 'Not submitted' : this._result?.queued ? 'Queued offline' : 'Report received';
     const badge = createElement('div', { text: outcome });
     badge.style.cssText = 'display:inline-flex;padding:6px 10px;border-radius:999px;background:#e6f4ec;color:#0f5c44;font-weight:700;font-size:12px;';
 
     const title = createElement('h2', {
-      text: this._result?.failure ? 'Your report was not submitted' : this._result?.queued ? 'Saved for retry' : 'Your report is on the way'
+      text: this._result?.failure ? 'Your report was not submitted' : this._result?.queued ? 'Saved for retry' : 'Your report was received'
     });
     title.style.cssText = 'margin:16px 0 10px;font-size:28px;';
 
@@ -730,10 +730,18 @@ export class PageSnapAndSay extends BaseElement {
 
     const facts = createElement('div');
     facts.style.cssText = 'display:grid;gap:12px;';
+    if (this._result?.tracking_number) {
+      const tracking = createElement('div');
+      tracking.style.cssText = 'margin-bottom:14px;padding:12px;border:1px solid #d7e3dd;border-radius:12px;background:#f6faf8;';
+      tracking.append(
+        createElement('div', { text: 'Tracking number' }),
+        createElement('strong', { text: this._result.tracking_number })
+      );
+      card.appendChild(tracking);
+    }
     const items = [
       ['Type', this._result?.issue_category || 'Unclear report'],
-      ['Urgency', this._result?.urgency || 'MEDIUM'],
-      ['Organisation', this._result?.recommended_organization?.organization_name || 'Municipal dispatch desk']
+      ['Urgency', this._result?.urgency || 'MEDIUM']
     ];
     for (const [label, value] of items) {
       const row = createElement('div');

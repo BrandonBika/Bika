@@ -16,7 +16,7 @@ export class PageReportSubmitted extends BaseElement {
     this.classList.add('cn-report-submitted');
 
     const icon = createElement('div', { cls: 'cn-report-submitted-icon', text: '✓', attrs: { 'aria-hidden': 'true' } });
-    const title = createElement('h1', { cls: 'cn-report-submitted-title', text: this._isGuest ? 'Report submitted' : 'Report received' });
+    const title = createElement('h1', { cls: 'cn-report-submitted-title', text: 'Report received' });
     const refBox = createElement('div', { cls: 'cn-report-reference' });
 
     refBox.appendChild(createElement('div', { cls: 'cn-report-reference-label', text: 'Your reference number' }));
@@ -25,8 +25,8 @@ export class PageReportSubmitted extends BaseElement {
     const desc = createElement('p', {
       cls: 'cn-report-submitted-copy',
       text: this._isGuest
-        ? 'Please save this number. You can use it with your phone or email to check progress.'
-        : 'Your report has been routed to the relevant municipal department. You can track live updates in My reports.'
+        ? 'Please save this tracking number.'
+        : 'Your report has been received. You can track updates in My reports.'
     });
 
     const guestNote = createElement('div', { cls: 'cn-report-guest-note' });

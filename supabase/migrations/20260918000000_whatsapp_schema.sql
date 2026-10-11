@@ -1,0 +1,1 @@
+-- Marker for the already-applied remote whatsapp_schema migration.

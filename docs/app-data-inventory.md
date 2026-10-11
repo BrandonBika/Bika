@@ -1,6 +1,6 @@
 # CivicNeuro resident app data inventory
 
-**Inventory refreshed — 11 October 2026.** This document records the checked-in resident app, verified staging metadata, and the current Stage 1 scope. Migrations 0032–0034 are local drafts only; no migration or policy change has been applied to staging or live.
+**Inventory refreshed — 12 October 2026.** This document records the checked-in resident app, previously verified staging metadata, and the current Stage 1 scope. Migrations 0032–0034 are local drafts only; no migration or policy change has been applied to staging or live.
 
 ## 1. Scope and navigation
 
@@ -19,7 +19,7 @@ In the table, **resident** means the router's non-guest authenticated state and 
 | `session-expired` | Both; public | Session-expiry information/action screen. |
 | `guest-report` | Both; public | Guest issue-report form with contact preference, map pin, and CAPTCHA. |
 | `guest-confirmation` | Both; public | Generic “Guest Action Confirmation” page; no report data is rendered. |
-| `report-submitted` | Both; guest allowed | Shows the route-provided reference and links to report detail or guest tracking. |
+| `report-submitted` | Both; guest allowed | Confirms the report was received, shows its tracking number, and links to report detail or guest tracking. It does not claim dispatch to an organisation. |
 | `track-report` | Both; public | Guest lookup form using reference number and the contact submitted with the report. |
 | `home` | Resident and guest | Greeting and shortcuts to reporting, area/community content, news, surveys, and notifications. |
 | `my-reports` | Resident only | Search/filter report list and Snap & Say shortcut. Current list is fixture/store-backed. |
@@ -110,10 +110,10 @@ No `maxlength`/`minlength` is set on the shared `cn-input` component unless a pa
 | Report an issue: Photo | Device/file picker, `image/*` | Optional; no client size limit | **Not passed** to `submitReport` | Collected then dropped. |
 | Report an issue: Video | Device/file picker, `video/*` | Optional; no client size limit | **Not passed** to `submitReport` | Collected then dropped. |
 | Report an issue: Location/address | Typed street/area or map/GPS pin | Page requires either nonempty address or a selected location; map coordinates constrained to South Africa; no text length cap | Address, latitude, longitude sent to report endpoint | Endpoint absent. Pin accuracy and source are not passed. Text address may be sent without coordinates. |
-| Snap & Say: audio | Microphone recording (MediaRecorder) | Required; at least 1 second, auto-stops at 60 seconds; server permits up to 8 MiB and allowlists audio MIME types | Multipart request to `functions/v1/snap-and-say`; uploaded to private `audio-reports`; AI output and URL written to `reports` | Requires a valid signed-in Bearer token; guest UI allowed but server rejects tokenless guest. No reference/tracking number or idempotency key. |
-| Snap & Say: photo | Rear-camera/device image picker (`image/*`, `capture=environment`) | Optional; Edge permits up to 8 MiB and JPEG/PNG/WebP/HEIC/HEIF | Uploaded to private `image-reports`; image URL written to report; image passed to Gemini | Current row stores URL text, not a bucket/path reference. |
+| Snap & Say: audio | Microphone recording | Required; at least 1 second, auto-stops at 60 seconds; server permits up to 8 MiB and allowlists audio MIME types | Multipart `functions/v1/snap-and-say`; private `report-evidence` bucket at `<reporter_id>/<report_id>/<file>`; `report_evidence` stores bucket/path metadata | Draft handler targets `reporter_id` and new reports schema; guest auth, tracking and idempotency remain pending. |
+| Snap & Say: photo | Device camera/image picker | Optional; Edge permits up to 8 MiB and JPEG/PNG/WebP/HEIC/HEIF | Private `report-evidence` bucket at `<reporter_id>/<report_id>/<file>`; evidence metadata stores bucket/path; image also passed to Gemini | No object URL is persisted in the report row. |
 | Snap & Say: location | GPS captured on permission screen and again before submit | Optional; high accuracy requested, timeout 10–20 sec; denied/unavailable maps to `no_gps`; accuracy recorded | Multipart latitude, longitude, accuracy, GPS status inferred in Edge, and device timestamp | Single report-time location is captured. No `geography(Point,4326)` or GiST index in current report migration. |
-| Snap & Say: AI-derived fields | Gemini-produced transcription, language, translation, visual summary, category/urgency, routing, confidence/review flags | Structured response requires fixed keys; urgency accepted only as `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` | Mapped into legacy `reports` text/JSON/numeric columns (`original_transcription`, `english_translation`, `urgency`, etc.) | No `ai_runs`, prompt/model audit, distinct user-selected vs AI category/level, or `report_level` column. |
+| Snap & Say: AI-derived fields | Gemini-produced transcription, language, translation, visual summary, category/urgency, routing, confidence/review flags | Structured response requires fixed keys; urgency accepted only as `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` | Report stores user-visible classification and recommended-organisation text; `ai_runs` stores model/prompt/raw output/latency/token metadata/error | Earlier schema has no AI audit; draft 0032 adds `ai_runs`. A nullable organization link is reserved for a verified future match. |
 | Track report: reference number | Typed text, may be prefilled from confirmation | Required/nonempty; no format/length check | Sent to `report-track` | No handler directory for that slug; no lookup-code field. |
 | Track report: phone/email | Typed text | Required/nonempty; no format validation | Sent as contact to `report-track` | Uses contact as proof rather than the requested short secret; CAPTCHA widget token is not sent. |
 | My Reports: search | Typed free text | Optional; trimmed after 250ms debounce; no cap | Filters in-memory report fixture/store | No persisted query or real report listing. |
@@ -232,7 +232,7 @@ There were no public views. The 18 observed policies were:
 
 One private bucket was returned: `callitin`, max file size 2 MiB, no MIME allowlist reported. The query found no storage policies.
 
-**Beacon access proposal only — no table or policy changes drafted/applied:** the resident Beacon code has no direct query to `beacon_sessions` or `beacon_location_points`. Its live-share session is transient client state, its pending route is in `sessionStorage`, persisted circle/chat state is in `localStorage`, saved contacts use `beacon_contacts`, and route lookup uses `beacon-route`. Checked-in `beacon-share-session` and `beacon-connection` function files are zero bytes. The sessions/location tables are keyed by `wa_id`; they appear disconnected from in-app Beacon but cannot be proven WhatsApp-only from the checked-in code.
+**Beacon policy change approved for Stage 1:** the resident Beacon code has no direct query to `beacon_sessions` or `beacon_location_points`. Its live-share session is transient client state, its pending route is in `sessionStorage`, persisted circle/chat state is in `localStorage`, saved contacts use `beacon_contacts`, and route lookup uses `beacon-route`. Checked-in `beacon-share-session` and `beacon-connection` function files are zero bytes. The sessions/location tables are keyed by `wa_id`; they appear disconnected from in-app Beacon but cannot be proven WhatsApp-only from the checked-in code. Stage 1 drops only `Authenticated users view beacon sessions` and `Authenticated users view beacon location points`, preserving `Service Role Full Access beacon_sessions` and `Service Role Full Access beacon_location_points`. **Beacon live sharing with chosen contacts** is a later feature and is not included in this phase.
 
 **Reports compatibility requirement:** the deployed `reports.wa_id` is NOT NULL. Stage 1 must alter it to nullable so app-originated reports can omit it, retain all existing report columns, and avoid modifying WhatsApp tables or the `whatsapp-webhook` function. A read-only count found one existing row (`source = 'WhatsApp'`, `status = 'New'`), one row with category, one with coordinates, and one with `media_url`. Preserve the old values, flag it `legacy`, and backfill available values into the new columns. Its non-empty `media_url` does not match any `storage.objects` path or supported Supabase Storage URL, so no safe `report_evidence` bucket/path can be derived; do not fabricate one or fetch an unknown external reference. Resolve this row's media pointer before applying the migration, or explicitly approve leaving it only in the retained legacy column.
 
@@ -255,45 +255,40 @@ One private bucket was returned: `callitin`, max file size 2 MiB, no MIME allowl
 
 ## 8. Open questions before Stage 1
 
-1. **Guest lookup policy:** confirmed: lookup codes do not expire and lock after five failed attempts. The hash is server-only; tracking-number-only lookup returns no report details.
+1. **Guest lookup policy:** lookup codes do not expire. Failed attempts are counted by report and requester/IP key hash; five failures lock that report/requester pair for 15 minutes, never permanently. The hash is server-only; tracking-number-only lookup returns no report details.
 2. **Applied/deployed state:** the staging tables, columns, policies, bucket, report source/status values, and migration history were queried on 11 October 2026 and are recorded above. The `db dump` could not run without Docker/Podman, and deployed Edge Function versions were not verified.
 3. **Paused channel:** WhatsApp reporting is paused until business registration for the WhatsApp Business API. It is excluded from Stage 1; leave its tables and webhook unchanged. Revisit it only when the business registration is complete. QR reporting remains unverified and is not included without evidence of a wired-up flow.
 4. **Other navigation persistence:** polls, surveys, community pulse, trending, news, and notifications currently use fixtures or inert controls rather than a verified persisted backend. They are not included in Stage 1 under the instruction to add only wired features. Beacon session/location tables are already present in staging but are not read by the resident Beacon code; no policy changes will be made until the owner/share proposal is approved.
-5. **Staging verification limits:** staging ref `gnwaaedtofazlkjkurea` was linked and queried read-only. No migration has been applied. The complete `pg_dump` output and deployed Edge Function versions remain unverified. `supabase migration list --linked` shows remote migration `20260918000000` with no matching local migration, while local migrations `0001`–`0031` have no corresponding remote entries; resolve this history drift before applying a migration.
+5. **Staging verification limits:** the linked ref file was verified as `gnwaaedtofazlkjkurea`. Earlier read-only metadata queries recorded the schema and report counts above. The current CLI read-only queries fail authentication for Supabase's temporary database login role; no password was requested or changed. The complete `pg_dump` output and deployed Edge Function versions remain unverified. `supabase migration list --linked` still shows remote migration `20260918000000` with no matching local migration, while local migrations `0001`–`0031` have no corresponding remote entries; resolve this history drift before applying a migration.
 
 ## 9. Stage 1 table inventory
 
 These are grounded in explicit requirements in the request plus checked-in navigation. Existing names are noted to avoid destructive replacement.
 
-`0032_core_reporting.sql` and `0033_guest_reporting.sql` are local drafts; neither is applied. No Beacon policy migration is drafted pending approval of the owner/share design. All later phase tables below remain proposed and unbuilt.
+`0032_core_reporting.sql`, `0033_guest_reporting.sql`, and `0034_beacon_wa_id_policy_hardening.sql` are local drafts; none is applied. The citizen-app phase includes reporting, evidence, guest lookup security, AI-run records, consent records, and rate-limit foundations. No organisation contact data is seeded or retained in the proposed `organizations` table. Gemini routing remains as text on the report, alongside a nullable organization FK for a later verified link.
 
-**Required reporting, identity, and staff workflow**
+**Citizen-app reporting and security tables**
 
 - `profiles` (migration/backfill from current `resident_profiles`, subject to the naming decision above)
 - `reports`
 - `report_evidence`
-- `organizations`
+- `organizations` (name, type, jurisdiction, boundary, active flag; no dispatch contact columns or seed contacts)
 - `report_events`
+- `ai_runs` (Gemini model, prompt version, raw output, latency, token metadata, and errors)
+- `consents`
+- `rate_limits`
 - `guest_contacts`
-- `guest_report_lookup_secrets` (hash-only lookup credential, no expiry, lock after five failures)
+- `guest_report_lookup_secrets` (hash-only lookup credential, no expiry; temporary 15-minute lockout after five failures per report/requester key)
+
+**Deferred until the organisation dashboard phase**
+
 - `staff_members`
+- staff-by-organisation report policies
 - `report_updates`
 - `dispatch_log`
-- `notifications`
-- `push_tokens`
+- staff identity audit log (`audit_log`)
 
-**Required AI routing, privacy, and abuse controls**
-
-- `issue_categories`
-- `routing_rules`
-- `ai_runs`
-- `routing_corrections`
-- `consents`
-- `audit_log`
-- `rate_limits`
-- `user_flags`
-- `incidents`
-- `guest_contacts`
+AI taxonomy/routing-correction tables (`issue_categories`, `routing_rules`, `routing_corrections`), user flags, and incident clustering remain later AI-routing/abuse work. The current Gemini organisation recommendation is text; the nullable report organization FK can be populated when verified organizations and dashboard routing exist.
 
 For `reports.source`, the observed resident inputs support `snap_and_say`, `report_form`, and `guest_report` as distinct source values. Beacon route/location sharing is not a report submission in the checked-in code, so it is not proposed as a report source unless an external intake is confirmed.
 
@@ -310,6 +305,6 @@ Guest claim and secret lookup can initially be represented by appropriately prot
 
 **Other visible features excluded because persistence is not wired**
 
-- Polls, poll votes, surveys, survey responses, news/content, and Beacon chat/session tables. Their screens are visible, but the checked-in client uses fixtures or local state and the corresponding write handlers are stubs. Existing staging Beacon session/location tables are retained unchanged; only the proposed broad read-policy removal is under consideration.
+- Polls, poll votes, surveys, survey responses, news/content, and Beacon chat/session tables. Their screens are visible, but the checked-in client uses fixtures or local state and the corresponding write handlers are stubs. Existing Beacon session/location tables are retained; a separate later feature is needed for Beacon live sharing with chosen contacts.
 
-Stage 1 migrations are numbered and phase-scoped. Migrations 0032–0033 are drafts, not validated against a local PostgreSQL instance or applied. Do not apply them until the media reference is resolved, staging migration-history drift is reconciled, and the core SQL is reviewed.
+Stage 1 migrations are numbered and phase-scoped. Migrations 0032–0034 are drafts, not applied. The report-track Edge Function is absent from this checkout; its future lookup handler must enforce `captcha_required`/`slow_down_until` only when the corresponding counter's `window_started_at` is within 15 minutes, and must never hard-block by IP. The SQL function returns both window timestamps for that check. Dashboard tables and staff access policies are deferred; the core schema uses nullable organization references and generic `auth.users` actor IDs so dashboard ownership can be added without rebuilding reports/events.
