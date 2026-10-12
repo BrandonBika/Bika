@@ -6,6 +6,7 @@ import { clearChildren, createElement } from '@civicneuro/security-web';
 import { enqueueReport, generateIdempotencyKey } from '@civicneuro/offline-queue';
 import { getAccessToken } from '@civicneuro/supabase-client';
 import { validateEvidenceFile } from '../../features/reports/evidence-validation.js';
+import { reportCategoryLabel } from '../../features/reports/report-category.js';
 import { navigate } from '../../router.js';
 import { sessionStore } from '../../session.js';
 
@@ -764,7 +765,10 @@ export class PageSnapAndSay extends BaseElement {
       card.appendChild(lookup);
     }
     const items = [
-      ['Type', this._result?.issue_category || 'Unclear report'],
+      ['Type', reportCategoryLabel({
+        status: this._result?.status,
+        ai_category: this._result?.issue_category
+      })],
       ['Urgency', this._result?.urgency || 'MEDIUM']
     ];
     for (const [label, value] of items) {

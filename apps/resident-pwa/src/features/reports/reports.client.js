@@ -6,6 +6,7 @@ import { invokeFunction, Endpoints } from '@civicneuro/functions-client';
 import { enqueueReport, generateIdempotencyKey } from '@civicneuro/offline-queue';
 import { selectRows } from '@civicneuro/supabase-client';
 import { sessionStore } from '../../session.js';
+import { reportCategoryLabel } from './report-category.js';
 import {
   getAllReports,
   getReportById,
@@ -35,7 +36,7 @@ function appStatus(status) {
 function mapReportRow(row) {
   const createdAt = row.created_at || '';
   const displayTime = createdAt ? new Date(createdAt).toLocaleString() : '';
-  const category = row.ai_category || row.user_selected_category || row.category || 'General';
+  const category = reportCategoryLabel(row);
   return {
     id: row.id,
     referenceNumber: row.tracking_number || row.id,

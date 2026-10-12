@@ -9,8 +9,8 @@ const CORS_HEADERS = {
 
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const PROMPT_VERSION = 'snap-and-say-v1';
+export const GEMINI_MODEL = 'gemini-3.8-flash';
+export const PROMPT_VERSION = 'snap-and-say-v1';
 const ALLOWED_AUDIO_TYPES = new Set([
   'audio/mpeg',
   'audio/mp3',
@@ -55,6 +55,11 @@ function jsonResponse(body, status = 200) {
 
 function normalizeMime(type, fallback = '') {
   return String(type || fallback || '').split(';', 1)[0].trim().toLowerCase();
+}
+
+function geminiAudioMime(type) {
+  const mime = normalizeMime(type, 'audio/webm');
+  return mime === 'audio/mp4' ? 'audio/m4a' : mime;
 }
 
 function mimeToExtension(mimeType) {
@@ -237,7 +242,7 @@ function finalizeGeminiResult(payload, raw) {
   };
 }
 
-async function callGemini({ env, fetchImpl, payload }) {
+export async function callGemini({ env, fetchImpl, payload }) {
   const apiKey = env.get('GEMINI_API_KEY') || env.get('GOOGLE_GENAI_API_KEY');
   if (!apiKey) {
     console.error('Snap & Say configuration error: Gemini API key is missing.');
@@ -259,10 +264,10 @@ GPS: lat ${payload.latitude ?? 'unknown'}, lon ${payload.longitude ?? 'unknown'}
   const parts = [
     { text: prompt },
     ...(payload.image_base64 ? [{ inline_data: { mime_type: payload.image_mime_type || 'image/jpeg', data: payload.image_base64 } }] : []),
-    ...(payload.audio_base64 ? [{ inline_data: { mime_type: payload.audio_mime_type || 'audio/webm', data: payload.audio_base64 } }] : [])
+    ...(payload.audio_base64 ? [{ inline_data: { mime_type: geminiAudioMime(payload.audio_mime_type), data: payload.audio_base64 } }] : [])
   ];
 
-  const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+  const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -273,7 +278,8 @@ GPS: lat ${payload.latitude ?? 'unknown'}, lon ${payload.longitude ?? 'unknown'}
 
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
-    throw new Error(detail || 'Gemini request failed');
+    const safeDetail = detail && apiKey ? detail.split(apiKey).join('[REDACTED]') : detail;
+    throw new Error(safeDetail || 'Gemini request failed');
   }
 
   return await response.json();
@@ -807,4 +813,10 @@ async function handleSnapAndSay(request, context = {}) {
   }
 }
 
-export { handleSnapAndSay, buildFallbackResponse, finalizeGeminiResult, validateGeminiResult };
+export {
+  handleSnapAndSay,
+  buildFallbackResponse,
+  finalizeGeminiResult,
+  validateGeminiResult,
+  parseGeminiJson
+};

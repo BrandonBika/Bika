@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handleSnapAndSay } from './handler.js';
+import { GEMINI_MODEL, handleSnapAndSay } from './handler.js';
 
 function createEnv(values = {}) {
   const defaults = {
@@ -173,11 +173,24 @@ test('accepts codec-suffixed webm and audio/mp4 media types', async () => {
     review_reason: ''
   };
   for (const audioType of ['audio/webm;codecs=opus', 'audio/mp4']) {
-    const response = await handleSnapAndSay(createRequest({ audioType }), testContext(createGeminiFetch(validResult)));
+    const calls = [];
+    const fetchGemini = createGeminiFetch(validResult);
+    const response = await handleSnapAndSay(createRequest({ audioType }), {
+      ...testContext(async (url, options) => {
+        calls.push({ url: String(url), options });
+        return fetchGemini(url, options);
+      })
+    });
     assert.equal(response.status, 200, audioType);
     const body = await response.json();
     assert.equal(body.report.evidence[0].bucket, 'report-evidence');
     assert.match(body.report.evidence[0].path, /^[0-9a-f-]+\/[0-9a-f-]+\/audio-/);
+    const geminiCall = calls.find(({ url }) => url.includes('generativelanguage.googleapis.com'));
+    assert.ok(geminiCall.url.includes(`/models/${GEMINI_MODEL}:generateContent`));
+    const request = JSON.parse(geminiCall.options.body);
+    assert.equal(request.generationConfig.responseMimeType, 'application/json');
+    assert.equal(request.contents[0].parts.find(({ inline_data }) => inline_data?.mime_type?.startsWith('audio/'))?.inline_data.mime_type,
+      audioType.startsWith('audio/webm') ? 'audio/webm' : 'audio/m4a');
   }
 });
 
@@ -250,7 +263,7 @@ test('uploads private evidence to the report path and persists evidence metadata
   const aiRunCall = calls.find((call) => call.url.endsWith('/rest/v1/ai_runs'));
   assert.ok(aiRunCall);
   const aiRun = JSON.parse(aiRunCall.options.body);
-  assert.equal(aiRun.model, 'gemini-2.5-flash');
+  assert.equal(aiRun.model, GEMINI_MODEL);
   assert.equal(aiRun.prompt_version, 'snap-and-say-v1');
   assert.ok(aiRun.raw_output);
   assert.equal(aiRun.error, null);
@@ -313,6 +326,43 @@ test('missing Gemini key stores the report as Needs Review and logs configuratio
   } finally {
     console.error = originalConsoleError;
   }
+});
+
+test('records provider failures in ai_runs after redacting the configured Gemini key', async () => {
+  const apiKey = 'test-gemini-key';
+  let geminiCalls = 0;
+  let aiRun;
+  const fetchImpl = async (url, options = {}) => {
+    const target = String(url);
+    if (target.includes('generativelanguage.googleapis.com')) {
+      geminiCalls += 1;
+      return new Response(JSON.stringify({
+        error: { message: `Provider rejected request; credential ${apiKey} was not accepted.` }
+      }), { status: 400 });
+    }
+    if (target.endsWith('/rest/v1/reports') && options.method === 'POST') {
+      const row = JSON.parse(options.body);
+      return new Response(JSON.stringify([{ id: row.id, tracking_number: 'CN-2026-000125' }]), { status: 201 });
+    }
+    if (target.endsWith('/rest/v1/ai_runs')) {
+      aiRun = JSON.parse(options.body);
+      return new Response('{}', { status: 201 });
+    }
+    return new Response('{}', { status: 200 });
+  };
+
+  const response = await handleSnapAndSay(createRequest(), {
+    env: createEnv({ GEMINI_API_KEY: apiKey }),
+    fetchImpl,
+    resolveUserId: async () => 'd1c82fc5-5ff2-4a79-a83c-829ba872e1f6'
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(geminiCalls, 2);
+  assert.equal(aiRun.model, GEMINI_MODEL);
+  assert.match(aiRun.error, /Provider rejected request/);
+  assert.match(aiRun.error, /\[REDACTED\]/);
+  assert.equal(aiRun.error.includes(apiKey), false);
 });
 
 test('accepts an anonymous Supabase session and returns a guest lookup code on fallback', async () => {
