@@ -16,6 +16,7 @@ async function submitSnapAndSay(payload) {
   formData.append('longitude', String(payload.location.longitude ?? ''));
   formData.append('location_accuracy', String(payload.location.accuracy ?? ''));
   formData.append('device_timestamp', payload.deviceTimestamp);
+  formData.append('idempotency_key', payload.idempotency_key);
 
   const runtimeConfig = (await import('../../../runtime-config.js')).default;
   const token = getAccessToken();

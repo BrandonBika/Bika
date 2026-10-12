@@ -264,6 +264,15 @@ export function getAllReports() {
   return reportsStore.get().reports;
 }
 
+export function replaceReports(reports) {
+  reportsStore.update((state) => ({
+    ...state,
+    reports: [...reports],
+    isLoading: false,
+    error: null
+  }));
+}
+
 /**
  * Find report by ID or referenceNumber
  */

@@ -299,7 +299,30 @@ export async function invokeFunction(endpoint, payload = {}) {
 
   return withRetry(async () => {
     const token = authTokenGetter();
-    const headers = { 'Content-Type': 'application/json' };
+    let requestBody = payload;
+    let isFormData = typeof FormData !== 'undefined' && payload instanceof FormData;
+    if (!isFormData && typeof FormData !== 'undefined' && typeof Blob !== 'undefined' &&
+        payload && typeof payload === 'object') {
+      const hasFiles = Object.values(payload).some((value) => value instanceof Blob);
+      if (hasFiles) {
+        requestBody = new FormData();
+        for (const [key, value] of Object.entries(payload)) {
+          if (value === undefined || value === null) continue;
+          if (value instanceof Blob) {
+            const filename = typeof File !== 'undefined' && value instanceof File
+              ? value.name
+              : `${key}.bin`;
+            requestBody.append(key, value, filename);
+          } else if (typeof value === 'object') {
+            requestBody.append(key, JSON.stringify(value));
+          } else {
+            requestBody.append(key, String(value));
+          }
+        }
+        isFormData = true;
+      }
+    }
+    const headers = isFormData ? {} : { 'Content-Type': 'application/json' };
     if (supabaseAnonKey) {
       headers.apikey = supabaseAnonKey;
       headers.Authorization = `Bearer ${token || supabaseAnonKey}`;
@@ -313,7 +336,7 @@ export async function invokeFunction(endpoint, payload = {}) {
     const res = await fetch(functionUrl, {
       method: 'POST',
       headers,
-      body: JSON.stringify(payload)
+      body: isFormData ? requestBody : JSON.stringify(requestBody)
     });
 
     const data = await res.json().catch(() => ({}));

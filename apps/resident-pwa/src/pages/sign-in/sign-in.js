@@ -3,9 +3,8 @@
  */
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
-import { signIn } from '../../features/auth/auth.client.js';
+import { continueAsGuest, signIn } from '../../features/auth/auth.client.js';
 import { navigate } from '../../router.js';
-import { startGuestSession } from '../../session.js';
 
 export class PageSignIn extends BaseElement {
   connectedCallback() {
@@ -41,9 +40,17 @@ export class PageSignIn extends BaseElement {
       text: 'Continue without an account →',
       attrs: { type: 'button' }
     });
-    guestBtn.onclick = () => {
-      startGuestSession();
-      navigate('guest-report');
+    guestBtn.onclick = async () => {
+      guestBtn.disabled = true;
+      guestBtn.textContent = 'Starting guest session…';
+      try {
+        await continueAsGuest();
+        navigate('guest-report');
+      } catch (error) {
+        guestBtn.disabled = false;
+        guestBtn.textContent = 'Continue without an account →';
+        showToast(error.message || 'Could not start a guest session.', { type: 'error' });
+      }
     };
 
     submitBtn.onclick = async () => {

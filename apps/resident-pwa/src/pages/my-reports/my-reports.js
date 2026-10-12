@@ -6,7 +6,9 @@
  */
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
-import { reportsStore, getAllReports, getReportCounts } from '../../features/reports/reports.store.js';
+import { reportsStore, getAllReports, getReportCounts, replaceReports } from '../../features/reports/reports.store.js';
+import { listMyReports } from '../../features/reports/reports.client.js';
+import { sessionStore } from '../../session.js';
 import { createStatusPill } from '../../components/status-pill/status-pill.js';
 import { createEmptyState } from '../../components/empty-state/empty-state.js';
 import { createErrorState } from '../../components/error-state/error-state.js';
@@ -150,17 +152,41 @@ export class PageMyReports extends BaseElement {
   }
 
   connectedCallback() {
+    if (sessionStore.get()?.isGuest) {
+      navigate('track-report');
+      return;
+    }
+    replaceReports([]);
     this._unsubscribe = reportsStore.subscribe(() => {
       this._renderCards();
       this._updateFilterCounts();
     });
+    this._isLoading = true;
     this._render();
+    this._loadReports();
   }
 
   disconnectedCallback() {
     if (this._unsubscribe) this._unsubscribe();
     if (this._debounceTimer) clearTimeout(this._debounceTimer);
     super.disconnectedCallback();
+  }
+
+  async _loadReports() {
+    this._isLoading = true;
+    this._hasError = false;
+    this._renderCards();
+    try {
+      await listMyReports();
+      this._hasError = false;
+    } catch (error) {
+      console.error('Could not load resident reports.', error);
+      this._hasError = true;
+    } finally {
+      this._isLoading = false;
+      this._renderCards();
+      this._updateFilterCounts();
+    }
   }
 
   _render() {
@@ -324,10 +350,7 @@ export class PageMyReports extends BaseElement {
       const err = createErrorState({
         title: "Couldn't load your reports",
         message: 'Something went wrong on our end. Your details are still filled in below — try again.',
-        onRetry: () => {
-          this._hasError = false;
-          this._renderCards();
-        }
+        onRetry: () => this._loadReports()
       });
       this._cardsContainer.appendChild(err);
       return;

@@ -6,6 +6,7 @@
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { submitReport } from '../../features/reports/reports.client.js';
+import { validateEvidenceFile } from '../../features/reports/evidence-validation.js';
 import { navigate } from '../../router.js';
 import { sessionStore } from '../../session.js';
 import '../../components/map-pin-picker/map-pin-picker.js';
@@ -163,10 +164,16 @@ export class PageReportNew extends BaseElement {
     photoBox.appendChild(svg(ICON_PHOTO));
     const photoLabel = createElement('span', { cls: 'p-label', text: 'Photo' });
     photoBox.appendChild(photoLabel);
-    const photoInput = createElement('input', { attrs: { type: 'file', accept: 'image/*', style: 'display:none', id: 'rn-photo-input' } });
+    const photoInput = createElement('input', { attrs: { type: 'file', accept: 'image/heic,image/heif,image/jpeg,image/jpg,image/png,image/webp', style: 'display:none', id: 'rn-photo-input' } });
     photoBox.addEventListener('click', () => photoInput.click());
     photoInput.addEventListener('change', () => {
-      this._photoFile = photoInput.files[0] || null;
+      const selectedFile = photoInput.files[0] || null;
+      const validationMessage = validateEvidenceFile(selectedFile, 'photo');
+      if (validationMessage) {
+        showToast(validationMessage, { type: 'error' });
+        photoInput.value = '';
+      }
+      this._photoFile = validationMessage ? null : selectedFile;
       photoBox.classList.toggle('has-file', !!this._photoFile);
       photoLabel.textContent = this._photoFile ? this._photoFile.name.slice(0, 12) + '…' : 'Photo';
     });
@@ -175,10 +182,16 @@ export class PageReportNew extends BaseElement {
     videoBox.appendChild(svg(ICON_VIDEO));
     const videoLabel = createElement('span', { cls: 'p-label', text: 'Video' });
     videoBox.appendChild(videoLabel);
-    const videoInput = createElement('input', { attrs: { type: 'file', accept: 'video/*', style: 'display:none', id: 'rn-video-input' } });
+    const videoInput = createElement('input', { attrs: { type: 'file', accept: 'video/3gpp,video/mp4,video/quicktime,video/webm', style: 'display:none', id: 'rn-video-input' } });
     videoBox.addEventListener('click', () => videoInput.click());
     videoInput.addEventListener('change', () => {
-      this._videoFile = videoInput.files[0] || null;
+      const selectedFile = videoInput.files[0] || null;
+      const validationMessage = validateEvidenceFile(selectedFile, 'video');
+      if (validationMessage) {
+        showToast(validationMessage, { type: 'error' });
+        videoInput.value = '';
+      }
+      this._videoFile = validationMessage ? null : selectedFile;
       videoBox.classList.toggle('has-file', !!this._videoFile);
       videoLabel.textContent = this._videoFile ? this._videoFile.name.slice(0, 12) + '…' : 'Video';
     });
@@ -244,6 +257,12 @@ export class PageReportNew extends BaseElement {
         return;
       }
       try {
+        const evidenceError = validateEvidenceFile(this._photoFile, 'photo')
+          || validateEvidenceFile(this._videoFile, 'video');
+        if (evidenceError) {
+          showToast(evidenceError, { type: 'error' });
+          return;
+        }
         submitBtn.disabled = true;
         submitBtn.textContent = 'Submitting…';
         const isGuest = sessionStore.get()?.isGuest;
@@ -253,9 +272,17 @@ export class PageReportNew extends BaseElement {
           address:     locInput.value.trim() || this._location?.address || '',
           latitude:    this._location?.lat,
           longitude:   this._location?.lng,
+          organisation: orgSel.value ? orgSel.options[orgSel.selectedIndex].textContent : '',
+          branch: branchSel.value ? branchSel.options[branchSel.selectedIndex].textContent : '',
+          photo: this._photoFile,
+          video: this._videoFile
         }, isGuest);
+        if (res.queued) {
+          navigate('offline-queued');
+          return;
+        }
         showToast('Report submitted!', { type: 'success' });
-        navigate('report-submitted', { ref: res?.referenceNumber || 'CN-2026-QUEUED', isGuest: String(!!isGuest) });
+        navigate('report-submitted', { ref: res?.referenceNumber || '', isGuest: String(!!isGuest) });
       } catch (err) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Submit report';

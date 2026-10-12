@@ -17,13 +17,13 @@ export class PageTrackReport extends BaseElement {
     this.classList.add('cn-auth-page', 'cn-track-report-page');
 
     const title = createElement('h1', { cls: 'cn-auth-title', text: 'Track a report' });
-    const sub = createElement('p', { cls: 'cn-auth-sub', text: 'No account needed — enter the details from your confirmation.' });
+    const sub = createElement('p', { cls: 'cn-auth-sub', text: 'Enter the tracking number and lookup code from your confirmation.' });
 
     const refInput = createElement('cn-input', {
       attrs: { label: 'Reference number', placeholder: 'e.g. CN-2026-0042', value: this._referenceNumber, required: 'true' }
     });
-    const contactInput = createElement('cn-input', {
-      attrs: { label: 'Cellphone number or email used', placeholder: 'Used when submitting', required: 'true' }
+    const codeInput = createElement('cn-input', {
+      attrs: { label: 'Lookup code', placeholder: 'Enter the code shown when you submitted', required: 'true' }
     });
     const captcha = createElement('cn-captcha-widget');
 
@@ -34,14 +34,18 @@ export class PageTrackReport extends BaseElement {
     });
 
     btn.onclick = async () => {
-      if (!refInput.value.trim() || !contactInput.value.trim()) {
-        showToast('Enter the reference number and contact details', { type: 'error' });
+      if (!refInput.value.trim() || !codeInput.value.trim()) {
+        showToast('Enter the tracking number and lookup code', { type: 'error' });
         return;
       }
       try {
         btn.disabled = true;
         btn.textContent = 'Searching…';
-        const rep = await trackGuestReport(refInput.value.trim(), contactInput.value.trim());
+        const rep = await trackGuestReport(
+          refInput.value.trim(),
+          codeInput.value.trim(),
+          captcha.token
+        );
         navigate('report-detail', { id: rep.referenceNumber });
       } catch (err) {
         btn.disabled = false;
@@ -54,7 +58,7 @@ export class PageTrackReport extends BaseElement {
     this.appendChild(title);
     this.appendChild(sub);
     this.appendChild(refInput);
-    this.appendChild(contactInput);
+    this.appendChild(codeInput);
     this.appendChild(captcha);
     this.appendChild(btn);
   }

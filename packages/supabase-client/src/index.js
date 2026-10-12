@@ -7,3 +7,4 @@ export * from './realtime.js';
 export * from './storage.js';
 export * from './beacon-contacts.js';
 export * from './lifeline-cards.js';
+export * from './resident-profiles.js';

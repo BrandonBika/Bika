@@ -1,10 +1,11 @@
 /**
  * @file apps/resident-pwa/src/pages/welcome/welcome.js
  */
-import { BaseElement } from '@civicneuro/ui';
+import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { navigate } from '../../router.js';
-import { startGuestSession } from '../../session.js';
+import { continueAsGuest } from '../../features/auth/auth.client.js';
+import { sessionStore } from '../../session.js';
 
 export class PageWelcome extends BaseElement {
   connectedCallback() {
@@ -40,11 +41,28 @@ export class PageWelcome extends BaseElement {
 
     btnSignIn.onclick = () => navigate('sign-in');
     btnRegister.onclick = () => navigate('register');
-    btnGuest.onclick = () => {
-      startGuestSession();
-      navigate('guest-report');
+    btnGuest.onclick = async () => {
+      btnGuest.disabled = true;
+      btnGuest.textContent = 'Starting guest session…';
+      try {
+        await continueAsGuest();
+        navigate('guest-report');
+      } catch (error) {
+        btnGuest.disabled = false;
+        btnGuest.textContent = 'Continue without an account →';
+        showToast(error.message || 'Could not start a guest session.', { type: 'error' });
+      }
     };
-    btnTrack.onclick = () => navigate('track-report');
+    btnTrack.onclick = async () => {
+      btnTrack.disabled = true;
+      try {
+        if (!sessionStore.get()?.isAuthenticated) await continueAsGuest();
+        navigate('track-report');
+      } catch (error) {
+        btnTrack.disabled = false;
+        showToast(error.message || 'Could not start a guest session.', { type: 'error' });
+      }
+    };
 
     actions.appendChild(btnSignIn);
     actions.appendChild(btnRegister);

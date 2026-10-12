@@ -4,11 +4,14 @@
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { navigate } from '../../router.js';
+import { getLastSubmissionReceipt } from '../../features/reports/reports.client.js';
 
 export class PageReportSubmitted extends BaseElement {
   init(params) {
     this._ref = params.ref || 'CN-2026-0042';
     this._isGuest = params.isGuest === 'true';
+    const receipt = getLastSubmissionReceipt();
+    this._lookupCode = receipt?.tracking_number === this._ref ? receipt.lookup_code : null;
   }
 
   connectedCallback() {
@@ -57,7 +60,18 @@ export class PageReportSubmitted extends BaseElement {
     this.appendChild(title);
     this.appendChild(refBox);
     this.appendChild(desc);
-    if (this._isGuest) this.appendChild(guestNote);
+    if (this._isGuest) {
+      this.appendChild(guestNote);
+      if (this._lookupCode) {
+        const lookupBox = createElement('div', { cls: 'cn-report-lookup-code' });
+        lookupBox.appendChild(createElement('strong', { text: 'Your one-time lookup code' }));
+        lookupBox.appendChild(createElement('div', { text: this._lookupCode, attrs: { role: 'text' } }));
+        lookupBox.appendChild(createElement('p', {
+          text: 'Save this code with your tracking number. You will need both to check this report later.'
+        }));
+        this.appendChild(lookupBox);
+      }
+    }
     this.appendChild(actions);
   }
 }

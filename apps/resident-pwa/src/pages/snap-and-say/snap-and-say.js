@@ -3,8 +3,9 @@
  */
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
-import { enqueueReport } from '@civicneuro/offline-queue';
+import { enqueueReport, generateIdempotencyKey } from '@civicneuro/offline-queue';
 import { getAccessToken } from '@civicneuro/supabase-client';
+import { validateEvidenceFile } from '../../features/reports/evidence-validation.js';
 import { navigate } from '../../router.js';
 import { sessionStore } from '../../session.js';
 
@@ -46,6 +47,7 @@ export class PageSnapAndSay extends BaseElement {
     this._audioContext = null;
     this._audioAnalyser = null;
     this._queuedKey = null;
+    this._submissionKey = null;
     this._syncedHandler = (event) => {
       if (event.detail?.idempotencyKey !== this._queuedKey) return;
       this._queuedKey = null;
@@ -282,6 +284,8 @@ export class PageSnapAndSay extends BaseElement {
       formData.append('longitude', String(this._location.longitude ?? ''));
       formData.append('location_accuracy', String(this._location.accuracy ?? 0));
       formData.append('device_timestamp', new Date().toISOString());
+      if (!this._submissionKey) this._submissionKey = generateIdempotencyKey();
+      formData.append('idempotency_key', this._submissionKey);
       const session = sessionStore.get();
       const runtimeConfig = (await import('../../../runtime-config.js')).default;
       const response = await fetch(`${runtimeConfig.supabaseUrl}/functions/v1/snap-and-say`, {
@@ -368,6 +372,7 @@ export class PageSnapAndSay extends BaseElement {
     formData.append('longitude', String(payload.location.longitude ?? ''));
     formData.append('location_accuracy', String(payload.location.accuracy ?? ''));
     formData.append('device_timestamp', payload.deviceTimestamp);
+    formData.append('idempotency_key', payload.idempotency_key);
 
     const runtimeConfig = (await import('../../../runtime-config.js')).default;
     const token = getAccessToken();
@@ -408,8 +413,10 @@ export class PageSnapAndSay extends BaseElement {
     this._screen = 'sending';
     this.render();
     await this._captureSubmissionLocation();
+    if (!this._submissionKey) this._submissionKey = generateIdempotencyKey();
     const payload = {
       type: 'snap-and-say',
+      idempotency_key: this._submissionKey,
       audioBlob: this._audioBlob,
       imageBlob: this._photoFile,
       audioMime: this._audioMime,
@@ -578,14 +585,22 @@ export class PageSnapAndSay extends BaseElement {
     chooseButton.style.cssText = 'padding:16px 18px;border:none;border-radius:14px;background:#1a5d86;color:#fff;font-weight:700;';
     chooseButton.onclick = () => {
       if (!this._fileInput) {
-        const input = createElement('input', { attrs: { type: 'file', accept: 'image/*', capture: 'environment' } });
+        const input = createElement('input', { attrs: { type: 'file', accept: 'image/heic,image/heif,image/jpeg,image/jpg,image/png,image/webp', capture: 'environment' } });
         input.style.display = 'none';
         input.onchange = (event) => {
           const [file] = event.target.files || [];
           if (!file) return;
+          const validationMessage = validateEvidenceFile(file, 'photo');
+          if (validationMessage) {
+            event.target.value = '';
+            this._error = validationMessage;
+            this.render();
+            return;
+          }
           if (this._photoUrl) URL.revokeObjectURL(this._photoUrl);
           this._photoFile = file;
           this._photoUrl = URL.createObjectURL(file);
+          this._error = '';
           this.render();
         };
         this._fileInput = input;
@@ -738,6 +753,15 @@ export class PageSnapAndSay extends BaseElement {
         createElement('strong', { text: this._result.tracking_number })
       );
       card.appendChild(tracking);
+    }
+    if (sessionStore.get()?.isGuest && this._result?.lookup_code) {
+      const lookup = createElement('div');
+      lookup.style.cssText = 'margin-bottom:14px;padding:12px;border:1px solid #d7e3dd;border-radius:12px;background:#f6faf8;';
+      lookup.append(
+        createElement('div', { text: 'Guest lookup code — save this with your tracking number' }),
+        createElement('strong', { text: this._result.lookup_code })
+      );
+      card.appendChild(lookup);
     }
     const items = [
       ['Type', this._result?.issue_category || 'Unclear report'],

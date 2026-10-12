@@ -3,27 +3,36 @@
  */
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
+import { getResidentProfile, updateResidentProfile, updateUserEmail } from '@civicneuro/supabase-client';
 import { navigate } from '../../router.js';
-
-const initialValues = {
-  name: 'Kagiso Ndlovu',
-  phone: '082 345 6721',
-  email: 'kagiso.ndlovu@email.com',
-  address: '14 Florida Road, Ward 12'
-};
-
-function normalisePhone(value) {
-  const digits = value.replace(/\D+/g, '');
-  if (digits.length === 10) return `0${digits.slice(1, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
-  if (digits.length === 11 && digits.startsWith('27')) return `+27 ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
-  return value.trim();
-}
+import { sessionStore } from '../../session.js';
 
 export class PageProfileEdit extends BaseElement {
-  connectedCallback() {
+  async connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-profile-edit-page');
 
+    const session = sessionStore.get();
+    const ownerId = session.user?.id;
+    if (!session.isAuthenticated || session.isGuest || !ownerId) {
+      showToast('Sign in with a resident account to edit your profile.', { type: 'error' });
+      return;
+    }
+
+    let profile;
+    try {
+      profile = await getResidentProfile(ownerId);
+    } catch (error) {
+      showToast(error.message || 'Your profile could not be loaded.', { type: 'error' });
+      return;
+    }
+
+    const initialValues = {
+      name: profile.full_name || '',
+      phone: String(profile.phone || '').replace(/\D/g, ''),
+      email: session.user.email || profile.email || '',
+      address: profile.address || ''
+    };
     const fields = {};
     const form = createElement('form', { cls: 'cn-profile-form' });
 
@@ -65,27 +74,66 @@ export class PageProfileEdit extends BaseElement {
     const validateForm = () => {
       const values = {
         name: fields.name.value.trim(),
-        phone: fields.phone.value.trim(),
+        phone: fields.phone.value.replace(/\D/g, ''),
         email: fields.email.value.trim(),
         address: fields.address.value.trim()
       };
       const hasChanges = Object.entries(values).some(([key, value]) => value !== initialValues[key]);
-      const valid = values.name && values.phone && values.address && /\S+@\S+\.\S+/.test(values.email);
+      const valid = values.name && values.phone.length >= 7 && values.phone.length <= 15 &&
+        values.address && /\S+@\S+\.\S+/.test(values.email);
       saveBtn.disabled = !(hasChanges && valid);
       saveBtn.classList.toggle('is-disabled', !(hasChanges && valid));
-      if (values.phone) {
-        const phoneValue = normalisePhone(values.phone);
-        if (phoneValue !== values.phone) fields.phone.value = phoneValue;
-      }
     };
 
     Object.values(fields).forEach((input) => input.addEventListener('input', validateForm));
 
-    saveBtn.addEventListener('click', (event) => {
+    form.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (saveBtn.disabled) return;
-      showToast('Profile updated', { type: 'success' });
-      navigate('account');
+      saveBtn.disabled = true;
+      let profileSaved = false;
+      try {
+        const profileChanges = {};
+        const name = fields.name.value.trim();
+        const phone = fields.phone.value.replace(/\D/g, '');
+        const address = fields.address.value.trim();
+        const email = fields.email.value.trim();
+        if (name !== initialValues.name) profileChanges.full_name = name;
+        if (phone !== initialValues.phone.replace(/\D/g, '')) profileChanges.phone = phone;
+        if (address !== initialValues.address) profileChanges.address = address;
+
+        if (Object.keys(profileChanges).length) {
+          await updateResidentProfile(ownerId, profileChanges);
+          profileSaved = true;
+          sessionStore.update((current) => ({
+            ...current,
+            user: {
+              ...current.user,
+              fullName: name,
+              phone,
+              address
+            }
+          }));
+        }
+        const emailChanged = email !== initialValues.email;
+        if (emailChanged) await updateUserEmail(email);
+
+        showToast(
+          emailChanged
+            ? 'Profile saved. Check your inbox to confirm the email change.'
+            : 'Profile updated',
+          { type: 'success' }
+        );
+        navigate('account');
+      } catch (error) {
+        showToast(
+          profileSaved
+            ? `Profile details were saved, but the email change failed: ${error.message}`
+            : error.message || 'Your profile could not be updated.',
+          { type: 'error' }
+        );
+        saveBtn.disabled = false;
+      }
     });
 
     form.appendChild(note);

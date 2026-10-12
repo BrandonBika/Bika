@@ -34,10 +34,12 @@ function requestResult(request) {
   });
 }
 
-export async function enqueueReport(reportPayload) {
+export async function enqueueReport(reportPayload, endpoint = null) {
+  const idempotencyKey = reportPayload.idempotency_key || generateIdempotencyKey();
   const item = {
-    idempotencyKey: generateIdempotencyKey(),
-    payload: reportPayload,
+    idempotencyKey,
+    endpoint,
+    payload: { ...reportPayload, idempotency_key: idempotencyKey },
     queuedAt: new Date().toISOString(),
     retryCount: 0
   };

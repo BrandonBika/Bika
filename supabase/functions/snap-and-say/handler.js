@@ -1,3 +1,5 @@
+import { createGuestLookupCredentials } from '../_shared/report-submission.js';
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
@@ -66,6 +68,20 @@ function numericOrNull(value) {
   }
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(value) {
+  const binary = atob(value);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
 function parseGeminiJson(payload) {
@@ -263,8 +279,13 @@ GPS: lat ${payload.latitude ?? 'unknown'}, lon ${payload.longitude ?? 'unknown'}
   return await response.json();
 }
 
-async function resolveResidentId(request, env, fetchImpl, resolver) {
-  if (resolver) return resolver(request);
+async function resolveSubmittingUser(request, env, fetchImpl, resolver) {
+  if (resolver) {
+    const resolved = await resolver(request);
+    return typeof resolved === 'string'
+      ? { id: resolved, isGuest: false }
+      : { id: resolved.id, isGuest: resolved.is_anonymous === true || resolved.isGuest === true };
+  }
   const authorization = request.headers.get('authorization') || '';
   if (!authorization.startsWith('Bearer ')) {
     throw Object.assign(new Error('Sign in before submitting a report.'), { status: 401, code: 'AUTH_REQUIRED' });
@@ -284,7 +305,36 @@ async function resolveResidentId(request, env, fetchImpl, resolver) {
   if (!user?.id) {
     throw Object.assign(new Error('Authenticated user identity could not be verified.'), { status: 401, code: 'AUTH_INVALID' });
   }
-  return user.id;
+  return { id: user.id, isGuest: user.is_anonymous === true };
+}
+
+async function findExistingSnapReport(user, idempotencyKey, env, fetchImpl) {
+  if (!idempotencyKey) return null;
+  const projectUrl = env.get('SUPABASE_URL');
+  const serviceRole = env.get('SUPABASE_SERVICE_ROLE_KEY') || env.get('SUPABASE_SERVICE_ROLE');
+  if (!projectUrl || !serviceRole) {
+    throw Object.assign(new Error('Report database writes are not configured.'), {
+      status: 503,
+      code: 'REPORT_DATABASE_UNAVAILABLE'
+    });
+  }
+  const query = new URLSearchParams({
+    select: 'id,tracking_number,status,report_level,ai_category,user_selected_category,category,created_at,updated_at,resolved_at',
+    reporter_id: `eq.${user.id}`,
+    idempotency_key: `eq.${idempotencyKey}`,
+    limit: '1'
+  });
+  const response = await fetchImpl(`${projectUrl}/rest/v1/reports?${query.toString()}`, {
+    headers: { apikey: serviceRole, Authorization: `Bearer ${serviceRole}` }
+  });
+  if (!response.ok) {
+    throw Object.assign(new Error('Could not check for a previous report submission.'), {
+      status: 500,
+      code: 'REPORT_IDEMPOTENCY_CHECK_FAILED'
+    });
+  }
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows[0] || null : null;
 }
 
 async function uploadReportMedia(payload, reporterId, reportId, env, fetchImpl) {
@@ -301,7 +351,7 @@ async function uploadReportMedia(payload, reporterId, reportId, env, fetchImpl) 
   for (const item of items) {
     if (!item.base64 || !item.mime) continue;
     const objectPath = `${reporterId}/${reportId}/${item.field}-${crypto.randomUUID()}.${mimeToExtension(item.mime)}`;
-    const bytes = Buffer.from(item.base64, 'base64');
+    const bytes = base64ToBytes(item.base64);
     const response = await fetchImpl(`${projectUrl}/storage/v1/object/report-evidence/${objectPath}`, {
       method: 'POST',
       headers: {
@@ -357,7 +407,7 @@ async function deleteFailedReport(reportId, evidence, projectUrl, serviceRole, f
   return errors;
 }
 
-async function persistReport(payload, residentId, reportId, evidence, env, fetchImpl) {
+async function persistReport(payload, user, reportId, evidence, guestCredentials, env, fetchImpl) {
   const projectUrl = env.get('SUPABASE_URL');
   const serviceRole = env.get('SUPABASE_SERVICE_ROLE_KEY') || env.get('SUPABASE_SERVICE_ROLE');
   if (!projectUrl || !serviceRole) {
@@ -369,8 +419,8 @@ async function persistReport(payload, residentId, reportId, evidence, env, fetch
 
   const row = {
     id: reportId,
-    reporter_id: residentId,
-    reporter_type: 'resident',
+    reporter_id: user.id,
+    reporter_type: user.isGuest ? 'guest' : 'resident',
     source: 'snap_and_say',
     latitude: payload.latitude,
     longitude: payload.longitude,
@@ -392,6 +442,7 @@ async function persistReport(payload, residentId, reportId, evidence, env, fetch
     location_accuracy: payload.location_accuracy,
     device_timestamp: payload.device_timestamp || new Date().toISOString(),
     status: payload.status || 'Pending Dispatch',
+    idempotency_key: payload.idempotency_key || null,
     gps_status: payload.gps_status || 'no_gps'
   };
 
@@ -443,6 +494,35 @@ async function persistReport(payload, residentId, reportId, evidence, env, fetch
       throw Object.assign(new Error(detail || 'Could not save report evidence metadata.'), { status: 500 });
     }
     persistedEvidence.push(item);
+  }
+  if (guestCredentials) {
+    const secretResponse = await fetchImpl(`${projectUrl}/rest/v1/guest_report_lookup_secrets`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: serviceRole,
+        Prefer: 'return=minimal',
+        Authorization: `Bearer ${serviceRole}`
+      },
+      body: JSON.stringify({
+        report_id: reportId,
+        lookup_code_hash: guestCredentials.hash
+      })
+    });
+    if (!secretResponse.ok) {
+      const detail = await secretResponse.text().catch(() => '');
+      const cleanupErrors = await deleteFailedReport(reportId, evidence, projectUrl, serviceRole, fetchImpl);
+      if (cleanupErrors.length) {
+        throw Object.assign(new Error(`${detail || 'Could not save guest tracking credentials.'} Cleanup failed: ${cleanupErrors.join('; ')}`), {
+          status: 500,
+          code: 'GUEST_REPORT_CLEANUP_FAILED'
+        });
+      }
+      throw Object.assign(new Error(detail || 'Could not save guest tracking credentials.'), {
+        status: 500,
+        code: 'GUEST_LOOKUP_SAVE_FAILED'
+      });
+    }
   }
   return { id: saved?.id || reportId, ...saved, evidence: persistedEvidence, stored: true };
 }
@@ -539,7 +619,7 @@ async function parseReport(request) {
   const audioBytes = new Uint8Array(await audioFile.arrayBuffer());
   const payload = {
     audio_mime_type: audioMime,
-    audio_base64: Buffer.from(audioBytes).toString('base64'),
+    audio_base64: bytesToBase64(audioBytes),
     audio_filename: `audio-${Date.now()}.${mimeToExtension(audioMime)}`,
     audio_transcript: String(formData.get('transcript') || ''),
     latitude: Number.isFinite(latitude) ? latitude : null,
@@ -549,6 +629,7 @@ async function parseReport(request) {
     gps_status: Number.isFinite(latitude) && Number.isFinite(longitude) ? 'gps' : 'no_gps',
     device_timestamp: String(formData.get('device_timestamp') || new Date().toISOString()),
     issue_category: String(formData.get('issue_category') || 'Unclear report'),
+    idempotency_key: String(formData.get('idempotency_key') || '').trim(),
     urgency: String(formData.get('urgency') || 'MEDIUM').toUpperCase(),
     requires_immediate_dispatch: formData.get('requires_immediate_dispatch') === 'true',
     recommended_organization: String(formData.get('recommended_organization') || 'Municipal dispatch desk'),
@@ -556,10 +637,16 @@ async function parseReport(request) {
     extracted_location: String(formData.get('extracted_location') || ''),
     visual_summary: String(formData.get('visual_summary') || '')
   };
+  if (payload.idempotency_key && !/^[A-Za-z0-9._:-]{8,128}$/.test(payload.idempotency_key)) {
+    throw Object.assign(new Error('The report submission key is invalid.'), {
+      status: 422,
+      code: 'INVALID_IDEMPOTENCY_KEY'
+    });
+  }
 
   if (imageFile instanceof Blob) {
     const imageBytes = new Uint8Array(await imageFile.arrayBuffer());
-    payload.image_base64 = Buffer.from(imageBytes).toString('base64');
+    payload.image_base64 = bytesToBase64(imageBytes);
     payload.image_mime_type = normalizeMime(imageFile.type, 'image/jpeg');
     payload.image_filename = `image-${Date.now()}.${mimeToExtension(payload.image_mime_type)}`;
   }
@@ -581,9 +668,39 @@ async function handleSnapAndSay(request, context = {}) {
 
   try {
     const payload = await parseReport(request);
-    const residentId = await resolveResidentId(request, env, fetchImpl, context.resolveUserId);
+    const user = await resolveSubmittingUser(request, env, fetchImpl, context.resolveUserId);
+    if (!user?.id) {
+      throw Object.assign(new Error('Authenticated user identity could not be verified.'), { status: 401, code: 'AUTH_INVALID' });
+    }
+    const existing = await findExistingSnapReport(user, payload.idempotency_key, env, fetchImpl);
+    if (existing) {
+      const guestCredentials = user.isGuest
+        ? await createGuestLookupCredentials(env.get('GUEST_LOOKUP_HMAC_KEY'), existing.id)
+        : null;
+      const isCritical = existing.report_level === 'CRITICAL';
+      return jsonResponse({
+        ok: true,
+        report: {
+          id: existing.id,
+          tracking_number: existing.tracking_number,
+          status: existing.status,
+          urgency: existing.report_level,
+          issue_category: existing.ai_category || existing.user_selected_category || existing.category,
+          created_at: existing.created_at,
+          updated_at: existing.updated_at,
+          resolved_at: existing.resolved_at,
+          emergency_numbers: isCritical ? ['112', '10111', '10177'] : [],
+          ...(guestCredentials ? { lookup_code: guestCredentials.code } : {})
+        },
+        idempotent_replay: true,
+        queued: false
+      }, 200);
+    }
     const reportId = crypto.randomUUID();
-    const evidence = await uploadReportMedia(payload, residentId, reportId, env, fetchImpl);
+    const guestCredentials = user.isGuest
+      ? await createGuestLookupCredentials(env.get('GUEST_LOOKUP_HMAC_KEY'), reportId)
+      : null;
+    const evidence = await uploadReportMedia(payload, user.id, reportId, env, fetchImpl);
     let result;
     let rawAiOutput = null;
     let aiError = null;
@@ -623,7 +740,7 @@ async function handleSnapAndSay(request, context = {}) {
       }
     }
 
-    const persisted = await persistReport(result, residentId, reportId, evidence, env, fetchImpl);
+    const persisted = await persistReport(result, user, reportId, evidence, guestCredentials, env, fetchImpl);
     if (persisted.stored) {
       await persistAiRun(reportId, {
         rawOutput: rawAiOutput,
@@ -637,7 +754,7 @@ async function handleSnapAndSay(request, context = {}) {
         reportId,
         'ai_classified',
         `AI category: ${result.issue_category}; level: ${result.urgency}.`,
-        residentId,
+        user.id,
         env,
         fetchImpl
       );
@@ -645,7 +762,7 @@ async function handleSnapAndSay(request, context = {}) {
         reportId,
         'routed',
         `Recommended organization: ${result.recommended_organization?.organization_name || 'unassigned'}.`,
-        residentId,
+        user.id,
         env,
         fetchImpl
       );
@@ -656,7 +773,8 @@ async function handleSnapAndSay(request, context = {}) {
         ...result,
         evidence: persisted.evidence,
         id: persisted.id,
-        tracking_number: persisted.tracking_number
+        tracking_number: persisted.tracking_number,
+        ...(guestCredentials ? { lookup_code: guestCredentials.code } : {})
       }),
       queued: false
     }, 200);

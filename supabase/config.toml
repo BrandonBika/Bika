@@ -1,0 +1,15 @@
+[functions.report-submit]
+verify_jwt = true
+entrypoint = "./functions/report-submit/index.js"
+
+[functions.report-guest-submit]
+verify_jwt = true
+entrypoint = "./functions/report-guest-submit/index.js"
+
+[functions.report-track]
+verify_jwt = true
+entrypoint = "./functions/report-track/index.js"
+
+[functions.snap-and-say]
+verify_jwt = true
+entrypoint = "./functions/snap-and-say/index.js"

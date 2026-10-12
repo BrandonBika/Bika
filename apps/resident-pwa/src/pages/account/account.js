@@ -108,7 +108,7 @@ export class PageAccount extends BaseElement {
     contactList.append(
       createRow({ label: 'Phone', value: user.phone, icon: '☎', clickRoute: 'profile-edit' }),
       createRow({ label: 'Email', value: user.email, icon: '✉', clickRoute: 'profile-edit' }),
-      createRow({ label: 'Address', value: '14 Florida Road, Ward 12', icon: '⌂', clickRoute: 'profile-edit' })
+      createRow({ label: 'Address', value: user.address || '', icon: '⌂', clickRoute: 'profile-edit' })
     );
     contactSection.appendChild(contactList);
     this.appendChild(contactSection);

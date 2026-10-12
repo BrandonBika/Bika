@@ -51,6 +51,19 @@ export async function signInWithPassword(credentials) {
   return result;
 }
 
+export async function signInAnonymously() {
+  const result = await requestSupabase('/auth/v1/signup', {
+    method: 'POST',
+    body: { data: {} },
+    auth: false
+  });
+  if (!result?.access_token || !result?.user?.id || result.user.is_anonymous !== true) {
+    throw new Error('Supabase did not return a valid anonymous session.');
+  }
+  setSession(result.access_token, result.user, result.refresh_token);
+  return result;
+}
+
 export async function signUp({ email, password, metadata, emailRedirectTo }) {
   const path = new URL('/auth/v1/signup', 'https://supabase.invalid');
   if (emailRedirectTo) path.searchParams.set('redirect_to', emailRedirectTo);
@@ -83,6 +96,13 @@ export async function updatePassword(password) {
   return requestSupabase('/auth/v1/user', {
     method: 'PUT',
     body: { password }
+  });
+}
+
+export async function updateUserEmail(email) {
+  return requestSupabase('/auth/v1/user', {
+    method: 'PUT',
+    body: { email }
   });
 }
 

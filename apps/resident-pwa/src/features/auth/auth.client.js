@@ -8,12 +8,13 @@ import {
   resendSignupVerification,
   selectRows,
   setSession,
+  signInAnonymously as supabaseSignInAnonymously,
   signInWithPassword,
   signOut as supabaseSignOut,
   signUp,
   updatePassword
 } from '@civicneuro/supabase-client';
-import { startResidentSession, endSession } from '../../session.js';
+import { startGuestSession, startResidentSession, endSession } from '../../session.js';
 
 function normalizePhoneNumber(identifier) {
   const compact = identifier.replace(/[\s()-]/g, '');
@@ -63,6 +64,12 @@ export async function signIn(identifier, password) {
     clearSession();
     throw error;
   }
+}
+
+export async function continueAsGuest() {
+  const result = await supabaseSignInAnonymously();
+  startGuestSession(result.access_token, result.user, result.refresh_token);
+  return result.user;
 }
 
 export async function register(data) {

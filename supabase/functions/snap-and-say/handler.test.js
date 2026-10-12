@@ -304,6 +304,113 @@ test('missing Gemini key stores the report as Needs Review and logs configuratio
   }
 });
 
+test('accepts an anonymous Supabase session and returns a guest lookup code on fallback', async () => {
+  const guestId = '32000000-0000-4000-8000-000000000001';
+  const calls = [];
+  const fetchImpl = async (url, options = {}) => {
+    const target = String(url);
+    calls.push({ url: target, options });
+    if (target.endsWith('/auth/v1/user')) {
+      return new Response(JSON.stringify({ id: guestId, is_anonymous: true }), { status: 200 });
+    }
+    if (target.includes('/rest/v1/reports') && options.method === 'POST') {
+      const row = JSON.parse(options.body);
+      return new Response(JSON.stringify([{
+        id: row.id,
+        tracking_number: 'CN-2026-900002',
+        status: row.status
+      }]), { status: 201 });
+    }
+    if (target.includes('/rest/v1/guest_report_lookup_secrets')) {
+      return new Response(null, { status: 201 });
+    }
+    return new Response('{}', { status: 200 });
+  };
+  const response = await handleSnapAndSay(createRequest({
+    authorization: 'Bearer anonymous-session-token'
+  }), {
+    env: createEnv({
+      GEMINI_API_KEY: '',
+      GUEST_LOOKUP_HMAC_KEY: 'test-only-guest-hmac-key'
+    }),
+    fetchImpl
+  });
+
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.report.status, 'Needs Review');
+  assert.equal(body.report.tracking_number, 'CN-2026-900002');
+  assert.match(body.report.lookup_code, /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{10}$/);
+
+  const authCall = calls.find(({ url }) => url.endsWith('/auth/v1/user'));
+  assert.equal(authCall.options.headers.Authorization, 'Bearer anonymous-session-token');
+  const reportRow = JSON.parse(calls.find(({ url, options }) =>
+    url.includes('/rest/v1/reports') && options.method === 'POST'
+  ).options.body);
+  assert.equal(reportRow.reporter_id, guestId);
+  assert.equal(reportRow.reporter_type, 'guest');
+  assert.equal(reportRow.source, 'snap_and_say');
+  assert.equal(reportRow.status, 'Needs Review');
+
+  const mediaUploads = calls.filter(({ url }) => url.includes('/storage/v1/object/report-evidence/'));
+  assert.equal(mediaUploads.length, 2);
+  assert.ok(mediaUploads.every(({ options }) => options.body instanceof Uint8Array));
+  const evidenceCalls = calls.filter(({ url }) => url.endsWith('/rest/v1/report_evidence'));
+  assert.equal(evidenceCalls.length, 2);
+  assert.ok(evidenceCalls.every(({ options }) => (
+    JSON.parse(options.body).report_id === reportRow.id
+  )));
+  const secretCall = calls.find(({ url }) => url.includes('/rest/v1/guest_report_lookup_secrets'));
+  const savedSecret = JSON.parse(secretCall.options.body);
+  assert.equal(savedSecret.report_id, reportRow.id);
+  assert.match(savedSecret.lookup_code_hash, /^[0-9a-f]{64}$/);
+  assert.equal(secretCall.options.body.includes(body.report.lookup_code), false);
+});
+
+test('returns the existing guest receipt for a repeated idempotency key', async () => {
+  const guestId = '32000000-0000-4000-8000-000000000002';
+  const calls = [];
+  const existing = {
+    id: 'b8f2cd6b-8304-4e3e-b5ab-ddf26a2fd0ca',
+    tracking_number: 'CN-2026-900003',
+    status: 'Needs Review',
+    report_level: 'MEDIUM',
+    ai_category: 'Unclear report',
+    created_at: '2026-10-12T10:00:00.000Z',
+    updated_at: '2026-10-12T10:00:00.000Z',
+    resolved_at: null
+  };
+  const fetchImpl = async (url, options = {}) => {
+    const target = String(url);
+    calls.push({ url: target, options });
+    if (target.includes('/rest/v1/reports?')) {
+      if (options.method === 'POST') throw new Error('Duplicate report insert must not happen.');
+      return new Response(JSON.stringify([existing]), { status: 200 });
+    }
+    if (target.includes('/storage/v1/object/')) {
+      throw new Error('Duplicate evidence upload must not happen.');
+    }
+    return new Response('{}', { status: 200 });
+  };
+  const response = await handleSnapAndSay(createRequest({
+    extraFormData: { idempotency_key: 'snap-idempotency-test-0002' }
+  }), {
+    env: createEnv({ GUEST_LOOKUP_HMAC_KEY: 'test-only-guest-hmac-key' }),
+    fetchImpl,
+    resolveUserId: async () => ({ id: guestId, is_anonymous: true })
+  });
+
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.idempotent_replay, true);
+  assert.equal(body.report.tracking_number, existing.tracking_number);
+  assert.match(body.report.lookup_code, /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{10}$/);
+  assert.equal(calls.filter(({ url, options }) =>
+    url.includes('/rest/v1/reports') && options.method === 'POST'
+  ).length, 0);
+  assert.equal(calls.some(({ url }) => url.includes('/storage/v1/object/')), false);
+});
+
 test('allows a report without GPS and marks it as no_gps', async () => {
   const response = await handleSnapAndSay(createRequest({ withGps: false }), testContext(createGeminiFetch({
       original_transcription: 'There is water on the road.',

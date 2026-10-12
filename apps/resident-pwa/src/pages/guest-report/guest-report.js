@@ -4,6 +4,7 @@
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { submitReport } from '../../features/reports/reports.client.js';
+import { validateEvidenceFile } from '../../features/reports/evidence-validation.js';
 import { navigate } from '../../router.js';
 import '../../components/captcha-widget/captcha-widget.js';
 import '../../components/map-pin-picker/map-pin-picker.js';
@@ -41,7 +42,7 @@ export class PageGuestReport extends BaseElement {
     contactMethod.append(smsButton, emailButton);
 
     const contactInput = createElement('cn-input', {
-      attrs: { label: 'Cellphone number', type: 'tel', autocomplete: 'tel', placeholder: '082 345 6721', required: 'true' }
+      attrs: { label: 'Cellphone number (optional)', type: 'tel', autocomplete: 'tel', placeholder: '082 345 6721' }
     });
     const setContactMethod = (method) => {
       const isEmail = method === 'email';
@@ -81,8 +82,38 @@ export class PageGuestReport extends BaseElement {
     const descInput = createElement('cn-input', {
       attrs: { label: 'Description', type: 'textarea', placeholder: 'Describe the issue, location details…', required: 'true' }
     });
+    const addressInput = createElement('cn-input', {
+      attrs: { label: 'Address (optional if you pin the location)', placeholder: 'Street, area or landmark' }
+    });
     const mapPicker = createElement('cn-map-pin-picker');
     const captcha = createElement('cn-captcha-widget');
+    const consentInput = createElement('input', {
+      attrs: { type: 'checkbox', id: 'cn-guest-contact-consent' }
+    });
+    const consentLabel = createElement('label', {
+      cls: 'cn-guest-consent',
+      attrs: { for: 'cn-guest-contact-consent' },
+      text: 'I consent to receive updates about this report using the contact details above.'
+    });
+    consentLabel.prepend(consentInput);
+    const photoInput = createElement('input', {
+      attrs: { type: 'file', accept: 'image/heic,image/heif,image/jpeg,image/png,image/webp' }
+    });
+    const videoInput = createElement('input', {
+      attrs: { type: 'file', accept: 'video/3gpp,video/mp4,video/quicktime,video/webm' }
+    });
+    photoInput.addEventListener('change', () => {
+      const validationMessage = validateEvidenceFile(photoInput.files[0], 'photo');
+      if (!validationMessage) return;
+      photoInput.value = '';
+      showToast(validationMessage, { type: 'error' });
+    });
+    videoInput.addEventListener('change', () => {
+      const validationMessage = validateEvidenceFile(videoInput.files[0], 'video');
+      if (!validationMessage) return;
+      videoInput.value = '';
+      showToast(validationMessage, { type: 'error' });
+    });
 
     const submitBtn = createElement('button', {
       cls: 'cn-btn cn-btn--primary cn-btn--full cn-guest-submit',
@@ -91,13 +122,25 @@ export class PageGuestReport extends BaseElement {
     });
 
     submitBtn.onclick = async () => {
-      if (!contactInput.value || !descInput.value) {
+      if (!descInput.value) {
         showToast('Please complete required fields', { type: 'error' });
         return;
       }
+      const guestContact = contactInput.value.trim();
+      if (guestContact && !consentInput.checked) {
+        showToast('Please consent to contact updates or leave the contact field empty.', { type: 'error' });
+        return;
+      }
       const coords = mapPicker.coordinates;
-      if (!coords) {
-        showToast('Choose your current location before submitting the report.', { type: 'error' });
+      const address = coords?.address || addressInput.value.trim();
+      if (!coords && !address) {
+        showToast('Enter an address or choose a map pin before submitting.', { type: 'error' });
+        return;
+      }
+      const evidenceError = validateEvidenceFile(photoInput.files[0], 'photo')
+        || validateEvidenceFile(videoInput.files[0], 'video');
+      if (evidenceError) {
+        showToast(evidenceError, { type: 'error' });
         return;
       }
       submitBtn.disabled = true;
@@ -107,16 +150,26 @@ export class PageGuestReport extends BaseElement {
           title: category.select.options[category.select.selectedIndex].textContent,
           category: category.select.value,
           description: descInput.value,
-          latitude: coords.lat,
-          longitude: coords.lng,
-          address: coords.address,
-          organisation: organisation.select.value,
-          branch: branch.select.value,
-          guestContact: contactInput.value,
+          latitude: coords?.lat,
+          longitude: coords?.lng,
+          address,
+          organisation: organisation.select.value === 'unsure'
+            ? ''
+            : organisation.select.options[organisation.select.selectedIndex].textContent,
+          branch: branch.select.value === 'auto'
+            ? ''
+            : branch.select.options[branch.select.selectedIndex].textContent,
+          photo: photoInput.files[0] || null,
+          video: videoInput.files[0] || null,
+          guestContact,
           contactMethod: emailButton.classList.contains('active') ? 'email' : 'sms',
-          captchaToken: captcha.token
+          consentToUpdates: consentInput.checked
         }, true);
 
+        if (res.queued) {
+          navigate('offline-queued');
+          return;
+        }
         navigate('report-submitted', { ref: res.referenceNumber, isGuest: 'true' });
       } catch (err) {
         submitBtn.disabled = false;
@@ -132,11 +185,21 @@ export class PageGuestReport extends BaseElement {
     updatesRow.append(updatesLabel, contactMethod);
     this.appendChild(updatesRow);
     this.appendChild(contactInput);
+    this.appendChild(consentLabel);
     this.appendChild(organisation.wrapper);
     this.appendChild(branch.wrapper);
     this.appendChild(category.wrapper);
     this.appendChild(descInput);
+    this.appendChild(addressInput);
     this.appendChild(mapPicker);
+    const evidenceFields = createElement('div', { cls: 'cn-guest-evidence' });
+    evidenceFields.append(
+      createElement('label', { text: 'Photo (optional)' }),
+      photoInput,
+      createElement('label', { text: 'Video (optional)' }),
+      videoInput
+    );
+    this.appendChild(evidenceFields);
     this.appendChild(captcha);
     this.appendChild(submitBtn);
   }

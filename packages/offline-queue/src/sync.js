@@ -25,9 +25,9 @@ export async function syncOfflineQueue({ submitSnapAndSay } = {}) {
         }
         continue;
       } else {
-        await invokeFunction(Endpoints.REPORT_SUBMIT, {
+        await invokeFunction(item.endpoint || Endpoints.REPORT_SUBMIT, {
           ...item.payload,
-          idempotencyKey: item.idempotencyKey
+          idempotency_key: item.idempotencyKey
         });
       }
       await dequeueReport(item.idempotencyKey);

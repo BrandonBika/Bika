@@ -24,13 +24,16 @@ export function startResidentSession(token, user, refreshToken = null) {
   }));
 }
 
-export function startGuestSession() {
-  clearSupabaseSession();
+export function startGuestSession(token, user, refreshToken = null) {
+  if (!token || !user?.id) {
+    throw new Error('A valid anonymous Supabase session is required.');
+  }
+  setSession(token, user, refreshToken);
   sessionStore.update((s) => ({
     ...s,
     isAuthenticated: true,
     isGuest: true,
-    user: { fullName: 'Guest Resident', role: 'guest' }
+    user: { id: user.id, fullName: 'Guest Resident', role: 'guest', isAnonymous: true }
   }));
 }
 
