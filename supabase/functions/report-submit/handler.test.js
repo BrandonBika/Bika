@@ -55,7 +55,7 @@ function createBackend({
     if (url.endsWith('/rest/v1/rpc/consume_report_rate_limit')) {
       return jsonResponse({ allowed: !blockRateLimit });
     }
-    if (url.includes('/storage/v1/object/report-evidence/')) {
+    if (url.includes('/storage/v1/object/report-evidence')) {
       if (method === 'DELETE') return new Response(null, { status: storageDeleteStatus });
       return new Response(null, { status: 200 });
     }
@@ -162,10 +162,7 @@ test('accepts the resident form multipart payload with a pinned location and PNG
   assert.equal(saved.user_reported_address, 'Pinned location');
   assert.equal(saved.latitude, -29.8587);
   assert.equal(saved.longitude, 31.0218);
-  assert.deepEqual(saved.location, {
-    type: 'Point',
-    coordinates: [31.0218, -29.8587]
-  });
+  assert.equal(saved.location, 'SRID=4326;POINT(31.0218 -29.8587)');
   const upload = backend.calls.find((call) => call.url.includes('/storage/v1/object/report-evidence/'));
   assert.match(upload.url, /photo-[0-9a-f-]+\.png$/);
   assert.equal(upload.options.headers['Content-Type'], 'image/png');
@@ -178,7 +175,7 @@ test('preserves the report insert error code and cleanup status when cleanup fai
   const backend = createBackend({
     reportInsertFailure: {
       status: 400,
-      body: { code: '22P02', message: 'database detail must not be returned' }
+      body: { code: '42804', message: 'database detail must not be returned' }
     },
     storageDeleteStatus: 403
   });
@@ -207,13 +204,58 @@ test('preserves the report insert error code and cleanup status when cleanup fai
 
   assert.equal(response.status, 500);
   const result = await response.json();
-  assert.equal(result.code, '22P02');
-  assert.equal(result.original_error_code, '22P02');
+  assert.equal(result.code, '42804');
+  assert.equal(result.original_error_code, '42804');
   assert.equal(result.cleanup_status, 'incomplete');
   assert.match(result.message, /evidence cleanup is incomplete/);
   assert.doesNotMatch(JSON.stringify(result), /database detail|Marked diagnostic/);
-  assert.match(JSON.stringify(errors), /22P02/);
+  assert.match(JSON.stringify(errors), /42804/);
   assert.doesNotMatch(JSON.stringify(errors), /service-test-key|test-only-hmac-secret|Marked diagnostic/);
+  const deleteCall = backend.calls.find((call) => call.method === 'DELETE');
+  assert.equal(deleteCall.url, 'https://staging.example.test/storage/v1/object/report-evidence');
+  assert.deepEqual(JSON.parse(await deleteCall.options.body.text()), {
+    prefixes: [backend.calls.find((call) => call.method === 'POST' && call.url.includes('/storage/v1/object/report-evidence/'))
+      .url.split('/storage/v1/object/report-evidence/')[1]]
+  });
+});
+
+test('uses Storage API removal request and reports complete cleanup after a failed insert', async () => {
+  const backend = createBackend({
+    reportInsertFailure: {
+      status: 400,
+      body: { code: '42804', message: 'database detail must not be returned' }
+    },
+    storageDeleteStatus: 200
+  });
+  const response = await handleReportSubmit(createRequest({
+    idempotency_key: 'resident-form-storage-delete-01',
+    category: 'roads_traffic',
+    description: 'CN-STAGING-REPORT-SUBMIT marked cleanup test.',
+    address: 'Pinned location',
+    latitude: '-29.8587',
+    longitude: '31.0218',
+    organisation: 'eThekwini Municipality',
+    branch: ''
+  }, {
+    photo: new Blob([new Uint8Array(68)], { type: 'image/jpeg' })
+  }), {
+    env: createEnv(),
+    fetchImpl: backend.fetchImpl,
+    user: resident
+  });
+
+  assert.equal(response.status, 500);
+  const result = await response.json();
+  assert.equal(result.original_error_code, '42804');
+  assert.equal(backend.calls.find((call) => call.method === 'DELETE')?.options.method, 'DELETE');
+  assert.equal(result.cleanup_status, 'complete');
+  const deleteCall = backend.calls.find((call) => call.method === 'DELETE');
+  assert.equal(deleteCall.url, 'https://staging.example.test/storage/v1/object/report-evidence');
+  assert.equal(deleteCall.options.body.type, 'application/json');
+  assert.deepEqual(JSON.parse(await deleteCall.options.body.text()).prefixes, [
+    backend.calls.find((call) => call.method === 'POST' && call.url.includes('/storage/v1/object/report-evidence/'))
+      .url.split('/storage/v1/object/report-evidence/')[1]
+  ]);
 });
 
 test('retry with the same idempotency key returns the saved report without another insert', async () => {

@@ -351,14 +351,17 @@ async function deleteObjects(evidence, config, fetchImpl) {
   for (const item of evidence) {
     try {
       const response = await fetchImpl(
-        `${config.projectUrl}/storage/v1/object/${item.bucket}/${item.path}`,
+        `${config.projectUrl}/storage/v1/object/${item.bucket}`,
       {
           method: 'DELETE',
+          body: new Blob([JSON.stringify({ prefixes: [item.path] })], {
+            type: 'application/json'
+          }),
         headers: { apikey: config.serviceRole, Authorization: `Bearer ${config.serviceRole}` }
       }
     );
       if (!response.ok && response.status !== 404) {
-        failures.push(response.status);
+        failures.push(item.path);
         console.error('Report evidence cleanup failed.', {
           operation: 'storage_delete',
           status: response.status,
@@ -366,7 +369,7 @@ async function deleteObjects(evidence, config, fetchImpl) {
         });
       }
     } catch (error) {
-      failures.push(null);
+      failures.push(item.path);
       console.error('Report evidence cleanup failed.', {
         operation: 'storage_delete',
         status: null,
@@ -506,7 +509,7 @@ async function processSubmission(request, context, expectedGuest) {
     location_lng: report.longitude,
     gps_status: report.gpsStatus,
     ...(report.latitude !== null ? {
-      location: { type: 'Point', coordinates: [report.longitude, report.latitude] }
+      location: `SRID=4326;POINT(${report.longitude} ${report.latitude})`
     } : {}),
     device_timestamp: report.deviceTimestamp || new Date().toISOString(),
     idempotency_key: report.idempotencyKey,
@@ -521,7 +524,7 @@ async function processSubmission(request, context, expectedGuest) {
   }, config.projectUrl, config.serviceRole, fetchImpl);
 
   if (!createResponse.ok) {
-    const cleanupFailed = await deleteObjects(evidence, config, fetchImpl);
+    const cleanupFailed = (await deleteObjects(evidence, config, fetchImpl)).length > 0;
     const backendError = await createResponse.clone().json().catch(() => ({}));
     const originalErrorCode = safeErrorCode(backendError?.code, 'REPORT_SAVE_FAILED');
     if (createResponse.status === 409 || createResponse.status === 400) {

@@ -256,13 +256,14 @@ test('uploads private evidence to the report path and persists evidence metadata
   assert.equal(aiRun.error, null);
   assert.equal(row.latitude, -29.85);
   assert.equal(row.longitude, 31.02);
+  assert.equal(row.location, 'SRID=4326;POINT(31.02 -29.85)');
 });
 
 test('removes the report and uploaded evidence if evidence metadata cannot be saved', async () => {
   const calls = [];
   const fetchImpl = async (url, options = {}) => {
     const target = String(url);
-    calls.push({ url: target, method: options.method || 'GET' });
+    calls.push({ url: target, method: options.method || 'GET', options });
     if (target.endsWith('/rest/v1/reports') && options.method === 'POST') {
       return new Response(JSON.stringify([{ id: JSON.parse(options.body).id }]), { status: 201 });
     }
@@ -275,7 +276,17 @@ test('removes the report and uploaded evidence if evidence metadata cannot be sa
   const response = await handleSnapAndSay(createRequest({}), testContext(fetchImpl));
   assert.equal(response.status, 500);
   assert.equal(calls.filter((call) => call.method === 'DELETE' && call.url.includes('/rest/v1/reports?id=')).length, 1);
-  assert.equal(calls.filter((call) => call.method === 'DELETE' && call.url.includes('/storage/v1/object/report-evidence/')).length, 2);
+  assert.equal(calls.filter((call) => call.method === 'DELETE' && call.url.endsWith('/storage/v1/object/report-evidence')).length, 2);
+  const uploadPaths = calls
+    .filter((call) => call.method === 'POST' && call.url.includes('/storage/v1/object/report-evidence/'))
+    .map((call) => call.url.split('/storage/v1/object/report-evidence/')[1]);
+  const storageDeletes = calls.filter((call) =>
+    call.method === 'DELETE' && call.url.endsWith('/storage/v1/object/report-evidence')
+  );
+  assert.deepEqual(
+    await Promise.all(storageDeletes.map(async (call) => JSON.parse(await call.options.body.text()).prefixes[0])),
+    uploadPaths
+  );
 });
 
 test('missing Gemini key stores the report as Needs Review and logs configuration error', async () => {
@@ -351,6 +362,9 @@ test('accepts an anonymous Supabase session and returns a guest lookup code on f
   assert.equal(reportRow.reporter_type, 'guest');
   assert.equal(reportRow.source, 'snap_and_say');
   assert.equal(reportRow.status, 'Needs Review');
+  assert.equal(reportRow.location, 'SRID=4326;POINT(31.02 -29.85)');
+  assert.equal(reportRow.latitude, -29.85);
+  assert.equal(reportRow.longitude, 31.02);
 
   const mediaUploads = calls.filter(({ url }) => url.includes('/storage/v1/object/report-evidence/'));
   assert.equal(mediaUploads.length, 2);

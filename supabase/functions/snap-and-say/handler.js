@@ -384,8 +384,9 @@ async function uploadReportMedia(payload, reporterId, reportId, env, fetchImpl) 
 async function deleteUploadedEvidence(evidence, projectUrl, serviceRole, fetchImpl) {
   const errors = [];
   for (const item of evidence) {
-    const response = await fetchImpl(`${projectUrl}/storage/v1/object/${item.bucket}/${item.path}`, {
+    const response = await fetchImpl(`${projectUrl}/storage/v1/object/${item.bucket}`, {
       method: 'DELETE',
+      body: new Blob([JSON.stringify({ prefixes: [item.path] })], { type: 'application/json' }),
       headers: { apikey: serviceRole, Authorization: `Bearer ${serviceRole}` }
     });
     if (!response.ok) errors.push(`${item.path} (${response.status})`);
@@ -422,6 +423,9 @@ async function persistReport(payload, user, reportId, evidence, guestCredentials
     reporter_id: user.id,
     reporter_type: user.isGuest ? 'guest' : 'resident',
     source: 'snap_and_say',
+    location: Number.isFinite(payload.latitude) && Number.isFinite(payload.longitude)
+      ? `SRID=4326;POINT(${payload.longitude} ${payload.latitude})`
+      : null,
     latitude: payload.latitude,
     longitude: payload.longitude,
     description_original: payload.original_transcription || '',
@@ -583,8 +587,27 @@ async function parseReport(request) {
   const formData = await request.formData();
   const audioFile = formData.get('audio');
   const imageFile = formData.get('image');
-  const latitude = numericOrNull(formData.get('latitude'));
-  const longitude = numericOrNull(formData.get('longitude'));
+  const latitudeValue = formData.get('latitude');
+  const longitudeValue = formData.get('longitude');
+  const hasLatitude = latitudeValue !== null && latitudeValue !== '';
+  const hasLongitude = longitudeValue !== null && longitudeValue !== '';
+  if (hasLatitude !== hasLongitude) {
+    throw Object.assign(new Error('Provide both GPS coordinates or neither.'), {
+      status: 422,
+      code: 'INVALID_LOCATION'
+    });
+  }
+  const latitude = numericOrNull(latitudeValue);
+  const longitude = numericOrNull(longitudeValue);
+  if (hasLatitude && (
+    latitude === null || latitude < -90 || latitude > 90
+    || longitude === null || longitude < -180 || longitude > 180
+  )) {
+    throw Object.assign(new Error('The GPS coordinates are invalid.'), {
+      status: 422,
+      code: 'INVALID_LOCATION'
+    });
+  }
   const accuracy = numericOrNull(formData.get('location_accuracy'));
 
   if (!(audioFile instanceof Blob)) {
