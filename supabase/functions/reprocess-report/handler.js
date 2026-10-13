@@ -11,7 +11,7 @@ import {
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-admin-task-secret',
+  'Access-Control-Allow-Headers': 'apikey, content-type, x-admin-task-secret',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json'
 };
@@ -29,30 +29,19 @@ function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: CORS_HEADERS });
 }
 
-function constantTimeEqual(leftValue, rightValue) {
+async function constantTimeEqual(leftValue, rightValue) {
   const encoder = new TextEncoder();
-  const left = encoder.encode(leftValue);
-  const right = encoder.encode(rightValue);
-  const maxLength = Math.max(left.length, right.length);
-  let difference = left.length ^ right.length;
-  for (let index = 0; index < maxLength; index += 1) {
-    difference |= (left[index] || 0) ^ (right[index] || 0);
+  const [left, right] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(leftValue)),
+    crypto.subtle.digest('SHA-256', encoder.encode(rightValue))
+  ]);
+  const leftBytes = new Uint8Array(left);
+  const rightBytes = new Uint8Array(right);
+  let difference = 0;
+  for (let index = 0; index < leftBytes.length; index += 1) {
+    difference |= leftBytes[index] ^ rightBytes[index];
   }
   return difference === 0;
-}
-
-function tokenRole(request) {
-  const authorization = request.headers.get('authorization') || '';
-  if (!authorization.startsWith('Bearer ')) return '';
-  const token = authorization.slice(7).split('.');
-  if (token.length !== 3) return '';
-  try {
-    const encoded = token[1].replace(/-/g, '+').replace(/_/g, '/');
-    const claims = JSON.parse(atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '=')));
-    return claims.role || '';
-  } catch {
-    return '';
-  }
 }
 
 function safeErrorText(value, secrets) {
@@ -61,6 +50,38 @@ function safeErrorText(value, secrets) {
     if (secret) message = message.split(secret).join('[REDACTED]');
   }
   return message;
+}
+
+async function rateLimitKeyHash(secret) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function consumeAdminRateLimit(projectUrl, serviceRole, secret, fetchImpl) {
+  let result;
+  try {
+    result = await checkedJson(await fetchImpl(`${projectUrl}/rest/v1/rpc/consume_report_rate_limit`, {
+      method: 'POST',
+      headers: apiHeaders(serviceRole, { 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        p_scope: 'reprocess-report-admin',
+        p_key_hash: await rateLimitKeyHash(secret),
+        p_request_limit: 5,
+        p_window_seconds: 900
+      })
+    }), 'Applying reprocessing rate limit', [secret, serviceRole]);
+  } catch {
+    throw Object.assign(new Error('The reprocessing rate limit is unavailable.'), {
+      status: 503,
+      code: 'RATE_LIMIT_UNAVAILABLE'
+    });
+  }
+  if (result?.allowed !== true) {
+    throw Object.assign(new Error('Too many reprocessing requests. Try again later.'), {
+      status: 429,
+      code: 'RATE_LIMITED'
+    });
+  }
 }
 
 function apiHeaders(serviceRole, extra = {}) {
@@ -265,20 +286,17 @@ async function handleReprocessReport(request, context = {}) {
   if (request.method !== 'POST') {
     return jsonResponse({ ok: false, code: 'METHOD_NOT_ALLOWED' }, 405);
   }
-  if (tokenRole(request) !== 'service_role') {
-    return jsonResponse({ ok: false, code: 'SERVICE_ROLE_REQUIRED' }, 401);
-  }
 
   const expectedSecret = env.get('ADMIN_TASK_SECRET') || '';
   const suppliedSecret = request.headers.get('x-admin-task-secret') || '';
-  if (!expectedSecret || !constantTimeEqual(suppliedSecret, expectedSecret)) {
-    return jsonResponse({ ok: false, code: 'ADMIN_TASK_UNAUTHORIZED' }, 401);
+  if (!expectedSecret || !(await constantTimeEqual(suppliedSecret, expectedSecret))) {
+    return jsonResponse({ ok: false, code: 'UNAUTHORIZED', message: 'Unauthorized.' }, 401);
   }
 
   try {
     const projectUrl = env.get('SUPABASE_URL') || '';
-    const serviceRole = env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const geminiKey = env.get('GEMINI_API_KEY') || '';
+    const serviceRole = env.get('SUPABASE_SERVICE_ROLE_KEY') || env.get('SUPABASE_SERVICE_ROLE') || '';
+    const geminiKey = env.get('GEMINI_API_KEY') || env.get('GOOGLE_GENAI_API_KEY') || '';
     if (!projectUrl || !serviceRole || !geminiKey) {
       return jsonResponse({ ok: false, code: 'REPROCESS_NOT_CONFIGURED' }, 503);
     }
@@ -299,6 +317,7 @@ async function handleReprocessReport(request, context = {}) {
     if (new Set(identifiers).size !== identifiers.length) {
       return jsonResponse({ ok: false, code: 'DUPLICATE_REPORTS' }, 422);
     }
+    await consumeAdminRateLimit(projectUrl, serviceRole, expectedSecret, fetchImpl);
 
     const secrets = [serviceRole, geminiKey, expectedSecret];
     const results = [];
@@ -315,15 +334,18 @@ async function handleReprocessReport(request, context = {}) {
     }
     return jsonResponse({ ok: results.every((result) => result.ok), results });
   } catch (error) {
+    const status = Number(error?.status || 400);
     return jsonResponse({
       ok: false,
-      code: 'REPROCESS_REQUEST_FAILED',
+      code: error?.code || 'REPROCESS_REQUEST_FAILED',
       message: safeErrorText(error?.message, [
         env.get('SUPABASE_SERVICE_ROLE_KEY'),
+        env.get('SUPABASE_SERVICE_ROLE'),
         env.get('GEMINI_API_KEY'),
+        env.get('GOOGLE_GENAI_API_KEY'),
         env.get('ADMIN_TASK_SECRET')
       ])
-    }, 400);
+    }, status);
   }
 }
 

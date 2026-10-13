@@ -6,7 +6,7 @@ import { invokeFunction, Endpoints } from '@civicneuro/functions-client';
 import { enqueueReport, generateIdempotencyKey } from '@civicneuro/offline-queue';
 import { selectRows } from '@civicneuro/supabase-client';
 import { sessionStore } from '../../session.js';
-import { reportCategoryLabel } from './report-category.js';
+import { isAwaitingAiClassification, reportCategoryLabel } from './report-category.js';
 import {
   getAllReports,
   getReportById,
@@ -42,6 +42,7 @@ function mapReportRow(row) {
     referenceNumber: row.tracking_number || row.id,
     title: category,
     category,
+    awaitingAiClassification: isAwaitingAiClassification(row),
     location: row.user_reported_address || row.location_name || row.extracted_location || '',
     status: appStatus(row.status),
     displayTime,

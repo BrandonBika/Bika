@@ -15,5 +15,5 @@ verify_jwt = true
 entrypoint = "./functions/snap-and-say/index.js"
 
 [functions.reprocess-report]
-verify_jwt = true
+verify_jwt = false
 entrypoint = "./functions/reprocess-report/index.js"

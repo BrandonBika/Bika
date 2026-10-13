@@ -406,7 +406,10 @@ export class PageSnapAndSay extends BaseElement {
       failure.code = body.code;
       throw failure;
     }
-    return body.report || body;
+    return {
+      ...(body.report || body),
+      processing: body.processing === true
+    };
   }
 
   async _submitReport() {
@@ -724,16 +727,29 @@ export class PageSnapAndSay extends BaseElement {
     const card = createElement('div');
     card.style.cssText = 'background:#fff;border-radius:20px;padding:22px 18px;box-shadow:0 12px 30px rgba(0,0,0,0.08);';
 
-    const outcome = this._result?.failure ? 'Not submitted' : this._result?.queued ? 'Queued offline' : 'Report received';
+    const outcome = this._result?.failure ? 'Not submitted'
+      : this._result?.queued ? 'Queued offline'
+        : this._result?.processing ? 'Processing'
+          : 'Report received';
     const badge = createElement('div', { text: outcome });
     badge.style.cssText = 'display:inline-flex;padding:6px 10px;border-radius:999px;background:#e6f4ec;color:#0f5c44;font-weight:700;font-size:12px;';
 
     const title = createElement('h2', {
-      text: this._result?.failure ? 'Your report was not submitted' : this._result?.queued ? 'Saved for retry' : 'Your report was received'
+      text: this._result?.failure ? 'Your report was not submitted'
+        : this._result?.queued ? 'Saved for retry'
+          : 'Your report was received'
     });
     title.style.cssText = 'margin:16px 0 10px;font-size:28px;';
 
-    if (this._result?.english_translation) {
+    if (this._result?.processing) {
+      const processing = createElement('p', {
+        text: 'Your recording was received and is being processed. Your transcript and category will appear in My Reports when analysis finishes.'
+      });
+      processing.style.cssText = 'margin:0 0 16px;color:#465663;line-height:1.6;';
+      card.appendChild(processing);
+    }
+
+    if (!this._result?.processing && this._result?.english_translation) {
       const bubble = createElement('div');
       bubble.style.cssText = 'background:#f4f8fb;border-radius:14px;padding:16px;margin-bottom:16px;';
       const label = createElement('div', { text: 'What you said' });

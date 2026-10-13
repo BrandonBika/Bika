@@ -147,6 +147,10 @@ export class PageMyReports extends BaseElement {
     this._filter = 'all';
     this._searchQuery = '';
     this._debounceTimer = null;
+    this._refreshTimer = null;
+    this._refreshInFlight = false;
+    this._refreshAttempts = 0;
+    this._aiRefreshExhausted = false;
     this._isLoading = false;
     this._hasError = false;
   }
@@ -160,6 +164,7 @@ export class PageMyReports extends BaseElement {
     this._unsubscribe = reportsStore.subscribe(() => {
       this._renderCards();
       this._updateFilterCounts();
+      this._updateAiRefreshPolling();
     });
     this._isLoading = true;
     this._render();
@@ -169,23 +174,57 @@ export class PageMyReports extends BaseElement {
   disconnectedCallback() {
     if (this._unsubscribe) this._unsubscribe();
     if (this._debounceTimer) clearTimeout(this._debounceTimer);
+    if (this._refreshTimer) clearInterval(this._refreshTimer);
     super.disconnectedCallback();
   }
 
-  async _loadReports() {
-    this._isLoading = true;
-    this._hasError = false;
-    this._renderCards();
+  async _loadReports(showLoading = true) {
+    if (this._refreshInFlight) return;
+    this._refreshInFlight = true;
+    if (showLoading) {
+      this._isLoading = true;
+      this._hasError = false;
+      this._renderCards();
+    }
     try {
       await listMyReports();
       this._hasError = false;
     } catch (error) {
       console.error('Could not load resident reports.', error);
-      this._hasError = true;
+      if (showLoading) this._hasError = true;
     } finally {
-      this._isLoading = false;
+      this._refreshInFlight = false;
+      if (showLoading) this._isLoading = false;
       this._renderCards();
       this._updateFilterCounts();
+      this._updateAiRefreshPolling();
+    }
+  }
+
+  _updateAiRefreshPolling() {
+    const hasPendingClassification = getAllReports().some((report) =>
+      report.status === 'review' && report.awaitingAiClassification
+    );
+    if (hasPendingClassification && !this._refreshTimer && !this._aiRefreshExhausted) {
+      this._refreshTimer = setInterval(() => {
+        if (document.hidden) return;
+        this._refreshAttempts += 1;
+        if (this._refreshAttempts >= 24) {
+          clearInterval(this._refreshTimer);
+          this._refreshTimer = null;
+          this._aiRefreshExhausted = true;
+          return;
+        }
+        this._loadReports(false);
+      }, 5000);
+    } else if (!hasPendingClassification && this._refreshTimer) {
+      clearInterval(this._refreshTimer);
+      this._refreshTimer = null;
+      this._refreshAttempts = 0;
+      this._aiRefreshExhausted = false;
+    } else if (!hasPendingClassification) {
+      this._refreshAttempts = 0;
+      this._aiRefreshExhausted = false;
     }
   }
 

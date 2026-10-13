@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { reportCategoryLabel } from '../src/features/reports/report-category.js';
+import { isAwaitingAiClassification, reportCategoryLabel } from '../src/features/reports/report-category.js';
 
 test('labels Needs Review reports without an AI classification as Awaiting review', () => {
   assert.equal(reportCategoryLabel({
@@ -12,6 +12,14 @@ test('labels Needs Review reports without an AI classification as Awaiting revie
     status: 'Needs Review',
     ai_category: 'Unclear report'
   }), 'Awaiting review');
+  assert.equal(isAwaitingAiClassification({
+    status: 'Needs Review',
+    ai_category: 'Unclear report'
+  }), true);
+  assert.equal(isAwaitingAiClassification({
+    status: 'Needs Review',
+    ai_category: 'Flooding'
+  }), false);
 });
 
 test('preserves an available AI category and existing category fallbacks', () => {

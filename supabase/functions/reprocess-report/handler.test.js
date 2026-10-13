@@ -55,23 +55,38 @@ function request({
   });
 }
 
-test('requires a service-role JWT and the admin task secret', async () => {
-  const userResponse = await handleReprocessReport(request({ role: 'authenticated' }), {
-    env: createEnv()
+function requestWithoutJwt({ reports = ['CN-2026-000014'], secret = 'test-admin-secret' } = {}) {
+  return new Request('https://gnwaaedtofazlkjkurea.supabase.co/functions/v1/reprocess-report', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-task-secret': secret
+    },
+    body: JSON.stringify({ reports })
   });
-  assert.equal(userResponse.status, 401);
-  assert.equal((await userResponse.json()).code, 'SERVICE_ROLE_REQUIRED');
+}
 
+test('authenticates with the admin task secret and returns a generic unauthorized response', async () => {
+  const userResponse = await handleReprocessReport(requestWithoutJwt(), {
+    env: createEnv(),
+    fetchImpl: async (url) => String(url).endsWith('/rest/v1/rpc/consume_report_rate_limit')
+      ? new Response(JSON.stringify({ allowed: true }), { status: 200 })
+      : new Response('[]', { status: 200 })
+  });
   const secretResponse = await handleReprocessReport(request({ secret: 'wrong-secret' }), {
     env: createEnv()
   });
+  const missingSecretResponse = await handleReprocessReport(request({ secret: '' }), {
+    env: createEnv()
+  });
+  assert.equal(userResponse.status, 200);
   assert.equal(secretResponse.status, 401);
-  assert.equal((await secretResponse.json()).code, 'ADMIN_TASK_UNAUTHORIZED');
+  assert.deepEqual(await secretResponse.json(), await missingSecretResponse.json());
 });
 
 test('accepts no more than five explicit report identifiers', async () => {
   for (const reports of [[], ['CN-2026-000014', 'CN-2026-000015', 'CN-2026-000016', 'CN-2026-000017', 'CN-2026-000018', 'CN-2026-000019']]) {
-    const response = await handleReprocessReport(request({ reports }), {
+    const response = await handleReprocessReport(requestWithoutJwt({ reports }), {
       env: createEnv()
     });
     assert.equal(response.status, 422);
@@ -86,6 +101,9 @@ test('reprocesses only Needs Review reports with audio and records the result', 
   const fetchImpl = async (url, options = {}) => {
     const target = String(url);
     calls.push({ target, options });
+    if (target.endsWith('/rest/v1/rpc/consume_report_rate_limit')) {
+      return new Response(JSON.stringify({ allowed: true }), { status: 200 });
+    }
     if (target.includes('/rest/v1/reports?select=')) {
       return new Response(JSON.stringify([{
         id: reportId,
@@ -126,7 +144,7 @@ test('reprocesses only Needs Review reports with audio and records the result', 
     });
   };
 
-  const response = await handleReprocessReport(request(), {
+  const response = await handleReprocessReport(requestWithoutJwt(), {
     env: createEnv(),
     fetchImpl
   });
@@ -149,4 +167,23 @@ test('reprocesses only Needs Review reports with audio and records the result', 
       .map(({ options }) => JSON.parse(options.body).p_event_type),
     ['ai_classified', 'routed']
   );
+});
+
+test('rejects requests when the server-side admin rate limit is reached', async () => {
+  let processingStarted = false;
+  const fetchImpl = async (url) => {
+    if (String(url).endsWith('/rest/v1/rpc/consume_report_rate_limit')) {
+      return new Response(JSON.stringify({ allowed: false }), { status: 200 });
+    }
+    processingStarted = true;
+    return new Response('{}', { status: 200 });
+  };
+  const response = await handleReprocessReport(requestWithoutJwt(), {
+    env: createEnv(),
+    fetchImpl
+  });
+
+  assert.equal(response.status, 429);
+  assert.equal((await response.json()).code, 'RATE_LIMITED');
+  assert.equal(processingStarted, false);
 });

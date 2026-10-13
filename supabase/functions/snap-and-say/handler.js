@@ -58,6 +58,37 @@ function configuredGeminiModel(env) {
   return env.get('GEMINI_MODEL') || GEMINI_MODEL;
 }
 
+function redactAiText(value, env) {
+  let message = String(value || 'AI processing failed.');
+  for (const name of ['GEMINI_API_KEY', 'GOOGLE_GENAI_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE']) {
+    const secret = env.get(name);
+    if (secret) message = message.split(secret).join('[REDACTED]');
+  }
+  return message.replace(/([?&]key=)[^&\s"'&]+/gi, '$1[REDACTED]').slice(0, 1000);
+}
+
+function redactAiOutput(value, env) {
+  if (typeof value === 'string') return redactAiText(value, env);
+  if (Array.isArray(value)) return value.map((item) => redactAiOutput(item, env));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [
+      redactAiText(key, env),
+      redactAiOutput(item, env)
+    ]));
+  }
+  return value;
+}
+
+function classifyAiError(error, env) {
+  const message = redactAiText(error?.message, env);
+  let category = 'provider_error';
+  if (/546|worker_resource_limit/i.test(message)) category = 'worker_limit';
+  else if (/timeout|deadline/i.test(message)) category = 'timeout';
+  else if (error?.status === 429 || /429|resource_exhausted|rate.?limit/i.test(message)) category = 'rate_limited';
+  else if (/api key|not configured|unauthorized|permission denied/i.test(message)) category = 'key_problem';
+  return `${category}: ${message}`;
+}
+
 function normalizeMime(type, fallback = '') {
   return String(type || fallback || '').split(';', 1)[0].trim().toLowerCase();
 }
@@ -213,7 +244,11 @@ function finalizeGeminiResult(payload, raw) {
   const result = validateGeminiResult(raw);
   const urgency = String(result.urgency || 'MEDIUM').toUpperCase();
   const isCritical = urgency === 'CRITICAL' || Boolean(result.requires_immediate_dispatch);
-  const status = result.needs_human_review || result.routing_confidence < 0.4 ? 'Needs Review' : 'Pending Dispatch';
+  const status = result.needs_human_review
+    || result.classification_confidence < 0.4
+    || result.routing_confidence < 0.4
+    ? 'Needs Review'
+    : 'Pending Dispatch';
 
   return {
     ...payload,
@@ -245,8 +280,9 @@ function finalizeGeminiResult(payload, raw) {
 export async function callGemini({ env, fetchImpl, payload }) {
   const apiKey = env.get('GEMINI_API_KEY') || env.get('GOOGLE_GENAI_API_KEY');
   if (!apiKey) {
-    console.error('Snap & Say configuration error: Gemini API key is missing.');
-    return buildFallbackResponse(payload, 'AI analysis is unavailable because the service is not configured.');
+    throw Object.assign(new Error('Gemini API key is not configured.'), {
+      code: 'GEMINI_KEY_MISSING'
+    });
   }
 
   const prompt = `You are the intelligence engine for a multi-organisational South African incident and civic reporting platform. A member of the public has sent a short voice note and a photo as evidence.
@@ -291,7 +327,9 @@ GPS: lat ${payload.latitude ?? 'unknown'}, lon ${payload.longitude ?? 'unknown'}
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
     const safeDetail = detail && apiKey ? detail.split(apiKey).join('[REDACTED]') : detail;
-    throw new Error(safeDetail || 'Gemini request failed');
+    throw Object.assign(new Error(safeDetail || `Gemini request failed with HTTP ${response.status}.`), {
+      status: response.status
+    });
   }
 
   return await response.json();
@@ -473,7 +511,7 @@ async function persistReport(payload, user, reportId, evidence, guestCredentials
       'Content-Type': 'application/json',
       apikey: serviceRole,
       Prefer: 'return=representation',
-      Authorization: `Bearer ${serviceRole}`
+      Authorization: `Bearer ${serviceRole}`,
     },
     body: JSON.stringify(row)
   });
@@ -585,10 +623,10 @@ async function persistAiRun(reportId, run, env, fetchImpl) {
       report_id: reportId,
       model: run.model || GEMINI_MODEL,
       prompt_version: PROMPT_VERSION,
-      raw_output: run.rawOutput,
+      raw_output: run.rawOutput ? redactAiOutput(run.rawOutput, env) : null,
       latency_ms: run.latencyMs,
       tokens: run.tokens,
-      error: run.error
+      error: run.error ? redactAiText(run.error, env) : null
     })
   });
   if (!response.ok) {
@@ -597,6 +635,124 @@ async function persistAiRun(reportId, run, env, fetchImpl) {
       status: 500,
       code: 'AI_RUN_SAVE_FAILED'
     });
+  }
+}
+
+async function updateReportClassification(reportId, result, env, fetchImpl, { status = 'Needs Review' } = {}) {
+  const projectUrl = env.get('SUPABASE_URL');
+  const serviceRole = env.get('SUPABASE_SERVICE_ROLE_KEY') || env.get('SUPABASE_SERVICE_ROLE');
+  const response = await fetchImpl(`${projectUrl}/rest/v1/reports?id=eq.${encodeURIComponent(reportId)}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: serviceRole,
+      Authorization: `Bearer ${serviceRole}`
+    },
+    body: JSON.stringify({
+      description_original: result.original_transcription,
+      description_english: result.english_translation,
+      detected_language: result.detected_language,
+      visual_evidence_summary: result.visual_evidence_summary,
+      ai_category: result.issue_category,
+      urgency: result.urgency,
+      report_level: result.urgency,
+      requires_immediate_dispatch: result.requires_immediate_dispatch,
+      extracted_location: result.extracted_location,
+      recommended_organization: result.recommended_organization,
+      recommended_organization_text: result.recommended_organization?.organization_name,
+      alternative_organizations: result.alternative_organizations,
+      classification_confidence: result.classification_confidence,
+      routing_confidence: result.routing_confidence,
+      needs_human_review: result.needs_human_review,
+      review_reason: result.review_reason,
+      status
+    })
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw Object.assign(new Error(detail || 'Could not update the report classification.'), {
+      status: 500,
+      code: 'REPORT_CLASSIFICATION_UPDATE_FAILED'
+    });
+  }
+}
+
+async function processSavedReport(reportId, payload, user, env, fetchImpl) {
+  const model = configuredGeminiModel(env);
+  const startedAt = Date.now();
+  let rawOutput = null;
+  try {
+    rawOutput = await callGeminiWithRetry({ env, fetchImpl, payload });
+    const result = finalizeGeminiResult(payload, parseGeminiJson(rawOutput));
+    delete payload.audio_blob;
+    delete payload.image_blob;
+    delete result.audio_blob;
+    delete result.image_blob;
+
+    await updateReportClassification(reportId, result, env, fetchImpl);
+    await persistAiRun(reportId, {
+      model,
+      rawOutput,
+      latencyMs: Math.max(0, Date.now() - startedAt),
+      tokens: rawOutput?.usageMetadata || null,
+      error: null
+    }, env, fetchImpl);
+    await logReportEvent(
+      reportId,
+      'ai_classified',
+      `AI category: ${result.issue_category}; level: ${result.urgency}.`,
+      user.id,
+      env,
+      fetchImpl
+    );
+    await logReportEvent(
+      reportId,
+      'routed',
+      `Recommended organization: ${result.recommended_organization?.organization_name || 'unassigned'}.`,
+      user.id,
+      env,
+      fetchImpl
+    );
+    if (result.status !== 'Needs Review') {
+      await updateReportClassification(reportId, result, env, fetchImpl, { status: result.status });
+    }
+  } catch (error) {
+    const aiError = classifyAiError(error, env);
+    console.error('Snap & Say background AI processing failed:', aiError);
+    try {
+      await persistAiRun(reportId, {
+        model,
+        rawOutput: null,
+        latencyMs: Math.max(0, Date.now() - startedAt),
+        tokens: null,
+        error: aiError
+      }, env, fetchImpl);
+      await logReportEvent(
+        reportId,
+        'ai_processing_failed',
+        'Automated analysis failed; the saved report remains in manual review.',
+        user.id,
+        env,
+        fetchImpl
+      );
+    } catch (recordError) {
+      console.error('Could not record Snap & Say AI failure metadata:', redactAiText(recordError?.message, env));
+    }
+  } finally {
+    delete payload.audio_blob;
+    delete payload.image_blob;
+    rawOutput = null;
+  }
+}
+
+async function callGeminiWithRetry({ env, fetchImpl, payload }) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await callGemini({ env, fetchImpl, payload });
+    } catch (error) {
+      if (attempt >= 3 || ![429, 503].includes(error?.status)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 250 * (2 ** (attempt - 1))));
+    }
   }
 }
 
@@ -731,7 +887,8 @@ async function handleSnapAndSay(request, context = {}) {
           ...(guestCredentials ? { lookup_code: guestCredentials.code } : {})
         },
         idempotent_replay: true,
-        queued: false
+        processing: existing.status === 'Needs Review'
+          && (!existing.ai_category || String(existing.ai_category).toLowerCase() === 'unclear report')
       }, 200);
     }
     const reportId = crypto.randomUUID();
@@ -739,76 +896,21 @@ async function handleSnapAndSay(request, context = {}) {
       ? await createGuestLookupCredentials(env.get('GUEST_LOOKUP_HMAC_KEY'), reportId)
       : null;
     const evidence = await uploadReportMedia(payload, user.id, reportId, env, fetchImpl);
-    let result;
-    let rawAiOutput = null;
-    let aiError = null;
-    const aiStartedAt = Date.now();
-    try {
-      const geminiResponse = await callGemini({ env, fetchImpl, payload });
-      rawAiOutput = geminiResponse;
-      result = geminiResponse?.status === 'Needs Review'
-        ? { ...payload, ...geminiResponse }
-        : finalizeGeminiResult(payload, parseGeminiJson(geminiResponse));
-      if (geminiResponse?.status === 'Needs Review') {
-        aiError = String(geminiResponse.review_reason || 'AI analysis unavailable.');
-      }
-    } catch (firstError) {
-      aiError = firstError.message;
-      try {
-        const geminiResponse = await callGemini({ env, fetchImpl, payload });
-        rawAiOutput = geminiResponse;
-        result = geminiResponse?.status === 'Needs Review'
-          ? { ...payload, ...geminiResponse }
-          : finalizeGeminiResult(payload, parseGeminiJson(geminiResponse));
-        if (geminiResponse?.status === 'Needs Review') {
-          aiError = String(geminiResponse.review_reason || aiError);
-        } else {
-          aiError = `Recovered after retry: ${aiError}`;
-        }
-      } catch (retryError) {
-        aiError = retryError.message || aiError;
-        result = {
-          ...payload,
-          ...buildFallbackResponse({
-            ...payload,
-            gps_status: payload.gps_status,
-            reason: 'Gemini output was malformed.'
-          }, 'Gemini returned malformed output after a retry; the report and original evidence were saved for manual review.')
-        };
-      }
-    }
-
-    delete payload.audio_blob;
-    delete payload.image_blob;
-    delete result.audio_blob;
-    delete result.image_blob;
+    const result = {
+      ...buildFallbackResponse(payload, 'Your recording was received and is being processed.'),
+      latitude: payload.latitude,
+      longitude: payload.longitude,
+      location_accuracy: payload.location_accuracy,
+      device_timestamp: payload.device_timestamp
+    };
     const persisted = await persistReport(result, user, reportId, evidence, guestCredentials, env, fetchImpl);
-    if (persisted.stored) {
-      await persistAiRun(reportId, {
-        model: configuredGeminiModel(env),
-        rawOutput: rawAiOutput,
-        latencyMs: Math.max(0, Date.now() - aiStartedAt),
-        tokens: rawAiOutput?.usageMetadata || null,
-        error: aiError
-      }, env, fetchImpl);
-    }
-    if (persisted.stored) {
-      await logReportEvent(
-        reportId,
-        'ai_classified',
-        `AI category: ${result.issue_category}; level: ${result.urgency}.`,
-        user.id,
-        env,
-        fetchImpl
-      );
-      await logReportEvent(
-        reportId,
-        'routed',
-        `Recommended organization: ${result.recommended_organization?.organization_name || 'unassigned'}.`,
-        user.id,
-        env,
-        fetchImpl
-      );
+    const backgroundTask = Promise.resolve().then(() =>
+      processSavedReport(reportId, payload, user, env, fetchImpl)
+    );
+    if (context.waitUntil) {
+      context.waitUntil(backgroundTask);
+    } else {
+      await backgroundTask;
     }
     return jsonResponse({
       ok: true,
@@ -819,7 +921,7 @@ async function handleSnapAndSay(request, context = {}) {
         tracking_number: persisted.tracking_number,
         ...(guestCredentials ? { lookup_code: guestCredentials.code } : {})
       }),
-      queued: false
+      processing: true
     }, 200);
   } catch (error) {
     const status = Number(error?.status || 500);
