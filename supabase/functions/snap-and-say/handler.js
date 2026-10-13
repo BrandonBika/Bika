@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { createGuestLookupCredentials } from '../_shared/report-submission.js';
 
 const CORS_HEADERS = {
@@ -7,8 +8,8 @@ const CORS_HEADERS = {
   'Content-Type': 'application/json'
 };
 
-const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+export const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 export const GEMINI_MODEL = 'gemini-3.8-flash';
 export const PROMPT_VERSION = 'snap-and-say-v1';
 const ALLOWED_AUDIO_TYPES = new Set([
@@ -53,6 +54,10 @@ function jsonResponse(body, status = 200) {
   });
 }
 
+function configuredGeminiModel(env) {
+  return env.get('GEMINI_MODEL') || GEMINI_MODEL;
+}
+
 function normalizeMime(type, fallback = '') {
   return String(type || fallback || '').split(';', 1)[0].trim().toLowerCase();
 }
@@ -76,17 +81,10 @@ function numericOrNull(value) {
 }
 
 function bytesToBase64(bytes) {
-  let binary = '';
-  const chunkSize = 0x8000;
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
-  }
-  return btoa(binary);
-}
-
-function base64ToBytes(value) {
-  const binary = atob(value);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  const buffer = bytes instanceof ArrayBuffer
+    ? Buffer.from(bytes)
+    : Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return buffer.toString('base64');
 }
 
 function parseGeminiJson(payload) {
@@ -202,6 +200,8 @@ function publicReport(report) {
   const {
     audio_base64: _audioBase64,
     image_base64: _imageBase64,
+    audio_blob: _audioBlob,
+    image_blob: _imageBlob,
     audio_filename: _audioFilename,
     image_filename: _imageFilename,
     ...safeReport
@@ -263,17 +263,29 @@ GPS: lat ${payload.latitude ?? 'unknown'}, lon ${payload.longitude ?? 'unknown'}
 
   const parts = [
     { text: prompt },
-    ...(payload.image_base64 ? [{ inline_data: { mime_type: payload.image_mime_type || 'image/jpeg', data: payload.image_base64 } }] : []),
-    ...(payload.audio_base64 ? [{ inline_data: { mime_type: geminiAudioMime(payload.audio_mime_type), data: payload.audio_base64 } }] : [])
+    ...(payload.image_blob ? [{
+      inline_data: {
+        mime_type: payload.image_mime_type || 'image/jpeg',
+        data: bytesToBase64(await payload.image_blob.arrayBuffer())
+      }
+    }] : []),
+    ...(payload.audio_blob ? [{
+      inline_data: {
+        mime_type: geminiAudioMime(payload.audio_mime_type),
+        data: bytesToBase64(await payload.audio_blob.arrayBuffer())
+      }
+    }] : [])
   ];
 
-  const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
+  const requestBody = JSON.stringify({
+    contents: [{ role: 'user', parts }],
+    generationConfig: { responseMimeType: 'application/json' }
+  });
+  parts.length = 0;
+  const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${configuredGeminiModel(env)}:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts }],
-      generationConfig: { responseMimeType: 'application/json' }
-    })
+    body: requestBody
   });
 
   if (!response.ok) {
@@ -351,13 +363,12 @@ async function uploadReportMedia(payload, reporterId, reportId, env, fetchImpl) 
   }
   const evidence = [];
   const items = [
-    { field: 'audio', kind: 'audio', base64: payload.audio_base64, mime: payload.audio_mime_type, duration: payload.duration_seconds },
-    { field: 'image', kind: 'image', base64: payload.image_base64, mime: payload.image_mime_type, duration: null }
+    { field: 'audio', kind: 'audio', blob: payload.audio_blob, mime: payload.audio_mime_type, duration: payload.duration_seconds },
+    { field: 'image', kind: 'image', blob: payload.image_blob, mime: payload.image_mime_type, duration: null }
   ];
   for (const item of items) {
-    if (!item.base64 || !item.mime) continue;
+    if (!item.blob || !item.mime) continue;
     const objectPath = `${reporterId}/${reportId}/${item.field}-${crypto.randomUUID()}.${mimeToExtension(item.mime)}`;
-    const bytes = base64ToBytes(item.base64);
     const response = await fetchImpl(`${projectUrl}/storage/v1/object/report-evidence/${objectPath}`, {
       method: 'POST',
       headers: {
@@ -366,7 +377,7 @@ async function uploadReportMedia(payload, reporterId, reportId, env, fetchImpl) 
         'Content-Type': item.mime,
         'x-upsert': 'false'
       },
-      body: bytes
+      body: item.blob
     });
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
@@ -380,7 +391,7 @@ async function uploadReportMedia(payload, reporterId, reportId, env, fetchImpl) 
       bucket: 'report-evidence',
       path: objectPath,
       mime_type: item.mime,
-      size_bytes: bytes.length,
+      size_bytes: item.blob.size,
       duration_seconds: item.duration
     });
   }
@@ -572,7 +583,7 @@ async function persistAiRun(reportId, run, env, fetchImpl) {
     },
     body: JSON.stringify({
       report_id: reportId,
-      model: GEMINI_MODEL,
+      model: run.model || GEMINI_MODEL,
       prompt_version: PROMPT_VERSION,
       raw_output: run.rawOutput,
       latency_ms: run.latencyMs,
@@ -645,10 +656,9 @@ async function parseReport(request) {
     }
   }
 
-  const audioBytes = new Uint8Array(await audioFile.arrayBuffer());
   const payload = {
     audio_mime_type: audioMime,
-    audio_base64: bytesToBase64(audioBytes),
+    audio_blob: audioFile,
     audio_filename: `audio-${Date.now()}.${mimeToExtension(audioMime)}`,
     audio_transcript: String(formData.get('transcript') || ''),
     latitude: Number.isFinite(latitude) ? latitude : null,
@@ -674,8 +684,7 @@ async function parseReport(request) {
   }
 
   if (imageFile instanceof Blob) {
-    const imageBytes = new Uint8Array(await imageFile.arrayBuffer());
-    payload.image_base64 = bytesToBase64(imageBytes);
+    payload.image_blob = imageFile;
     payload.image_mime_type = normalizeMime(imageFile.type, 'image/jpeg');
     payload.image_filename = `image-${Date.now()}.${mimeToExtension(payload.image_mime_type)}`;
   }
@@ -769,9 +778,14 @@ async function handleSnapAndSay(request, context = {}) {
       }
     }
 
+    delete payload.audio_blob;
+    delete payload.image_blob;
+    delete result.audio_blob;
+    delete result.image_blob;
     const persisted = await persistReport(result, user, reportId, evidence, guestCredentials, env, fetchImpl);
     if (persisted.stored) {
       await persistAiRun(reportId, {
+        model: configuredGeminiModel(env),
         rawOutput: rawAiOutput,
         latencyMs: Math.max(0, Date.now() - aiStartedAt),
         tokens: rawAiOutput?.usageMetadata || null,
@@ -818,5 +832,6 @@ export {
   buildFallbackResponse,
   finalizeGeminiResult,
   validateGeminiResult,
-  parseGeminiJson
+  parseGeminiJson,
+  configuredGeminiModel
 };

@@ -13,3 +13,7 @@ entrypoint = "./functions/report-track/index.js"
 [functions.snap-and-say]
 verify_jwt = true
 entrypoint = "./functions/snap-and-say/index.js"
+
+[functions.reprocess-report]
+verify_jwt = true
+entrypoint = "./functions/reprocess-report/index.js"

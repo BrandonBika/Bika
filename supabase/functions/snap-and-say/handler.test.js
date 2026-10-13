@@ -231,7 +231,7 @@ test('uploads private evidence to the report path and persists evidence metadata
   };
   const request = createRequest({ authorization: 'Bearer resident-session' });
   const response = await handleSnapAndSay(request, {
-    env: createEnv({ GEMINI_API_KEY: 'injected-test-key' }),
+    env: createEnv({ GEMINI_API_KEY: 'injected-test-key', GEMINI_MODEL: 'configured-flash-model' }),
     fetchImpl
   });
 
@@ -242,6 +242,16 @@ test('uploads private evidence to the report path and persists evidence metadata
   assert.equal(uploadCalls.length, 2);
   assert.ok(uploadCalls.every((call) => call.url.includes('/storage/v1/object/report-evidence/')));
   assert.ok(uploadCalls.every((call) => call.options.headers['x-upsert'] === 'false'));
+  assert.ok(uploadCalls.every((call) => call.options.body instanceof Blob));
+  const geminiCall = calls.find((call) => call.url.includes('generativelanguage.googleapis.com'));
+  assert.match(geminiCall.url, /\/models\/configured-flash-model:generateContent/);
+  const geminiRequest = JSON.parse(geminiCall.options.body);
+  const audioInline = geminiRequest.contents[0].parts.find(({ inline_data }) => inline_data?.mime_type === 'audio/wav').inline_data;
+  const uploadedAudio = uploadCalls.find((call) => call.url.includes('/audio-'));
+  assert.deepEqual(
+    Buffer.from(audioInline.data, 'base64'),
+    Buffer.from(await uploadedAudio.options.body.arrayBuffer())
+  );
 
   const authCall = calls.find((call) => call.url.endsWith('/auth/v1/user'));
   assert.equal(authCall.options.headers.Authorization, 'Bearer resident-session');
@@ -263,13 +273,31 @@ test('uploads private evidence to the report path and persists evidence metadata
   const aiRunCall = calls.find((call) => call.url.endsWith('/rest/v1/ai_runs'));
   assert.ok(aiRunCall);
   const aiRun = JSON.parse(aiRunCall.options.body);
-  assert.equal(aiRun.model, GEMINI_MODEL);
+  assert.equal(aiRun.model, 'configured-flash-model');
   assert.equal(aiRun.prompt_version, 'snap-and-say-v1');
   assert.ok(aiRun.raw_output);
   assert.equal(aiRun.error, null);
   assert.equal(row.latitude, -29.85);
   assert.equal(row.longitude, 31.02);
   assert.equal(row.location, 'SRID=4326;POINT(31.02 -29.85)');
+  assert.equal('audio_blob' in report, false);
+  assert.equal('image_blob' in report, false);
+});
+
+test('rejects audio larger than the 5 MiB server limit before uploading', async () => {
+  const calls = [];
+  const response = await handleSnapAndSay(createRequest({
+    audioLength: 5 * 1024 * 1024 + 1
+  }), {
+    ...testContext(async (url) => {
+      calls.push(String(url));
+      return new Response('{}', { status: 200 });
+    })
+  });
+
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).code, 'AUDIO_TOO_LARGE');
+  assert.equal(calls.some((url) => url.includes('/storage/v1/object/')), false);
 });
 
 test('removes the report and uploaded evidence if evidence metadata cannot be saved', async () => {
@@ -418,7 +446,7 @@ test('accepts an anonymous Supabase session and returns a guest lookup code on f
 
   const mediaUploads = calls.filter(({ url }) => url.includes('/storage/v1/object/report-evidence/'));
   assert.equal(mediaUploads.length, 2);
-  assert.ok(mediaUploads.every(({ options }) => options.body instanceof Uint8Array));
+  assert.ok(mediaUploads.every(({ options }) => options.body instanceof Blob));
   const evidenceCalls = calls.filter(({ url }) => url.endsWith('/rest/v1/report_evidence'));
   assert.equal(evidenceCalls.length, 2);
   assert.ok(evidenceCalls.every(({ options }) => (

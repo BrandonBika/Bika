@@ -1,6 +1,6 @@
 # Snap & Say backend
 
-This Edge Function accepts multipart `audio`, optional `image`, `duration_seconds`, latitude, longitude, location accuracy, and device timestamp. It validates real MIME types (ignoring MIME parameters), uploads evidence to the private `report-evidence` bucket, calls Gemini 3.8 Flash, and stores report and evidence metadata without public media URLs. Browser `audio/webm;codecs=opus` is normalized to `audio/webm`; browser `audio/mp4` is sent to Gemini as its documented M4A MIME type (`audio/m4a`) while evidence metadata retains the original browser MIME. The Gemini request uses `contents[].parts[]` with `inline_data` for each media item and requests JSON output. The response parser accepts Gemini's candidate text JSON, and the validated result must include transcription, translation, category, urgency, routing recommendation, confidence, and review fields. Provider failures are stored in `ai_runs.error` after redacting the configured Gemini key. The resident ID is resolved from the validated bearer token; a client-supplied ID is never accepted.
+This Edge Function accepts multipart `audio`, optional `image`, `duration_seconds`, latitude, longitude, location accuracy, and device timestamp. It validates real MIME types (ignoring MIME parameters), uploads evidence to the private `report-evidence` bucket, calls Gemini, and stores report and evidence metadata without public media URLs. Browser `audio/webm;codecs=opus` is normalized to `audio/webm`; browser `audio/mp4` is sent to Gemini as `audio/m4a` while evidence metadata retains the original browser MIME. Gemini receives `contents[].parts[]` with inline media and JSON output mode. The response is validated for transcription, translation, category, urgency, routing, confidence, and review fields. Provider failures are saved in `ai_runs.error` after redacting the configured API key. The resident ID is resolved from the validated bearer token; a client-supplied ID is never accepted.
 
 ## Required configuration
 
@@ -8,30 +8,31 @@ This Edge Function accepts multipart `audio`, optional `image`, `duration_second
 - `SUPABASE_ANON_KEY` (recommended for auth user validation)
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `GEMINI_API_KEY`
+- Optional `GEMINI_MODEL` (defaults to `gemini-3.8-flash`)
 
-Evidence is uploaded to the private `report-evidence` bucket. Object paths use `<reporter_id>/<report_id>/<file>`, and `report_evidence` stores the bucket and path. The bucket limits each object to 25 MiB and allows the configured audio, image, and video MIME types. The handler currently accepts audio and image evidence up to 8 MiB each. Evidence metadata failures trigger deletion of the inserted report and uploaded objects; cleanup failures are returned as errors. Gemini model, prompt version, raw response, latency, token metadata, and errors are written to `ai_runs`. Malformed Gemini output still saves the report and evidence as `Needs Review`; critical output keeps 112, 10111, and 10177 available prominently in the client confirmation.
+Audio is limited to 5 MiB and images to 8 MiB. Evidence is uploaded directly from the original `Blob`; a byte buffer and base64 string are created only while preparing Gemini's inline request, then are released rather than retained in the report payload. Evidence metadata failures trigger deletion of the inserted report and uploaded objects. Gemini model, prompt version, raw response, latency, token metadata, and errors are written to `ai_runs`. Unavailable or malformed Gemini output still saves the report and evidence as `Needs Review`.
 
 ## Reprocessing a Needs Review report
 
-The operator script `supabase/scripts/reprocess-snap-and-say.js` retries classification only for explicitly supplied report UUIDs or tracking numbers. It is restricted in code to this staging project's URL, requires `SUPABASE_SERVICE_ROLE_KEY` and `GEMINI_API_KEY` in the operator's environment, and refuses reports that are not `Needs Review` or do not have audio evidence. It downloads the private evidence, reruns the same model/schema path, updates only the AI classification fields, and records an `ai_runs` row and report events. There is no bulk mode. Do not run it on any report until the owner approves the exact IDs.
+The JWT-verified `reprocess-report` Edge Function additionally requires a service-role JWT and an `x-admin-task-secret` matching the Edge Function secret `ADMIN_TASK_SECRET`. It accepts one to five explicitly supplied report UUIDs or tracking numbers, rejects reports not in `Needs Review` or without audio evidence, and records `ai_runs` and report events. It is restricted in code to the staging Supabase host and does not implement bulk selection.
+
+Call it from PowerShell without putting the secret in command history or output:
 
 ```powershell
-$env:SUPABASE_URL = 'https://gnwaaedtofazlkjkurea.supabase.co'
-node supabase/scripts/reprocess-snap-and-say.js <approved-report-uuid-or-tracking-number>
+$headers = @{
+  Authorization = "Bearer $serviceRoleJwt"
+  apikey = $publicAnonKey
+  "x-admin-task-secret" = $adminTaskSecret
+}
+$body = @{ reports = @("CN-2026-000014", "CN-2026-000018") } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "https://gnwaaedtofazlkjkurea.supabase.co/functions/v1/reprocess-report" -Headers $headers -ContentType "application/json" -Body $body
 ```
 
-Set the service-role and Gemini environment variables securely in the local shell before running; never place their values in command history or print them. The two currently identified recovery candidates, `CN-2026-000014` and `CN-2026-000018`, are not processed by this change.
+Do not run this against any report until the owner approves the exact identifiers. The two currently identified recovery candidates have not been reprocessed.
 
-## Local testing
+## Local tests
 
-```bash
-node --test supabase/functions/snap-and-say/handler.test.js
+```powershell
+node --test supabase\functions\snap-and-say\handler.test.js
+node --test supabase\functions\reprocess-report\handler.test.js
 ```
-
-Tests inject a Gemini key and mock fetch; production does not bypass missing-key behavior for mocks:
-
-```bash
-node --test supabase/functions/snap-and-say/handler.test.js
-```
-
-For a manual smoke test, use the real browser flow with a signed-in resident, hold the recording control for more than one second, capture a small JPEG/PNG or select **Skip photo**, and confirm the backend returns the persisted report.
