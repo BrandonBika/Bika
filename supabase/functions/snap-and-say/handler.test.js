@@ -725,6 +725,79 @@ test('retries transient Gemini 503 responses in the background', async () => {
   assert.equal(reportUpdate.status, 'Pending Dispatch');
 });
 
+test('falls back to GEMINI_FALLBACK_MODEL after primary retries return 429 or 503', async () => {
+  const validResult = {
+    original_transcription: 'A damaged road needs repair.',
+    detected_language: 'en',
+    english_translation: 'A damaged road needs repair.',
+    visual_evidence_summary: 'A damaged road is visible.',
+    photo_matches_report: true,
+    issue_category: 'Road damage',
+    urgency: 'LOW',
+    requires_immediate_dispatch: false,
+    extracted_location: 'GPS location provided.',
+    recommended_organization: { organization_name: 'Municipality Roads Department' },
+    alternative_organizations: [],
+    classification_confidence: 0.9,
+    routing_confidence: 0.9,
+    needs_human_review: false,
+    review_reason: ''
+  };
+
+  for (const primaryStatus of [429, 503]) {
+    const attemptedModels = [];
+    let primaryAttempts = 0;
+    let savedRun;
+    const fetchImpl = async (url, options = {}) => {
+      const target = String(url);
+      if (target.includes('generativelanguage.googleapis.com')) {
+        const model = target.match(/\/models\/([^:]+):generateContent/)?.[1];
+        attemptedModels.push(model);
+        if (model === 'primary-test-model') {
+          primaryAttempts += 1;
+          return new Response(JSON.stringify({
+            error: { code: primaryStatus, message: 'Temporary provider limit.' }
+          }), { status: primaryStatus });
+        }
+        return new Response(JSON.stringify({
+          candidates: [{ content: { parts: [{ text: JSON.stringify(validResult) }] } }]
+        }), { status: 200 });
+      }
+      if (target.endsWith('/rest/v1/ai_runs')) {
+        savedRun = JSON.parse(options.body);
+      }
+      if (target.endsWith('/rest/v1/reports') && options.method === 'POST') {
+        return new Response(JSON.stringify([{
+          ...JSON.parse(options.body),
+          tracking_number: 'CN-2026-000202'
+        }]), { status: 201 });
+      }
+      return target.includes('/rest/v1/reports?id=')
+        ? new Response(null, { status: 204 })
+        : new Response('{}', { status: 200 });
+    };
+
+    const context = {
+      ...testContext(fetchImpl),
+      env: createEnv({
+        GEMINI_MODEL: 'primary-test-model',
+        GEMINI_FALLBACK_MODEL: 'fallback-test-model'
+      })
+    };
+    const response = await handleSnapAndSay(createRequest(), context);
+    assert.equal(response.status, 200);
+    assert.equal(primaryAttempts, 3);
+    assert.deepEqual(attemptedModels, [
+      'primary-test-model',
+      'primary-test-model',
+      'primary-test-model',
+      'fallback-test-model'
+    ]);
+    assert.equal(savedRun.model, 'fallback-test-model');
+    assert.equal(savedRun.error, null);
+  }
+});
+
 test('AI failure metadata never stores configured secrets', async () => {
   const apiKey = 'private-test-gemini-key';
   let savedRun;

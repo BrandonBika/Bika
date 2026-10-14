@@ -11,8 +11,11 @@ Browser `audio/webm;codecs=opus` is normalized to `audio/webm`; browser `audio/m
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `GEMINI_API_KEY`
 - Optional `GEMINI_MODEL` (defaults to `gemini-3.8-flash`)
+- Optional `GEMINI_FALLBACK_MODEL` (no fallback model is selected when unset)
 
 Audio is limited to 5 MiB and images to 8 MiB. Evidence is uploaded directly from the original `Blob`; temporary byte buffers and base64 strings exist only in the background task. Evidence metadata failures trigger deletion of the inserted report and uploaded objects. The selected model, prompt version, sanitized raw response on success, latency, token metadata, and redacted error category on failure are written to `ai_runs`. Gemini API rate-limit responses (HTTP 429) do not undo the saved report: it remains in `Needs Review` for later recovery.
+
+Each configured model receives up to three attempts for transient HTTP 429/503 responses. After all primary-model attempts fail with 429 or 503, the optional fallback model receives the same bounded retry policy. Other primary errors do not trigger fallback. `ai_runs.model` records the model used for the successful result, or the final model attempted when processing fails.
 
 ## Reprocessing a Needs Review report
 

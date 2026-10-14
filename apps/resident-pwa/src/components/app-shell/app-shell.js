@@ -7,7 +7,6 @@ import { clearChildren, createElement } from '@civicneuro/security-web';
 import '../bottom-nav/bottom-nav.js';
 import '../top-menu-button/top-menu-button.js';
 import '../offline-banner/offline-banner.js';
-import '../beacon-share-indicator/beacon-share-indicator.js';
 
 export class CnAppShell extends BaseElement {
   connectedCallback() {
@@ -87,12 +86,6 @@ export class CnAppShell extends BaseElement {
     // 3. Offline Banner
     const offlineBanner = createElement('cn-offline-banner');
     this.appendChild(offlineBanner);
-
-    // Active beacon sharing indicator
-    if (session.activeSharesCount > 0) {
-      const shareIndicator = createElement('cn-beacon-share-indicator');
-      this.appendChild(shareIndicator);
-    }
 
     // 4. Main Content
     const main = createElement('main', { cls: ['phone-content', 'cn-shell-main'], attrs: { id: 'cn-main-content' } });

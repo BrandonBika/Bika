@@ -58,6 +58,10 @@ function configuredGeminiModel(env) {
   return env.get('GEMINI_MODEL') || GEMINI_MODEL;
 }
 
+function configuredGeminiFallbackModel(env) {
+  return String(env.get('GEMINI_FALLBACK_MODEL') || '').trim();
+}
+
 function redactAiText(value, env) {
   let message = String(value || 'AI processing failed.');
   for (const name of ['GEMINI_API_KEY', 'GOOGLE_GENAI_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_SERVICE_ROLE']) {
@@ -277,7 +281,7 @@ function finalizeGeminiResult(payload, raw) {
   };
 }
 
-export async function callGemini({ env, fetchImpl, payload }) {
+export async function callGemini({ env, fetchImpl, payload, model = configuredGeminiModel(env) }) {
   const apiKey = env.get('GEMINI_API_KEY') || env.get('GOOGLE_GENAI_API_KEY');
   if (!apiKey) {
     throw Object.assign(new Error('Gemini API key is not configured.'), {
@@ -318,7 +322,7 @@ GPS: lat ${payload.latitude ?? 'unknown'}, lon ${payload.longitude ?? 'unknown'}
     generationConfig: { responseMimeType: 'application/json' }
   });
   parts.length = 0;
-  const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${configuredGeminiModel(env)}:generateContent?key=${apiKey}`, {
+  const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: requestBody
@@ -678,11 +682,13 @@ async function updateReportClassification(reportId, result, env, fetchImpl, { st
 }
 
 async function processSavedReport(reportId, payload, user, env, fetchImpl) {
-  const model = configuredGeminiModel(env);
+  let model = configuredGeminiModel(env);
   const startedAt = Date.now();
   let rawOutput = null;
   try {
-    rawOutput = await callGeminiWithRetry({ env, fetchImpl, payload });
+    const geminiResult = await callGeminiWithRetry({ env, fetchImpl, payload });
+    model = geminiResult.model;
+    rawOutput = geminiResult.output;
     const result = finalizeGeminiResult(payload, parseGeminiJson(rawOutput));
     delete payload.audio_blob;
     delete payload.image_blob;
@@ -717,6 +723,7 @@ async function processSavedReport(reportId, payload, user, env, fetchImpl) {
       await updateReportClassification(reportId, result, env, fetchImpl, { status: result.status });
     }
   } catch (error) {
+    model = error?.model || model;
     const aiError = classifyAiError(error, env);
     console.error('Snap & Say background AI processing failed:', aiError);
     try {
@@ -746,9 +753,35 @@ async function processSavedReport(reportId, payload, user, env, fetchImpl) {
 }
 
 async function callGeminiWithRetry({ env, fetchImpl, payload }) {
+  const primaryModel = configuredGeminiModel(env);
+  try {
+    return {
+      output: await callGeminiWithModelRetry({ env, fetchImpl, payload, model: primaryModel }),
+      model: primaryModel
+    };
+  } catch (primaryError) {
+    const fallbackModel = configuredGeminiFallbackModel(env);
+    if (![429, 503].includes(primaryError?.status) || !fallbackModel || fallbackModel === primaryModel) {
+      primaryError.model = primaryModel;
+      throw primaryError;
+    }
+
+    try {
+      return {
+        output: await callGeminiWithModelRetry({ env, fetchImpl, payload, model: fallbackModel }),
+        model: fallbackModel
+      };
+    } catch (fallbackError) {
+      fallbackError.model = fallbackModel;
+      throw fallbackError;
+    }
+  }
+}
+
+async function callGeminiWithModelRetry({ env, fetchImpl, payload, model }) {
   for (let attempt = 1; ; attempt += 1) {
     try {
-      return await callGemini({ env, fetchImpl, payload });
+      return await callGemini({ env, fetchImpl, payload, model });
     } catch (error) {
       if (attempt >= 3 || ![429, 503].includes(error?.status)) throw error;
       await new Promise((resolve) => setTimeout(resolve, 250 * (2 ** (attempt - 1))));

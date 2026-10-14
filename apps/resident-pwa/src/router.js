@@ -98,7 +98,11 @@ export async function handleRouteChange() {
   const session = sessionStore.get();
 
   const routeDef = routes[routeName] || routes['welcome'];
-  const targetRoute = routeName === 'alerts'
+  const isBeaconRoute = routeName.startsWith('beacon-')
+    || (routeName === 'contacts-permission' && params.source === 'beacon');
+  const targetRoute = isBeaconRoute
+    ? 'beacon-safety-notice'
+    : routeName === 'alerts'
     ? 'notifications'
     : (routes[routeName] ? routeName : 'welcome');
 

@@ -89,21 +89,16 @@ app is embedded, check that the iframe permits geolocation and that the
 deployment's Permissions-Policy allows it.
 
 ## Beacon contacts
-Beacon starts with an empty circle and no sample contacts or resident search
-results. From **Add to your circle**, choose **Choose or add a contact** to
-open the browser's phone-contact picker where supported, or enter a name and
-phone number manually. Only the contacts the resident explicitly selects or
-enters are saved to their CivicNeuro account; the app does not copy the full
-phone address book or write to it. Apply
-`supabase/migrations/0029_beacon_contacts.sql` to create the owner-scoped table
-and row-level security policies. Contacts load again when the resident returns
-on another signed-in device. Tapping **Invite** records that the messaging
-draft was prepared and opens the device messaging app with a CivicNeuro
-registration link; it does not confirm delivery, registration, or circle
-acceptance. Browser contact-picker support varies by device; manual entry is
-available as a fallback. Resident-directory search is not connected yet.
-If the app reports that `public.beacon_contacts` is missing from the schema
-cache, apply that migration in the Supabase SQL Editor and reload the PWA.
+Beacon routes currently display a coming-soon notice. Circle requests, chat,
+and live location are not delivered to other people or stored on a server, so
+their controls are hidden until those features are backed by server storage.
+The separate `beacon_contacts` table stores only explicitly selected contact
+details when that flow is enabled; it does not store circle requests, chat, or
+live location. The contact picker and invite controls are currently
+unavailable. If re-enabled, preparing an invite opens the device messaging app
+but does not confirm delivery, registration, or circle acceptance. The
+owner-scoped table and policies are defined in
+`supabase/migrations/0029_beacon_contacts.sql`.
 
 ## Lifeline cards and contacts
 Lifeline keeps the Crime, Fire, Sickness, and GBV starter cards visible as
@@ -125,7 +120,7 @@ so group creation does not depend on the failing Edge Function CORS setup.
 - **Report Lifecycle**: `#report-new`, `#report-duplicate-check`, `#report-submitted`, `#my-reports` (Track), `#report-detail`, `#report-thread`, `#report-satisfaction`, `#report-reopen-escalate`
 - **Voice / AI**: `#snap-and-say`
 - **Safety & Lifeline**: `#lifeline-home`, `#lifeline-call-countdown`, `#lifeline-calling-status`, `#lifeline-card-create`, `#lifeline-card-edit`, `#lifeline-contacts-picker`, `#contacts-permission`
-- **Live Location (Beacon)**: `#beacon-home`, `#beacon-safety-notice`, `#beacon-add-to-circle`, `#beacon-requests`, `#beacon-find-contacts`, `#beacon-chat`, `#beacon-draw-path`, `#beacon-start-confirm`, `#beacon-share-session`
+- **Live Location (Beacon)**: `#beacon-home`, `#beacon-safety-notice`, `#beacon-add-to-circle`, `#beacon-requests`, `#beacon-find-contacts`, `#beacon-chat`, `#beacon-draw-path`, `#beacon-start-confirm`, `#beacon-share-session` (currently route to a coming-soon notice)
 - **Ward & Community**: `#your-area`, `#polls`, `#poll-detail`, `#community-pulse`, `#trending-issues`, `#news`, `#news-article`, `#survey`, `#survey-submitted`, `#safety-info`, `#help-and-safety`
 - **Account & POPIA**: `#account`, `#profile-edit`, `#badges-edit`, `#notification-settings`, `#language`, `#terms`, `#privacy-policy`, `#contacts`, `#data-export`, `#delete-account`, `#pilot-org-select`
 

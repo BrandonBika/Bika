@@ -10,20 +10,8 @@ import { navigate } from '../../router.js';
 
 const SAFETY_POINTS = [
   {
-    title: 'No Location History',
-    body: 'Coordinates are transmitted live and never saved to any database or server log after your session ends.'
-  },
-  {
-    title: 'Time-Limited Sharing',
-    body: 'Every session expires automatically after your chosen duration or when you arrive at your destination.'
-  },
-  {
-    title: 'Instant Revocation',
-    body: 'You can stop sharing at any moment via the red "Stop sharing" button in the live session view.'
-  },
-  {
-    title: 'Circle Members Only',
-    body: 'Your location is visible only to the specific circle members you select when you start sharing.'
+    title: 'What this means today',
+    body: 'Circle requests, chat, and live location are not delivered to other people or stored on a server. Beacon controls are temporarily unavailable.'
   }
 ];
 
@@ -47,7 +35,7 @@ export class PageBeaconSafetyNotice extends BaseElement {
     this.appendChild(iconWrap);
 
     // Title
-    const title = createElement('h1', { cls: 'safety-title', text: 'Beacon Safety Policy' });
+    const title = createElement('h1', { cls: 'safety-title', text: 'Beacon sharing is coming soon' });
     this.appendChild(title);
 
     // Safety items
@@ -74,9 +62,9 @@ export class PageBeaconSafetyNotice extends BaseElement {
     const btn = createElement('button', {
       cls: 'safety-continue-btn',
       attrs: { type: 'button', id: 'safety-continue-btn' },
-      text: 'I understand'
+      text: 'Return to Home'
     });
-    btn.onclick = () => navigate('beacon-home');
+    btn.onclick = () => navigate('home');
     this.appendChild(btn);
   }
 }
