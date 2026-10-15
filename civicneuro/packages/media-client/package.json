@@ -1,0 +1,16 @@
+{
+  "name": "@civicneuro/media-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./limits": "./src/limits.js",
+    "./strip-metadata": "./src/strip-metadata.js",
+    "./compress-image": "./src/compress-image.js",
+    "./compress-audio": "./src/compress-audio.js",
+    "./compress-video": "./src/compress-video.js",
+    "./upload-to-quarantine": "./src/upload-to-quarantine.js"
+  }
+}

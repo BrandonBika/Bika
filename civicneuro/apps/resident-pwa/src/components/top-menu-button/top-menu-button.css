@@ -1,0 +1,47 @@
+.m-menubtn,
+.cn-top-menu-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px 5px 9px;
+  border-radius: 99px;
+  background: var(--paper-raised, #FFFFFF);
+  border: 1px solid var(--line, #DAD5C6);
+  font-family: var(--font-body, 'Public Sans', sans-serif);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--ink, #16241F);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.m-menubtn svg,
+.cn-top-menu-btn svg {
+  width: 13px;
+  height: 13px;
+  display: block;
+}
+
+.m-menubtn:hover,
+.cn-top-menu-btn:hover {
+  background: #F0EEE7;
+}
+
+.m-menubtn:active,
+.m-menubtn.active,
+.cn-top-menu-btn:active,
+.cn-top-menu-btn.active,
+.cn-top-menu-btn[aria-current="page"] {
+  background: var(--ink, #16241F);
+  border-color: var(--ink, #16241F);
+  color: #FFFFFF;
+}
+
+.m-menubtn:focus-visible,
+.cn-top-menu-btn:focus-visible {
+  outline: 2px solid var(--teal, #0F6E56);
+  outline-offset: 2px;
+}

@@ -1,0 +1,232 @@
+/**
+ * @file apps/resident-pwa/src/pages/beacon-add-to-circle/beacon-add-to-circle.css
+ * Screen B: Add to your circle styles.
+ */
+
+.cn-beacon-add-page {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  background-color: var(--paper, #F6F4EE);
+  padding: 14px 16px 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+/* Header */
+.add-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.add-back-btn {
+  width: 26px;
+  height: 26px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  background: var(--paper-raised, #FFFFFF);
+  border: 1px solid var(--line, #DAD5C6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 26px;
+}
+
+.add-back-btn svg {
+  width: 13px;
+  height: 13px;
+  color: var(--ink, #16241F);
+}
+
+.add-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink, #16241F);
+}
+
+.add-sub {
+  font-size: 10.5px;
+  color: var(--ink-soft, #3E4A44);
+  margin-top: 1px;
+}
+
+/* Search input */
+.add-search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--paper-raised, #FFFFFF);
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 11px;
+  padding: 9px 12px;
+  margin-bottom: 10px;
+}
+
+.add-search-box svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-soft, #3E4A44);
+  flex: 0 0 14px;
+}
+
+.add-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  font-size: 12px;
+  color: var(--ink, #16241F);
+  font-family: inherit;
+}
+
+.add-search-input::placeholder {
+  color: #8B8B85;
+}
+
+/* Contacts button */
+.add-contacts-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 9px 6px;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--line, #DAD5C6);
+  background: var(--paper-raised, #FFFFFF);
+  color: var(--ink, #16241F);
+  cursor: pointer;
+  width: 100%;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+}
+
+.add-contacts-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Info note */
+.add-info-note {
+  display: flex;
+  gap: 8px;
+  background: var(--sage, #EAF3DE);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.add-info-note svg {
+  width: 14px;
+  height: 14px;
+  color: var(--teal-deep, #085041);
+  flex: 0 0 14px;
+  margin-top: 2px;
+}
+
+.add-info-text {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #1E3A12;
+}
+
+/* Section Title */
+.add-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-soft, #3E4A44);
+  margin: 18px 0 8px;
+}
+
+.add-section-title.first {
+  margin-top: 0;
+}
+
+/* Rows */
+.bc-request-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  border-top: 1px solid var(--line, #DAD5C6);
+}
+
+.bc-request-row:first-child {
+  border-top: none;
+}
+
+.bc-request-row .bc-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+  flex: 0 0 32px;
+}
+
+.bc-request-row .bc-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.bc-request-row .bc-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink, #16241F);
+}
+
+.bc-request-row .bc-meta {
+  font-size: 10px;
+  color: var(--ink-soft, #3E4A44);
+  margin-top: 1px;
+}
+
+.bc-pillbtn {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 6px 11px;
+  min-height: 32px;
+  border-radius: 99px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.bc-pillbtn.primary {
+  background: var(--beacon, #1C8C99);
+  color: #FFFFFF;
+}
+
+.bc-pillbtn.ghost {
+  background: transparent;
+  border: 1px solid var(--line, #DAD5C6);
+  color: var(--ink-soft, #3E4A44);
+}
+
+.bc-pillbtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.bc-request-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+/* Footer Hint */
+.add-footer-hint {
+  font-size: 10px;
+  color: var(--ink-soft, #3E4A44);
+  text-align: center;
+  line-height: 1.4;
+  margin-top: 14px;
+}

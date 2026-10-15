@@ -1,0 +1,786 @@
+=====================================================================
+BUILD PROMPT — CivicNeuro resident app: "Beacon" tab (bottom nav)
+=====================================================================
+
+ROLE
+You are a senior mobile front-end engineer. Build the Beacon tab of the
+CivicNeuro resident app exactly as specified below. Everything here was
+taken from the approved screen flow map (v7), so treat every number,
+colour and string as the source of truth. Where this document says
+"ASSUMPTION", it is a sensible default the designers did not draw;
+implement it, but keep it easy to change.
+
+Beacon = live location sharing between people who have accepted each
+other into a private "circle" (family, friends). It is a safety feature:
+"I'm walking home, watch my progress." It replaced the old bottom-nav
+"Profile" tab.
+
+Stack: not fixed. Implement in the project's existing stack. All sizes
+are logical px on a 300px-wide screen (the width the mockups were drawn
+at). Layouts must flex to real device widths (320–430px); never hard-code
+300px widths. Padding, radii, font sizes and colours stay as given.
+
+Companion files: beacon-tab-layout-map.html (annotated anatomy + screen
+flow). Use it as the visual reference.
+
+Screen letters used below: A Beacon main · A2 Share mode chooser · A3 Draw
+your path · A4 Start sharing confirm · B Add to circle · C Chat ·
+D Live session · D2 Off-path alert · E Contacts explainer · F OS prompt ·
+G Find from contacts · H Contacts denied.
+
+SCOPE
+In scope:
+  1. Beacon main screen (live map, bottom sheet, tabs, member list)
+  2. Add to your circle (search, send request, accept/decline)
+  3. Chat with a circle member
+  4. Share mode chooser: share live location OR draw a path (NEW)
+  5. Draw your path (NEW)
+  6. Start sharing confirm: members, duration, off-path alert (NEW)
+  7. Live session, plus its off-path alert state (NEW)
+  8. Shared contacts permission flow (explainer, OS prompt, denied)
+  9. "Find from my contacts" list
+Out of scope (stub the navigation): Home, Lifeline, Reports, Alerts,
+Menu contents, the Lifeline side of the contacts permission (picker/card).
+
+---------------------------------------------------------------------
+1. DESIGN TOKENS
+---------------------------------------------------------------------
+Fonts (bundle or load from Google Fonts, always with fallbacks)
+  Body / UI ...... "Public Sans", sans-serif     (400, 500, 600, 700)
+  Headings / avatar initials ... "Source Serif 4", serif  (500, 600)
+
+Core colours
+  --ink            #16241F   primary text, dark buttons, "me" pin
+  --ink-soft       #3E4A44   secondary text
+  --paper          #F6F4EE   screen background
+  --paper-raised   #FFFFFF   cards, inputs, sheets, nav
+  --line           #DAD5C6   borders and dividers
+  --teal           #0F6E56   own chat bubble, primary dialog button, nav active icon
+  --teal-deep      #085041   nav active label, icon accents, info-note icon
+  --blue           #185FA5   hero icon on explainer / OS dialog
+  --blue-tint      #E6F1FB   OS-dialog icon circle, explainer hero tile
+  --amber-tint     #FAEEDA   "Contacts access is off" icon circle
+  --sage           #EAF3DE   map base colour, info note bg, message-button bg
+  --sage-line      #97C459   avatar background (resident initials)
+  --red            #A32D2D   (Stop sharing text uses #792424, border #E6C3C3)
+
+Beacon feature colours (the signature accent of this tab)
+  --beacon         #1C8C99   live pins, live badge, Share button, Request/Accept pills, route
+  --beacon-deep    #0E5961   live status text, active tab text, share-card label
+  --beacon-tint    #E3F3F5   active tab bg, live-location card bg, chat share button bg
+
+Contacts-permission colours (the "shared" accent)
+  --sh             #7A6A1F   icon in "only people you add are saved" note
+  --sh-tint        #F6F0D4   that note's background (text colour #4A400F)
+Lifeline accent used inside the explainer: --ll #B03060, --ll-tint #FBE8EF
+
+Other literals
+  Placeholder text .............. #8B8B85
+  Muted icons / timestamps ...... #B0AFA5
+  Inactive nav .................. #8B8B85
+  Avatar initial text ........... #173404
+  Scrim ......................... rgba(22,36,31,.5)
+
+Typography
+  Large screen title (explainer/denied) .. Source Serif 4, 19px (denied: 18px), 600
+  Dialog title ........................... Source Serif 4, 16px, 600
+  Chat header title ...................... 13px / 700
+  Member name ............................ 12.5px / 600
+  Request-row name ....................... 12px / 600
+  Status / meta lines .................... 10.5px / 10px, ink-soft
+  Live status text ....................... 10.5px / 600, --beacon-deep
+  Section labels (RESULTS, PENDING) ...... 11px / 700 UPPERCASE letter-spacing .03em,
+                                           ink-soft, margin 18px 0 8px
+  Bottom nav labels ...................... 9.5px / 600
+  Body copy .............................. 11–12px, line-height 1.45–1.55
+
+Shadows
+  Floating pills/buttons on map .. 0 8px 18px rgba(22,36,31,.16–.22)
+  Bottom sheet ................... 0 -10px 26px rgba(22,36,31,.18)
+  Session card ................... 0 14px 30px rgba(22,36,31,.20)
+  Dialog ......................... 0 25px 50px rgba(0,0,0,.30)
+  Avatar pin ..................... 0 4px 10px rgba(22,36,31,.25)
+
+Icons: 24x24 stroke icons (stroke 2, round caps/joins), Lucide/Feather
+style. Sizes: nav 18; pin icon in title pill 13; add (+) 14; message
+button 13; share button 14; share-card label 11; search 14.
+
+---------------------------------------------------------------------
+2. GLOBAL FRAME
+---------------------------------------------------------------------
+Bottom nav (same on every non-fullscreen Beacon screen)
+  Row, space-around, align center, padding 9px 6px 14px (+ device
+  safe-area), bg #FFF, top border 1px --line. Five items, in this order:
+  Lifeline · Home · Reports · Alerts · Beacon.
+  Item: column, centered, gap 3, label 9.5px/600, icon 18px, tap target
+  >= 44px. Inactive #8B8B85. Active (Beacon): label --teal-deep, icon
+  --teal.
+
+Menu button (top-left on every Beacon screen except the live session)
+  Height 32 bar, padding 4px 14px 0. Button: inline-flex, gap 6,
+  padding 5px 11px 5px 9px, radius 99, bg #FFF, border 1px --line,
+  font 10.5px/700, hamburger icon 13px. Opens Menu (stub).
+
+Standard content area: padding 14px 16px 0, scrolls vertically.
+Screen background --paper.
+
+Standard sub-screen header (Add to circle, Chat, Find from contacts):
+  Row, gap 10, padding-bottom 12 (8 on Add, 6 on Find-from-contacts),
+  no bottom border on Add/Find, 1px --line border on Chat.
+  Back button: 26x26 circle, bg #FFF, border 1px --line, chevron-left 13.
+  Title 13px/700, sub 10.5px ink-soft, margin-top 1.
+
+---------------------------------------------------------------------
+3. SCREEN A — BEACON MAIN (tab root)
+---------------------------------------------------------------------
+Concept: a full-bleed live map with a draggable bottom sheet. The map
+area fills everything between the top bar and the bottom nav; the sheet
+covers its lower part.
+
+Map layer
+  Background: sage base (--sage) with two soft teal radial glows:
+    radial-gradient(circle at 30% 26%, rgba(28,140,153,.16), transparent 42%),
+    radial-gradient(circle at 74% 60%, rgba(28,140,153,.10), transparent 40%)
+  A faint street-grid overlay at 50% opacity (use a real map SDK in
+  production with a muted, light, sage-tinted style so these colours are
+  preserved; pins and UI sit above the map).
+  Map content is full-bleed: padding 0 on the map container; the Menu bar
+  sits above it (map starts directly beneath).
+
+Floating top controls (absolute, top 12, left 12, right 12, flex,
+space-between, align center)
+  Left: "Beacon" title pill — bg #FFF, radius 99, padding 8px 14px,
+    font 13px/700, shadow 0 8px 18px rgba(22,36,31,.16), gap 6, map-pin
+    icon 13px in --beacon.
+  Right: add (+) button — 32x32 circle, bg --ink, plus icon 14px white,
+    shadow 0 8px 18px rgba(22,36,31,.22). Tap -> Add to your circle.
+
+Pins (positioned at real coordinates)
+  Avatar: 26x26 circle, border 2.5px #FFF, shadow, initial 10.5px/700
+    white.
+  "Me" pin: bg --ink, shows your initial. Always visible.
+  "Live" pin (circle member currently sharing): bg --beacon, initial,
+    and beneath it an 8x8 --beacon dot with a 3px halo
+    (0 0 0 3px rgba(28,140,153,.25)) — animate as a gentle pulse
+    (ASSUMPTION: 1.6s, respects reduced-motion).
+  Tapping a live pin highlights that member's row and lets the user open
+  chat (ASSUMPTION: tap pin -> scroll sheet to the member).
+  On first load / when sharing starts, fit the map to all live pins plus
+  "me" with ~40px padding.
+
+Bottom sheet
+  Anchored to the bottom, above the nav bar. bg #FFF, radius 20 20 0 0,
+  padding 10px 14px 14px, shadow 0 -10px 26px rgba(22,36,31,.18).
+  Handle: 34x4, radius 99, bg --line, centred, margin-bottom 10.
+  Sheet snap points (ASSUMPTION): collapsed (handle + Share button),
+  default (as drawn: Share button, tabs, ~2 rows), expanded (up to ~85%
+  of the screen with a scrolling member list).
+  Contents, top to bottom:
+   a) "Share my live location" button — full width, flex centre, gap 7,
+      bg --beacon, white text 12.5px/700, padding 11, radius 12,
+      margin-bottom 12; pin icon 14px. Tap -> Share mode chooser (A2).
+   b) Tabs row — flex, gap 6, margin-bottom 10. Tab: flex 1, centred,
+      11px/700, padding 7, radius 9, colour --ink-soft. Active tab:
+      bg --beacon-tint, text --beacon-deep.
+        Tab 1: "Live now · N"   (members currently sharing with you)
+        Tab 2: "My circle · N"  (all accepted members)
+      Default tab: Live now.
+   c) Member rows (list; first row has no top border):
+      Row: flex, align center, gap 10, padding 9px 2px, border-top
+      1px --line.
+        Avatar 34x34 circle, bg --sage-line, initial Source Serif 4
+          13px/600, colour #173404. Live badge (only when sharing):
+          11x11 circle --beacon with 2px #FFF ring at bottom -1 right -1.
+        Text: name 12.5px/600; status 10.5px ink-soft margin-top 1.
+          When live: status colour --beacon-deep, weight 600, e.g.
+          "Sharing · 6 min to you" or "Sharing · walking home".
+          When not live (My circle tab): status "Not sharing" or
+          "Last seen <time>" (ASSUMPTION), normal weight.
+        Message button: 28x28 circle, bg --sage, speech-bubble icon 13px
+          in --teal-deep. Tap -> Chat with that member.
+      Tapping the row (anywhere but the message button) also opens Chat.
+   d) Empty states (ASSUMPTION, use the shared empty-state pattern: muted
+      icon, 13px/700 title, 11px ink-soft body):
+        Live now empty: "No one is sharing right now" / "When someone in
+          your circle shares their live location, they'll appear here."
+        My circle empty: "Your circle is empty" / "Add family and friends
+          to see each other's live location." with a primary pill button
+          "Add to your circle".
+
+Behaviour
+  - Members only appear after a request has been accepted by both sides.
+  - Live positions update in real time (websocket/push). ETA text
+    ("6 min to you") is computed from the member's session destination or
+    distance to the viewer (ASSUMPTION: when the member's destination is
+    the viewer; otherwise show a status like "walking home" taken from
+    the session label).
+  - Location permission: if "While using the app" is not granted, show the
+    OS prompt on first open of Beacon / first Share; on denial show an
+    inline banner on the sheet: "Turn on location to share" with an
+    "Open Settings" action (ASSUMPTION).
+  - Re-tapping the Beacon nav item collapses the sheet and re-centres
+    the map.
+  - No back arrow (tab root).
+
+---------------------------------------------------------------------
+3b. SCREEN A2 — SHARE MODE CHOOSER (NEW)
+---------------------------------------------------------------------
+Opened by "Share my live location" on Beacon main, and by the share
+button in a chat (with that member preselected on the next step).
+Bottom sheet over the dimmed Beacon main (map dim: opacity .5,
+saturate .7; scrim rgba(22,36,31,.5)). The bottom nav is covered.
+  Sheet: bg #FFF, radius 20 20 0 0, padding 14px 18px 20px, full width,
+    shadow 0 -12px 30px rgba(0,0,0,.18).
+  Handle 34x4, radius 99, bg --line, centred, margin-bottom 14.
+  Title "How do you want to share?" — Source Serif 4, 16px/600.
+  Sub — 11px, ink-soft, line-height 1.45, margin 2px 0 14px:
+    "Choose how your circle follows you. You pick who sees it and for how
+     long on the next step."
+  Two option cards, stacked, margin-bottom 9. Card: flex, align center,
+    gap 11, bg #FFF, border 1px --line, radius 14, padding 12px 13px.
+      Icon tile 36x36, radius 10, bg --beacon-tint, icon 18px --beacon.
+      Title 12.5px/700; description 11px ink-soft, line-height 1.45,
+      margin-top 2. Chevron-right 14px #B0AFA5 on the far right.
+      1) pin icon — "Share live location"
+         "Your circle sees you move on the map in real time. No route
+          needed."
+      2) route icon — "Draw a path"
+         "Draw where you are going. Your circle follows your progress and
+          is alerted if you stray off it."
+         Tag under the text: inline-block, margin-top 6, 9.5px/700,
+         bg --beacon-tint, text --beacon-deep, radius 99, padding 2px 8px:
+         "Safer for walks"
+  Cancel — ghost pill: 1px --line border, ink-soft text, 12px/700,
+    padding 11, radius 99, bg #FFF, margin-top 4, full width.
+Behaviour
+  - Tapping a card navigates immediately (no selected state, no extra
+    confirm). Nothing is preselected (ASSUMPTION: do not remember the last
+    choice).
+  - Share live location -> Start sharing confirm (A4), live variant.
+  - Draw a path -> Draw your path (A3).
+  - Cancel, scrim tap or swipe-down -> back to Beacon main.
+  - If location permission is missing, request it here before navigating.
+
+---------------------------------------------------------------------
+3c. SCREEN A3 — DRAW YOUR PATH (NEW)
+---------------------------------------------------------------------
+Full-screen map. Bottom nav and Menu button are HIDDEN (same as the live
+session). Map layer identical to Beacon main (sage base, soft teal glows,
+street grid / real map in a muted light style).
+Floating top controls (absolute, top 12, left 12, right 12, flex, gap 8,
+  align center, justify flex-start):
+    Back button: 32x32 circle, bg #FFF, shadow 0 8px 18px
+      rgba(22,36,31,.16), chevron-left 14px.
+    Title pill: bg #FFF, radius 99, padding 8px 14px, 13px/700, shadow
+      0 8px 18px rgba(22,36,31,.16), pencil icon 13px --beacon, gap 6:
+      "Draw your path".
+Hint / summary card (absolute, top 56, left 12, right 12): bg #FFF,
+  radius 12, padding 9px 12px, shadow 0 8px 18px rgba(22,36,31,.14).
+    Title 11.5px/700, body 10.5px ink-soft, line-height 1.45, margin-top 2.
+    States:
+      Idle: title "Draw your path"; body "Drag your finger from where you
+        are to where you are going. Lift to finish."
+      Drawing: title shows live distance, e.g. "0.9 km so far".
+      Drawn: title "Path drawn · 1.4 km · about 18 min"; body "Drag your
+        finger from where you are to where you are going. Lift to
+        finish. The shaded strip is the alert zone." (the body may be
+        shortened once a path exists — ASSUMPTION)
+Path
+  Line: solid, stroke --beacon, width 4, round caps and joins.
+  Alert zone: the same path stroked rgba(28,140,153,.16), width 34 in the
+    mockup. In production draw it as a corridor of 100 m on each side
+    (200 m total) and scale it with the map zoom so it always matches the
+    real ground distance.
+  Start dot: 12x12 circle --beacon, 3px #FFF ring, shadow
+    0 3px 8px rgba(22,36,31,.3), at the user's current position, with a
+    label under it: "You are here" — bg #FFF, radius 99, padding 3px 9px,
+    9.5px/700, shadow 0 4px 10px rgba(22,36,31,.16).
+  Destination pin: 32px teal map pin (fill --beacon, white inner circle),
+    dropped at the end of the stroke when the finger lifts.
+Toolbar (absolute, left 12, right 12, bottom 14 + safe-area): bg #FFF,
+  radius 16, padding 10, shadow 0 14px 30px rgba(22,36,31,.2).
+    Legend row: 10px ink-soft, gap 7, margin 0 2px 9px — a 22x10 pill
+      swatch rgba(28,140,153,.25) then "Alert zone · 100 m either side of
+      your path".
+    Button row, gap 8, three equal buttons (flex 1, 11px/700, padding
+      9px 6px, radius 10, border 1px --line, bg #FFF, text --ink, icon
+      12px + label):
+        "Undo" (undo icon), "Clear" (trash icon), and "Next" (bg --beacon,
+        border --beacon, text white, no icon).
+Behaviour
+  - One finger draws, two fingers pan/zoom the map.
+  - The path must start at (or within ~30 m of) the current position; if
+    the first touch is farther away, snap the start to the current
+    position and show a brief toast (ASSUMPTION).
+  - Lifting the finger ends the stroke and drops the destination pin.
+    Touching and dragging from the pin extends the path (ASSUMPTION:
+    single continuous path, no separate branches).
+  - Smooth and simplify the points (ASSUMPTION: Douglas–Peucker, ~5 m
+    tolerance, and cap to ~500 points). Optional "snap to roads" is out of
+    scope unless product asks for it.
+  - Distance and time update live (walking speed ~4.5 km/h, ASSUMPTION).
+    Minimum path length 100 m; maximum 10 km (ASSUMPTION).
+  - Undo removes the last stroke segment. Clear removes the whole path
+    after a confirm. Next is disabled until a path with a destination
+    exists; Undo and Clear are disabled while the map is empty.
+  - Back with a drawn path: confirm dialog (Withdraw-dialog geometry),
+    title "Discard your path?", buttons "Keep drawing" (ghost) and
+    "Discard" (danger red #A32D2D). Without a path, Back goes straight to
+    A2.
+  - Accessibility alternative (REQUIRED): drawing is not usable with a
+    screen reader or switch control, so provide "Set destination instead"
+    (search for a place or tap the map) that generates the path from a
+    route service. It uses the same Confirm screen afterwards.
+  - Next -> Start sharing confirm (A4).
+
+---------------------------------------------------------------------
+3d. SCREEN A4 — START SHARING CONFIRM (NEW)
+---------------------------------------------------------------------
+Reached from Draw your path (Next) or Share live location (live
+variant). Bottom nav and Menu button are hidden. Content padding
+14px 16px 14px, scrolls.
+  Header (standard sub-screen header, no bottom border, padding-bottom 8):
+    back chevron button, title "Start sharing", sub "Walk to Musgrave
+    Centre · 1.4 km" (live variant: "Live location").
+    Back -> Draw your path (drawn path kept) or A2 (live variant).
+  Route preview (drawn variant only): height 88, radius 12, 1px --line
+    border, overflow hidden, mini map in the same sage style with the
+    path (stroke --beacon, width 3) and its alert zone (stroke
+    rgba(28,140,153,.18), width 16). Badge bottom-right (8px inset): bg
+    #FFF, radius 99, padding 3px 9px, 9.5px/700 — "~18 min · ETA 6:52 PM".
+  Section label "SHARE WITH" (margin-top 12) with "Select all" on the
+    right (11px/700, normal case, colour --beacon-deep).
+    Member rows (same geometry as the Add-to-circle result rows): avatar
+    32x32, name 12px/600, meta "In your circle" 10px ink-soft, and on the
+    right a 20x20 selection circle:
+      Selected: bg --beacon with a white check (12px, stroke 3).
+      Unselected: bg #FFF, border 1.5px --line.
+    Only accepted members are listed. Default selection: members you last
+    shared with; none on first use (ASSUMPTION). Start is disabled until at
+    least one member is selected.
+  Section label "HOW LONG"
+    Four chips in one row, gap 6: flex 1, centred, 11px/700, padding
+    8px 4px, radius 99, nowrap.
+      Selected: bg --beacon-tint, border 1px --beacon, text --beacon-deep
+      Unselected: bg #FFF, border 1px --line, text --ink-soft
+    Options: "Until I arrive" (default, drawn variant; ends when you reach
+    the destination within ~50 m), "30 min", "1 hour", "2 hours".
+    Live variant has no destination, so the first chip reads "Until I
+    stop" (ASSUMPTION).
+  Off-path alert row (drawn variant only): margin-top 14, flex, align
+    center, gap 10, bg #FFF, border 1px --line, radius 12, padding
+    10px 12px.
+      Icon tile 30x30, radius 9, bg --amber-tint, warning icon 15px
+        --amber.
+      Title "Alert them if I stray off my path" 12px/700; description
+        "Notified if you move more than 100 m from the line." 10.5px
+        ink-soft, line-height 1.4.
+      Toggle 34x20, radius 99; ON = bg --beacon with a 16px white knob at
+        right 2 / top 2; OFF = bg #DAD5C6, knob left. Default ON.
+  Start button (margin 14px 0 6px): full width, flex centre, gap 7, bg
+    --beacon, white text 12.5px/700, padding 11, radius 12, pin icon 14px:
+    "Start sharing". Disabled: bg #A9CFD4.
+  Hint under it: 10px ink-soft, centred, line-height 1.4:
+    "You can stop any time. Sharing ends when you arrive."
+    (live variant: "You can stop any time.")
+Behaviour: Start sharing creates the session (see data model), notifies
+  the selected members ("Kagiso started sharing"), posts a "Live
+  location started" card in each member's chat, and opens the live
+  session (D).
+
+---------------------------------------------------------------------
+4. SCREEN B — ADD TO YOUR CIRCLE
+---------------------------------------------------------------------
+Opened by the (+) button. Menu bar visible, bottom nav visible.
+Content padding 14px 16px 0, scrolls.
+  1. Header — back, title "Add to your circle", sub "Search CivicNeuro
+     residents".
+  2. Search field — flex, gap 8, bg #FFF, border 1px --line, radius 11,
+     padding 9px 12px, margin-bottom 10; magnifier 14px; placeholder
+     "Search by name or phone number…" (12px, ink-soft). Live search,
+     debounced ~250ms, minimum 2 characters (ASSUMPTION).
+  3. "Find people from my contacts" button — full width, flex centre,
+     gap 6, 11px/700, padding 9px 6px, radius 10, border 1px --line,
+     bg #FFF, text --ink, address-book icon 12px, margin-bottom 10.
+     Tap -> if contacts permission never asked: Contacts explainer
+     (Screen E); if already allowed: Find from my contacts (Screen G).
+  4. Info note — flex, gap 8, bg --sage, radius 12, padding 10px 12px,
+     margin-bottom 10; info icon 14px --teal-deep; text 11px,
+     line-height 1.5, colour #1E3A12:
+       "Search by name or number, or find people from your contacts. A
+        request only completes once they accept."
+  5. Section label "RESULTS · 3" (count = number of matches), margin-top 0.
+     Result row: flex, align center, gap 10, padding 10px 2px, border-top
+     1px --line (first has none).
+        Avatar 32x32 (font 12px). Name 12px/600. Meta (ward) 10px
+        ink-soft, e.g. "Ward 12".
+        Right: "Request" pill — bg --beacon, white, 10.5px/700, padding
+        6px 11px, radius 99, no wrap.
+  6. Section label "PENDING"
+        Incoming: name, meta "Wants to share with you", buttons
+          "Decline" (ghost: 1px --line border, ink-soft text) and
+          "Accept" (bg --beacon, white), gap 6, same pill geometry.
+        Outgoing: name, meta "Request sent · awaiting accept"; no
+          button (ASSUMPTION: long-press/swipe to cancel the request).
+  7. Footer hint — 10px, ink-soft, centred, line-height 1.4, margin-top
+     12: "Not finding someone? They may not be on CivicNeuro yet, or
+     their profile isn't set to discoverable."
+Behaviour
+  - Request -> button becomes disabled "Sent" state and the person moves
+    under Pending as "Request sent · awaiting accept".
+  - Accept -> person joins My circle both ways; sharing unlocks for both.
+  - Decline -> row removed; the sender is not told (ASSUMPTION).
+  - Back / after a request -> Beacon main (flow map: "Back / Request
+    sent").
+  - Only residents whose profile is discoverable appear in search.
+  - Rate-limit requests per user (ASSUMPTION: 20/day).
+
+---------------------------------------------------------------------
+5. SCREEN C — CHAT WITH A CIRCLE MEMBER
+---------------------------------------------------------------------
+Menu bar and bottom nav visible. Persistent conversation, open any time.
+  Header — back, member name (13px/700), and under it the live status in
+    --beacon-deep, 10.5px/700: "● Sharing live location · 6 min to you".
+    Shown only while the member is sharing; otherwise hide the line (or
+    show "Not sharing"). Tapping the status opens the live session view
+    (Screen D) in follow-the-member mode (flow map: "Live-share status
+    in header").
+  Body — flex column, padding-top 6, scrolls.
+    Day label: centred, 10px/700 UPPERCASE letter-spacing .03em,
+      ink-soft, margin 14px 0 10px ("Today", "Monday"...).
+    Live-location system card (when a share starts): centred,
+      max-width 86%, bg --beacon-tint, radius 14, padding 10px 13px,
+      margin 4px auto 12px.
+        Label: 10px/700 UPPERCASE .03em, --beacon-deep, pin icon 11px,
+          gap 5, centred — "Live location started"
+        Sub: 11px, colour #134044, margin-top 3 — e.g. "Thabo shared his
+          walk to Musgrave Centre · ETA 6:52 PM"
+      Tapping it opens the live view.
+    Bubbles (row margin-bottom 10; max-width 73%; padding 9px 12px;
+      font 12px; line-height 1.5):
+      Theirs (left, gap 7, align flex-end): white bg, 1px --line border,
+        radius 14px 14px 14px 3px; avatar 22x22 radius 7... shown as the
+        member's initial: bg --sage-line, text #173404, Source Serif 4
+        10px/600.
+      Mine (right): bg --teal, text white, radius 14px 14px 3px 14px.
+      Time under each bubble: 9.5px, #B0AFA5, margin-top 4.
+  Input bar (pinned above the nav bar, above keyboard when open) —
+    flex, align center, gap 8, bg #FFF, border 1px --line, radius 99,
+    padding 8px 8px 8px 14px.
+      Left: 26x26 circle, bg --beacon-tint, pin icon — opens the Share
+        mode chooser (A2) with this member preselected on the confirm
+        step (ASSUMPTION).
+      Input: 12px, placeholder "Write a message…" (#8B8B85).
+      Send: 30x30 circle, bg --ink, send icon 14px white.
+Behaviour: real-time delivery, optimistic send with retry state, unread
+  count shown on the member's message button (ASSUMPTION: small
+  --beacon dot), push notification for new messages. Messages are only
+  possible between accepted circle members.
+
+---------------------------------------------------------------------
+6. SCREEN D — LIVE SESSION ("Share my live location")
+---------------------------------------------------------------------
+Full-screen map, bottom nav HIDDEN while a session is running (the
+status-bar notch area stays). Reached from "Share my live location" on
+Beacon main, the chat share button, or a member's live status.
+  Map: same sage/teal map as Screen A, full bleed (padding 0).
+  Route line: dashed/dotted teal path, stroke --beacon, width 3, round
+    caps, dash pattern "2 9"; drawn from the sharer's start to the
+    destination.
+  Your position: 12x12 circle, bg --beacon, 3px #FFF ring, shadow
+    0 3px 8px rgba(22,36,31,.3), moves along the route in real time.
+  Destination pin: standard pin marker with a label (anchored at the
+    destination).
+  Session card (absolute, left 12, right 12, top 12): bg #FFF,
+    radius 16, padding 12px 14px, shadow 0 14px 30px rgba(22,36,31,.2).
+      Row (gap 8, align center):
+        Avatars — overlapping circles 24x24, 2px #FFF border, margin-left
+          -7 (first has 0), initials in the member colours, font 10px.
+        Text: title 12px/700 "Sharing with Thabo, Nomvula"; sub 10.5px
+          ink-soft "Walk to Musgrave Centre · ETA 6:52 PM".
+      "Stop sharing" button — margin-top 10, centred text, 11.5px/700,
+        colour #792424, border 1px #E6C3C3, radius 10, padding 9.
+Start flow: Beacon main -> Share mode chooser (A2) -> Draw your path
+  (A3) or straight to the confirm step -> Start sharing confirm (A4) ->
+  this screen. Request OS location permission (including background
+  location, with a clear explanation) before the first session; run as a
+  foreground service/notification on Android and show the blue location
+  indicator on iOS.
+Drawn path sessions: draw the planned path as a dotted --beacon line
+  (stroke 3, dash "2 9") with the translucent alert zone (rgba(28,140,153,
+  .16)) beneath it, and the destination pin at its end. Live-location
+  sessions show no planned path.
+End conditions: arrival at destination (geofence ~50m), the timer ends,
+  or Stop sharing. On end, notify members ("Thabo has arrived"), post a
+  "Live location ended" card into each chat, and return to Beacon main
+  (flow map: "Stop sharing / arrival").
+Safety: location is shared only with the selected accepted members and
+  only for the session; no history is kept beyond the session summary
+  (ASSUMPTION — confirm with privacy/legal).
+
+---------------------------------------------------------------------
+6b. SCREEN D2 — OFF-PATH ALERT (NEW, drawn-path sessions only)
+---------------------------------------------------------------------
+Same full-screen map as D, with the alert state added.
+Detection (runs on the sharer's device and is verified server-side):
+  distance from the current position to the nearest point on the planned
+  path > 100 m, sustained for 20 s, and GPS accuracy better than 50 m
+  (ASSUMPTION — avoids false alarms from GPS jitter and tunnels).
+  Re-arm: the alert may fire again only after you have been back inside
+  the zone for 30 s. One alert per excursion.
+Sharer UI (replaces the plain session card content):
+  Session card as in D, plus an amber banner under the title row:
+    margin-top 10, flex, gap 8, bg --amber-tint, radius 10, padding
+    9px 10px; warning icon 14px --amber; text 11px, line-height 1.45,
+    colour #633806: "**You are off your path.** Thabo and Nomvula have been
+    notified." (first sentence bold)
+  Button row (margin-top 10, gap 8, both padding 9, 11.5px/700, radius 10):
+    "Update path" (ghost) -> Draw your path in edit mode (existing path
+      loaded; Next returns straight to the session with the new path and
+      members are told "Kagiso updated the route"; no confirm step,
+      ASSUMPTION).
+    "I am fine" (bg --beacon, white) -> dismisses the banner, keeps
+      sharing, session continues.
+  "Stop sharing" button unchanged underneath.
+  Your position dot turns amber (#BA7517, same 12px size, white ring) and
+  carries a tag: bg --amber-tint, text #633806, radius 99, padding
+  3px 9px, 9.5px/700, "Off path · 140 m".
+  The banner hides automatically when you are back inside the zone.
+  Haptic + sound once when the alert fires (respect Do Not Disturb).
+Circle UI (what the selected members see)
+  - Push notification: "Kagiso has left the planned path" (deep link to
+    the live map).
+  - Chat system card (same geometry as the live-location card but bg
+    --amber-tint, label colour #633806): label "LEFT PATH", sub "Kagiso
+    is 140 m off the planned route".
+  - On Beacon main their pin shows the amber state with the same tag.
+  - Each member can tap "Message" or "Call" from the notification
+    (ASSUMPTION).
+Safety: off-path is a signal, not an emergency call. If the sharer does
+  not respond, do not auto-escalate to emergency services (ASSUMPTION —
+  confirm with product/legal). Offer a "Call Lifeline" shortcut in a
+  follow-up (out of scope here).
+
+---------------------------------------------------------------------
+7. SCREEN E — CONTACTS EXPLAINER (shared with Lifeline)
+---------------------------------------------------------------------
+Shown the FIRST time either Lifeline or Beacon needs contacts, before the
+native OS prompt. Menu bar and bottom nav visible.
+  Hero tile — 56x56, radius 18, bg --blue-tint, address-book icon 26px
+    in --blue, margin 6px auto 12.
+  Title "Use your contacts?" — Source Serif 4 19px/600, centred.
+  Sub — 11.5px, ink-soft, centred, line-height 1.5, margin 4px 0 14px:
+    "One quick permission covers both features — we only ask once."
+  Two use-cards (stacked, margin-bottom 9): flex, gap 11, bg #FFF,
+    border 1px --line, radius 14, padding 12px 13px.
+      Icon tile 32x32, radius 10, icon 16px.
+        Lifeline tile bg --ll-tint (#FBE8EF), icon --ll (#B03060)
+        Beacon tile bg --beacon-tint, icon --beacon
+      Title 12.5px/700; description 11px ink-soft, line-height 1.45,
+      margin-top 2.
+        Lifeline: "Pick the people who get called when you tap Crime,
+                   Fire, Sickness, GBV or your own card."
+        Beacon:   "Find friends and family already on CivicNeuro and add
+                   them to your circle."
+  Privacy note — flex, gap 8, bg --sh-tint (#F6F0D4), radius 12,
+    padding 10px 12px, margin-top 4; shield/info icon 14px --sh (#7A6A1F);
+    text 11px, line-height 1.5, colour #4A400F:
+      "Only people you add to a card or send a Beacon request to are
+       saved. You can switch this off any time in your phone's Settings."
+  Buttons (padding 6px 16px 16px area at the bottom):
+    "Continue" — dark pill: bg --ink, white, 13px/600, padding 13,
+      radius 99, full width.
+    "Not now" — ghost pill: 1px --line border, ink-soft text, 12px/700,
+      padding 11, radius 99, margin-top 8.
+Behaviour: Continue -> native OS contacts prompt (Screen F).
+  Not now -> back to Add to your circle (search by name/number still
+  works). Never show this screen again once the OS prompt has been
+  answered.
+
+---------------------------------------------------------------------
+8. SCREEN F — NATIVE CONTACTS PERMISSION PROMPT
+---------------------------------------------------------------------
+This is the OS dialog; do not build custom UI in production. The mockup
+shows it for reference: a centred dialog over a dimmed "Contacts" screen
+(dim = opacity .5, saturate .7; scrim rgba(22,36,31,.5)), dialog radius
+16, padding 22px 18px 18px, blue-tint icon circle 44x44, title
+"Allow access to contacts?", body "CivicNeuro uses your contacts for
+Lifeline and Beacon. ... asked once for the whole app." Buttons "Don't
+allow" (ghost) and "Allow" (primary teal).
+Set the OS usage string to the same sentence. 
+Outcomes: Allow (started from Beacon) -> Find from my contacts (Screen G).
+  Don't allow -> Contacts denied (Screen H).
+It must be asked once for the whole app; never re-prompt (the OS won't
+allow it anyway).
+
+---------------------------------------------------------------------
+9. SCREEN G — FIND FROM MY CONTACTS
+---------------------------------------------------------------------
+Menu bar and bottom nav visible.
+  Header — back, "Find from my contacts", sub "3 of your contacts are on
+    CivicNeuro" (N = matches).
+  Section label "ON CIVICNEURO" (margin-top 4).
+    Rows (same as Add-to-circle result rows): avatar, name, meta "In your
+    contacts", teal "Request" pill. Already-requested contacts show meta
+    "Request sent · awaiting accept" and no button.
+  Section label "NOT ON CIVICNEURO YET"
+    Row: avatar, name (e.g. "Gogo"), meta "Invite by SMS", ghost "Invite"
+    pill (opens the native SMS composer with an invite link).
+  Info note (sage, margin-top 12): "Numbers are matched securely to find
+    residents. Contacts who aren't on CivicNeuro are never saved."
+Behaviour: matching is done by hashed phone numbers (or private set
+  intersection) server-side; unmatched contacts are never stored or
+  uploaded in clear text. Back / after sending a request -> Add to your
+  circle (flow map: "Back / Request sent").
+  Request is still two-sided: the other person must accept.
+
+---------------------------------------------------------------------
+10. SCREEN H — CONTACTS ACCESS IS OFF (permission denied)
+---------------------------------------------------------------------
+Menu bar and bottom nav visible. Content centred, padding-top 20:
+  Icon — 52x52 circle, bg --amber-tint (#FAEEDA), warning icon in amber.
+  Title "Contacts access is off" — Source Serif 4 18px/600, margin-top 14.
+  Body — 11.5px, ink-soft, line-height 1.55, max-width 230, margin-top 6:
+    "You can still **type numbers** on a Lifeline card, or **search by
+     name or number** in Beacon. To pick from your contacts, switch
+     access on in your phone's Settings."
+  Bottom area (padding 6px 16px 16px):
+    "Open Settings" — dark pill (bg --ink, white, 13px/600, padding 13,
+       radius 99) -> opens the OS app settings.
+    "Continue without contacts" — ghost pill (margin-top 8) -> back to
+       Add to your circle (search by name/number).
+Both Lifeline and Beacon keep working without contacts access.
+
+---------------------------------------------------------------------
+11. NAVIGATION MAP
+---------------------------------------------------------------------
+Bottom nav ....... Home <-> Beacon (tabs keep their own back-stack;
+                   Beacon root = Beacon main)
+Beacon main ...... (+) -> Add to your circle
+                   member row / message button -> Chat
+                   Share my live location -> Share mode chooser
+Add to circle .... back / request sent -> Beacon main
+                   Find people from my contacts ->
+                      first time: Contacts explainer
+                      already allowed: Find from my contacts
+Share mode ....... Share live location -> Start sharing confirm (live)
+                   Draw a path -> Draw your path
+                   Cancel -> Beacon main
+Draw your path ... Next -> Start sharing confirm; Back -> Share mode
+Start sharing .... Start sharing -> Live session; Back -> Draw your path
+                   (or Share mode in the live variant)
+Chat ............. back -> Beacon main
+                   share button -> Share mode chooser
+                   live-share status in header -> Live session
+Live session ..... Stop sharing / arrival -> Beacon main
+                   leaves alert zone -> Off-path alert
+Off-path alert ... I am fine / back on path -> Live session
+                   Update path -> Draw your path (edit mode)
+Contacts explainer: Continue -> OS prompt; Not now -> Add to your circle
+OS prompt ........ Allow (from Beacon) -> Find from my contacts;
+                   Don't allow -> Contacts denied
+Contacts denied .. Search by name/number instead -> Add to your circle
+Find from contacts: back / request sent -> Add to your circle
+Deep links (ASSUMPTION): civicneuro://beacon (main),
+  civicneuro://beacon/chat/<memberId>,
+  civicneuro://beacon/session/<sessionId>. Push notifications for
+  requests, accepts, messages, "started sharing", and "arrived" deep-link
+  to these.
+
+---------------------------------------------------------------------
+12. DATA MODEL (suggested)
+---------------------------------------------------------------------
+CircleMember { userId, name, initial, ward, status: "accepted",
+  isLive, lastSeenAt?, unreadCount }
+CircleRequest { id, fromUserId, toUserId, state:
+  "pending" | "accepted" | "declined" | "cancelled", createdAt }
+LiveSession { id, ownerId, memberIds[], mode: "live" | "path",
+  path?: [{lat, lng}] (simplified polyline), pathLengthM?,
+  corridorM: 100, offPathAlert: bool, offPathState?: "ok" | "off",
+  destination {name, lat, lng}?, etaAt?, startedAt, endsAt?,
+  state: "active" | "ended",
+  endReason: "arrived" | "timer" | "stopped" }
+OffPathEvent { sessionId, startedAt, endedAt?, maxDistanceM }
+Position { sessionId, lat, lng, accuracy, at }   // streamed, not stored
+  long-term
+ChatMessage { id, threadId, senderId, text, kind: "text" |
+  "live_started" | "live_ended" | "off_path" | "path_updated", sentAt, readAt? }
+Endpoints (illustrative): GET /beacon/circle, GET /beacon/search?q=,
+  POST /beacon/requests, POST /beacon/requests/:id/accept|decline,
+  POST /beacon/sessions (mode, path, memberIds, duration, offPathAlert),
+  PATCH /beacon/sessions/:id/path (update path), DELETE /beacon/sessions/:id,
+  WS /beacon/stream, GET/POST /beacon/threads/:id/messages,
+  POST /beacon/contacts/match (hashed numbers).
+
+---------------------------------------------------------------------
+13. PRIVACY, SAFETY, ACCESSIBILITY, QUALITY BAR
+---------------------------------------------------------------------
+- Sharing is opt-in per session, to accepted members only; always show a
+  visible "you are sharing" indicator (session card / OS indicator).
+- Never share location in the background outside an active session.
+- The drawn path and off-path events are visible only to the members
+  selected for that session and are deleted with the session summary
+  (ASSUMPTION — confirm retention with privacy/legal).
+- Contacts: ask once, hashed matching, never store unmatched contacts,
+  everything works without the permission.
+- Search results only include discoverable profiles; do not reveal phone
+  numbers or exact addresses in results (ward only).
+- Tap targets >= 44x44 even where the visual is smaller (back 26px,
+  message button 28px, add button 32px, tabs, pills).
+- Don't rely on colour alone: live state also uses text ("Sharing") and
+  the badge shape; Accept/Decline carry text labels.
+- Contrast: do not lighten ink-soft or the --beacon-deep text; white text
+  on --beacon (#1C8C99) is acceptable for 12px+ bold labels only.
+- Screen-reader labels: live pin "Thabo, sharing live location, 6
+  minutes away"; (+) "Add to your circle"; message button "Message
+  Thabo"; Stop sharing announced as destructive.
+- Support font scaling to 130% without clipping; bottom sheet grows,
+  pills stay one line.
+- Respect reduced motion (no pulsing pins; sheet slide only).
+- Sheet slide ~250ms ease-out; dialogs fade/scale from .96 in ~150ms.
+- Offline: keep the last known positions with a "Last updated <time>"
+  note; queue chat messages and requests and retry; block starting a new
+  session without a connection with the shared error pattern.
+- Battery: adaptive location update rate (faster when moving, slower
+  when still), stop updates immediately when the session ends.
+
+---------------------------------------------------------------------
+14. ACCEPTANCE CHECKLIST
+---------------------------------------------------------------------
+[ ] Beacon main: full-bleed map, title pill, (+) button, pins, sheet
+[ ] Sheet: Share button, two tabs with counts, member rows with live
+    badge, status colours, message buttons
+[ ] Add to circle: search, contacts button, info note, results,
+    pending (incoming Accept/Decline, outgoing awaiting), footer hint
+[ ] Request/accept lifecycle works both ways; sharing unlocks only
+    after acceptance
+[ ] Chat: header live status, live-location card, bubbles, share button,
+    input, real-time delivery
+[ ] Share mode chooser: two cards, tag, Cancel; routes to the right screen
+[ ] Draw your path: draw with one finger, live distance/time, alert zone,
+    Undo/Clear/Next states, discard confirm, accessible alternative
+[ ] Start sharing confirm: route card, member selection, duration chips,
+    off-path toggle, disabled/enabled Start; live variant omits route card
+    and toggle
+[ ] Live session: route, position dot, session card, Stop sharing; ends
+    on arrival/timer/stop and notifies members
+[ ] Off-path alert: detection rules, sharer banner, amber state, circle
+    notifications, re-arm logic, Update path / I am fine
+[ ] Contacts flow: explainer once -> OS prompt once -> Find from
+    contacts or Denied; both paths still allow search
+[ ] Bottom nav present on Beacon main, Add, Chat and contacts screens; hidden on
+    Draw, Confirm and Live session
+[ ] All colours/sizes from section 1 (no stray values)
+[ ] Verified at 320 and 430 widths and 130% text, light map style
+
+OPEN QUESTIONS FOR DESIGN/PRODUCT (do not block on these)
+  1. Empty states for Live now / My circle, and the location-permission
+     banner, are not drawn.
+  2. What does the sheet show for members who are in the circle but not
+     sharing (status copy, sort order)?
+  3. Can a user have more than one active session at a time?
+  4. Retention: is any location history, drawn path or off-path event kept
+     after a session ends?
+  5. Should an unanswered off-path alert ever escalate (e.g. to Lifeline)?
+  6. Should the drawn path snap to roads, and what are the min/max path
+     lengths?

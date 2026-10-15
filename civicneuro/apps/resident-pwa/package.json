@@ -1,0 +1,12 @@
+{
+  "name": "@civicneuro/resident-pwa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "leaflet": "^1.9.4"
+  },
+  "scripts": {
+    "dev": "node ../../tools/dev-server.js"
+  }
+}

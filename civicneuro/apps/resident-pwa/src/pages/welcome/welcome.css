@@ -1,0 +1,109 @@
+.cn-welcome-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 16px 18px;
+  min-height: 100dvh;
+  background: #F6F4EE;
+  color: #16241F;
+  font-family: 'Public Sans', sans-serif;
+  text-align: center;
+}
+.cn-welcome-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100%, 288px);
+  padding-top: 44px;
+}
+.cn-welcome-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #0F6E56;
+  color: #FFFFFF;
+}
+.cn-welcome-logo svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cn-welcome-title {
+  margin: 16px 0 0;
+  color: #16241F;
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.cn-welcome-sub {
+  max-width: 240px;
+  margin: 6px 0 0;
+  color: #5E6A64;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.cn-welcome-actions {
+  width: min(100%, 288px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: auto 0 0;
+}
+.cn-welcome-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
+  border-radius: 99px;
+  font-family: 'Public Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cn-welcome-action:focus-visible,
+.cn-welcome-track:focus-visible {
+  outline: 2px solid #185FA5;
+  outline-offset: 3px;
+}
+.cn-welcome-signin {
+  border: 1px solid #0F6E56;
+  background: #0F6E56;
+  color: #FFFFFF;
+}
+.cn-welcome-register {
+  border: 1px solid #DAD5C6;
+  background: transparent;
+  color: #16241F;
+}
+.cn-welcome-guest {
+  border: 1px solid #DAD5C6;
+  background: transparent;
+  color: #16241F;
+}
+.cn-welcome-track {
+  min-height: 36px;
+  border: 0;
+  background: transparent;
+  color: #185FA5;
+  font-family: 'Public Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cn-welcome-note {
+  margin: 0;
+  color: #69736D;
+  font-size: 10px;
+  line-height: 1.45;
+}

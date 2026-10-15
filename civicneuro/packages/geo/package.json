@@ -1,0 +1,13 @@
+{
+  "name": "@civicneuro/geo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./distance": "./src/distance.js",
+    "./point-in-polygon": "./src/point-in-polygon.js",
+    "./validate-geometry": "./src/validate-geometry.js"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "civicneuro",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "node --test packages/*/test/*.test.js apps/resident-pwa/test/*.test.js tests/beacon/*.test.js supabase/functions/beacon-route/handler.test.js supabase/functions/snap-and-say/handler.test.js",
+    "lint": "eslint .",
+    "check:innerhtml": "node tools/check-no-innerhtml.js",
+    "check:inline-scripts": "node tools/check-no-inline-scripts.js",
+    "check:service-role": "node tools/check-service-role-usage.js",
+    "check:forbidden-stack": "node tools/check-forbidden-stack.js",
+    "check:boundaries": "node tools/check-boundaries.js",
+    "check:csp": "node tools/check-csp.js",
+    "check:no-secrets": "node tools/check-no-secrets.js",
+    "check:all": "npm run check:innerhtml && npm run check:inline-scripts && npm run check:service-role && npm run check:forbidden-stack && npm run check:boundaries",
+    "dev": "node tools/dev-server.js",
+    "sync-shared": "node tools/sync-shared.js"
+  },
+  "devDependencies": {}
+}

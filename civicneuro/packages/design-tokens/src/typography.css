@@ -1,0 +1,45 @@
+/* packages/design-tokens/src/typography.css
+   Typographic scale utilities using design token variables.
+*/
+
+.text-xs   { font-size: var(--text-xs);   }
+.text-sm   { font-size: var(--text-sm);   }
+.text-base { font-size: var(--text-base); }
+.text-lg   { font-size: var(--text-lg);   }
+.text-xl   { font-size: var(--text-xl);   }
+.text-2xl  { font-size: var(--text-2xl);  }
+.text-3xl  { font-size: var(--text-3xl);  }
+.text-4xl  { font-size: var(--text-4xl);  }
+
+.font-normal   { font-weight: var(--font-weight-normal);   }
+.font-medium   { font-weight: var(--font-weight-medium);   }
+.font-semibold { font-weight: var(--font-weight-semibold); }
+.font-bold     { font-weight: var(--font-weight-bold);     }
+
+.leading-tight   { line-height: var(--leading-tight);   }
+.leading-normal  { line-height: var(--leading-normal);  }
+.leading-relaxed { line-height: var(--leading-relaxed); }
+
+.text-start   { text-align: start;  }
+.text-center  { text-align: center; }
+.text-end     { text-align: end;    }
+
+.text-subtle   { color: var(--clr-text-subtle);   }
+.text-disabled { color: var(--clr-text-disabled); }
+.text-inverse  { color: var(--clr-text-inverse);  }
+.text-primary  { color: var(--clr-primary-text);  }
+.text-success  { color: var(--clr-success-text);  }
+.text-warning  { color: var(--clr-warning-text);  }
+.text-danger   { color: var(--clr-danger-text);   }
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Heading defaults */
+h1 { font-size: var(--text-2xl); font-weight: var(--font-weight-bold);     line-height: var(--leading-tight); }
+h2 { font-size: var(--text-xl);  font-weight: var(--font-weight-semibold); line-height: var(--leading-tight); }
+h3 { font-size: var(--text-lg);  font-weight: var(--font-weight-semibold); line-height: var(--leading-tight); }
+h4 { font-size: var(--text-base);font-weight: var(--font-weight-semibold); }

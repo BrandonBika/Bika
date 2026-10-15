@@ -1,0 +1,106 @@
+.cn-lifeline-card {
+  position: relative;
+  display: block;
+  min-width: 0;
+  min-height: 128px;
+  border: 0;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.cn-lifeline-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22, 36, 31, 0.12);
+}
+.cn-lifeline-edit {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.65);
+  color: currentColor;
+  font: 600 12px 'Public Sans', sans-serif;
+  cursor: pointer;
+  z-index: 1;
+}
+.cn-lifeline-call {
+  display: flex;
+  width: 100%;
+  min-height: 128px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 12px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cn-lifeline-icon {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.65);
+  font-size: 17px;
+}
+.cn-lifeline-info {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 5px;
+}
+.cn-lifeline-name {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.cn-lifeline-phone {
+  overflow-wrap: anywhere;
+  font-size: 10px;
+  line-height: 1.35;
+  opacity: 0.82;
+}
+.cn-lifeline-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  padding: 4px 8px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 9.5px;
+  font-weight: 700;
+}
+.cn-lifeline-card--police {
+  background: #E6F1FB;
+  color: #042C53;
+}
+.cn-lifeline-card--ambulance {
+  background: #E1F5EE;
+  color: #085041;
+}
+.cn-lifeline-card--fire {
+  background: #FBE4D3;
+  color: #5A2008;
+}
+.cn-lifeline-card--gbv {
+  background: #EEE8F8;
+  color: #3A2570;
+}
+.cn-lifeline-card--custom {
+  background: #EAF3DE;
+  color: #1E3A12;
+}

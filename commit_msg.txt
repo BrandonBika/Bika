@@ -1,0 +1,1 @@
+chore: extend resident-pwa structure for flow map v7

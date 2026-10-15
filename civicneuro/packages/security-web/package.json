@@ -1,0 +1,17 @@
+{
+  "name": "@civicneuro/security-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./escape-html": "./src/escape-html.js",
+    "./safe-dom": "./src/safe-dom.js",
+    "./sanitize-url": "./src/sanitize-url.js",
+    "./csv-safe": "./src/csv-safe.js",
+    "./trusted-types": "./src/trusted-types.js",
+    "./csp-nonce": "./src/csp-nonce.js",
+    "./redact": "./src/redact.js"
+  }
+}

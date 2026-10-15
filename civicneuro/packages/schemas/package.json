@@ -1,0 +1,17 @@
+{
+  "name": "@civicneuro/schemas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./validate": "./src/validate.js",
+    "./reports": "./src/reports.js",
+    "./auth": "./src/auth.js",
+    "./beacon": "./src/beacon.js",
+    "./lifeline": "./src/lifeline.js",
+    "./surveys": "./src/surveys.js",
+    "./posts": "./src/posts.js"
+  }
+}

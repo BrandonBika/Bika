@@ -1,0 +1,230 @@
+/**
+ * @file apps/resident-pwa/src/pages/beacon-find-contacts/beacon-find-contacts.css
+ * Screen G: Find from my contacts styles.
+ */
+
+.cn-beacon-find-page {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  background-color: var(--paper, #F6F4EE);
+  padding: 14px 16px 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.find-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 6px;
+}
+
+.find-back-btn {
+  width: 26px;
+  height: 26px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  background: var(--paper-raised, #FFFFFF);
+  border: 1px solid var(--line, #DAD5C6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 26px;
+}
+
+.find-back-btn svg {
+  width: 13px;
+  height: 13px;
+  color: var(--ink, #16241F);
+}
+
+.find-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink, #16241F);
+}
+
+.find-sub {
+  font-size: 10.5px;
+  color: var(--ink-soft, #3E4A44);
+  margin-top: 1px;
+}
+
+.find-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-soft, #3E4A44);
+  margin: 14px 0 8px;
+}
+
+.find-section-label.first {
+  margin-top: 4px;
+}
+
+.find-picker-btn {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--beacon-deep, #0E5961);
+  color: #FFFFFF;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.find-picker-btn:focus-visible,
+.find-add-form input:focus-visible,
+.bc-pillbtn:focus-visible {
+  outline: 3px solid var(--beacon-deep, #0E5961);
+  outline-offset: 2px;
+}
+
+.find-add-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.find-add-form h2 {
+  margin-bottom: 0;
+}
+
+.find-add-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 9px;
+  background: var(--paper-raised, #FFFFFF);
+  color: var(--ink, #16241F);
+  font: inherit;
+  font-size: 12px;
+}
+
+.find-contact-privacy,
+.find-contact-message,
+.find-contact-empty {
+  color: var(--ink-soft, #3E4A44);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.find-contact-privacy {
+  margin: 8px 0 0;
+}
+
+.find-contact-message {
+  margin: 8px 0;
+}
+
+.find-contact-empty {
+  margin: 0;
+  padding: 8px 2px;
+}
+
+.find-info-note {
+  display: flex;
+  gap: 8px;
+  background: var(--sage, #EAF3DE);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-top: 12px;
+}
+
+.find-info-note svg {
+  width: 14px;
+  height: 14px;
+  color: var(--teal-deep, #085041);
+  flex: 0 0 14px;
+  margin-top: 2px;
+}
+
+.find-info-text {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #1E3A12;
+}
+
+/* Shared row / avatar / pill styles (duplicated from add-to-circle as each route loads its own CSS) */
+.bc-request-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  border-top: 1px solid var(--line, #DAD5C6);
+}
+
+.bc-request-row:first-child {
+  border-top: none;
+}
+
+.bc-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--sage-line, #97C459);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif, 'Source Serif 4', serif);
+  font-size: 12px;
+  font-weight: 600;
+  color: #173404;
+  flex: 0 0 32px;
+}
+
+.bc-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.bc-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink, #16241F);
+}
+
+.bc-meta {
+  font-size: 10px;
+  color: var(--ink-soft, #3E4A44);
+  margin-top: 1px;
+}
+
+.bc-pillbtn {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 6px 11px;
+  min-height: 32px;
+  border-radius: 99px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.bc-pillbtn.primary {
+  background: var(--beacon, #1C8C99);
+  color: #FFFFFF;
+}
+
+.bc-pillbtn.ghost {
+  background: transparent;
+  border: 1px solid var(--line, #DAD5C6);
+  color: var(--ink-soft, #3E4A44);
+}
+
+.bc-pillbtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

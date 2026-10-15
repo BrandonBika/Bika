@@ -1,0 +1,155 @@
+@import '../lifeline-card-create/lifeline-card-create.css';
+
+.cn-lifeline-edit-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 16px;
+}
+
+.cn-lifeline-back {
+	display: flex;
+	width: 32px;
+	height: 32px;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid #DAD5C6;
+	border-radius: 50%;
+	background: #FFFFFF;
+	color: #16241F;
+	font: 24px 'Public Sans', sans-serif;
+	cursor: pointer;
+}
+
+.cn-lifeline-edit-header .cn-lifeline-form-subtitle {
+	margin-bottom: 0;
+}
+
+.cn-lifeline-member-list {
+	overflow: hidden;
+	border: 1px solid #DAD5C6;
+	border-radius: 12px;
+	background: #FFFFFF;
+}
+
+.cn-lifeline-edit-member {
+	display: flex;
+	min-height: 54px;
+	align-items: center;
+	gap: 9px;
+	padding: 8px 10px;
+	border-top: 1px solid #DAD5C6;
+}
+
+.cn-lifeline-edit-member:first-child {
+	border-top: 0;
+}
+
+.cn-lifeline-member-avatar {
+	display: flex;
+	width: 30px;
+	height: 30px;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: #97C459;
+	color: #173404;
+	font: 600 12px 'Source Serif 4', Georgia, serif;
+}
+
+.cn-lifeline-edit-member-details {
+	display: flex;
+	min-width: 0;
+	flex: 1;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.cn-lifeline-edit-member-name,
+.cn-lifeline-edit-member-phone {
+	overflow-wrap: anywhere;
+}
+
+.cn-lifeline-edit-member-name {
+	color: #16241F;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.cn-lifeline-edit-member-phone {
+	color: #3E4A44;
+	font-size: 9.5px;
+}
+
+.cn-lifeline-remove-saved-member {
+	display: flex;
+	width: 24px;
+	height: 24px;
+	flex: 0 0 auto;
+	align-items: center;
+	justify-content: center;
+	border: 0;
+	border-radius: 50%;
+	background: #F6F4EE;
+	color: #8B8B85;
+	font: 16px 'Public Sans', sans-serif;
+	cursor: pointer;
+}
+
+.cn-lifeline-new-member {
+	padding: 10px;
+	border: 1px solid #BFE0D3;
+	border-radius: 10px;
+	background: #F6F4EE;
+}
+
+.cn-lifeline-new-member .cn-input-group {
+	margin-bottom: 8px;
+}
+
+.cn-lifeline-new-member-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 7px;
+}
+
+.cn-lifeline-pick-contacts {
+	width: 100%;
+	min-height: 38px;
+	margin-top: 8px;
+	border: 1px solid #DAD5C6;
+	border-radius: 9px;
+	background: #16241F;
+	color: #FFFFFF;
+	font: 700 10px 'Public Sans', sans-serif;
+	cursor: pointer;
+}
+
+.cn-lifeline-pick-contacts:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.cn-lifeline-cancel-member,
+.cn-lifeline-confirm-member {
+	min-height: 32px;
+	padding: 6px 10px;
+	border: 1px solid #DAD5C6;
+	border-radius: 8px;
+	background: #FFFFFF;
+	color: #16241F;
+	font: 700 9.5px 'Public Sans', sans-serif;
+	cursor: pointer;
+}
+
+.cn-lifeline-confirm-member {
+	border-color: #16241F;
+	background: #16241F;
+	color: #FFFFFF;
+}
+
+.cn-lifeline-save-group {
+	margin-top: auto;
+}

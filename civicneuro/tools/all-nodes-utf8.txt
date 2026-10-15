@@ -1,0 +1,324 @@
+====================================
+NODE ID: node-home
+CAPTION: Home
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content">
+<div class="m-hello">Good afternoon</div>
+<div class="m-name">Kagiso</div>
+<div class="m-quick-row"><div class="m-quick snap"><div class="q-icons"><div class="q-ic main"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4"></path></svg></div><div class="q-ic"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"></path><circle cx="12" cy="13" r="4"></circle></svg></div></div><div class="q-label">Snap &amp; Say</div><div class="q-sub">AI voice + photo — say it, snap it</div></div><div class="m-quick form"><div class="q-icons"><div class="q-ic form-ic"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M12 11v6M9 14h6"></path></svg></div></div><div class="q-label">Report an issue</div><div class="q-sub">Fill in a form · about 2 min</div></div></div>
+<div class="m-tiles">
+<div class="m-pulse">
+<div class="m-pulse-head">
+<div>
+<div class="ph-eyebrow"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>Your area</div>
+<div class="ph-title">What's happening around you</div>
+</div>
+<div class="ph-see">See all ›</div>
+</div>
+<div class="m-pulse-scroll">
+<div class="m-pulse-card poll">
+<div class="pc-icon"><svg fill="none" stroke="#185FA5" stroke-width="2" viewbox="0 0 24 24"><path d="M9 12h6M9 16h6M4 21V8l8-5 8 5v13"></path><path d="M4 21h16"></path></svg></div>
+<div class="pc-label">Quick poll</div>
+<div class="pc-body">Should this park get more lighting?</div>
+<div class="pc-yn"><div>Yes</div><div>No</div></div>
+</div>
+<div class="m-pulse-card stat">
+<div class="pc-icon"><svg fill="none" stroke="#0F6E56" stroke-width="2" viewbox="0 0 24 24"><path d="M4 20V10M12 20V4M20 20v-7"></path></svg></div>
+<div class="pc-label">Community pulse</div>
+<div class="pc-body">72% say waste collection is improving</div>
+<div class="pc-meta">Based on 340 responses</div>
+</div>
+<div class="m-pulse-card trend">
+<div class="pc-icon"><svg fill="none" stroke="#BA7517" stroke-width="2" viewbox="0 0 24 24"><path d="M23 6l-9.5 9.5-5-5L1 18"></path><path d="M17 6h6v6"></path></svg></div>
+<div class="pc-label">Trending issue</div>
+<div class="pc-body">Streetlights — #1 reported this week</div>
+<div class="pc-meta">Tap to view or report</div>
+</div>
+</div>
+</div>
+<div class="m-tile">
+<div class="t-icon" style="background:var(--blue-tint);"><svg fill="none" stroke="#185FA5" stroke-width="2" viewbox="0 0 24 24"><path d="M4 22V4a2 2 0 0 1 2-2h9l5 5v15a0 0 0 0 1 0 0H6a2 2 0 0 1-2-2Z"></path><path d="M8 8h6M8 12h8M8 16h8"></path></svg></div>
+<div class="t-label">News</div>
+<div class="t-meta">4 new</div>
+</div>
+<div class="m-tile">
+<div class="t-icon" style="background:var(--sage);"><svg fill="none" stroke="#0F6E56" stroke-width="2" viewbox="0 0 24 24"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></div>
+<div class="t-label">Surveys</div>
+<div class="t-meta">1 open</div>
+</div>
+
+
+</div>
+</div>
+<div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+
+====================================
+NODE ID: node-beacon
+CAPTION: Beacon — live map, active shares & your circle (repurposed from the old bottom-nav Profile tab — new)
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content" style="padding:0;position:relative;overflow:hidden;">
+<div class="bc-map">
+<svg class="bc-grid" fill="none" stroke="#97C459" stroke-width="1"><path d="M0 90 H320 M0 180 H320 M0 270 H320 M0 360 H320 M60 0 V560 M160 0 V560 M240 0 V560"></path></svg>
+</div>
+<div class="bc-pin me" style="top:40%;left:46%;"><div class="bc-pin-avatar">K</div></div>
+<div class="bc-pin live" style="top:24%;left:72%;"><div class="bc-pin-avatar">T</div><div class="bc-pin-dot"></div></div>
+<div class="bc-pin live" style="top:56%;left:20%;"><div class="bc-pin-avatar">N</div><div class="bc-pin-dot"></div></div>
+<div class="bc-topbar">
+<div class="bc-title-pill"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+<div class="bc-add-btn"><svg fill="none" stroke="currentColor" stroke-width="2.4" viewbox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg></div>
+</div>
+<div class="bc-sheet">
+<div class="bc-sheet-handle"></div>
+<div class="bc-cta-share"><svg fill="none" stroke="#fff" stroke-width="2.2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3" fill="#fff"></circle></svg>Share my live location</div>
+<div class="bc-tabs">
+<div class="bc-tab active">Live now · 2</div>
+<div class="bc-tab">My circle · 5</div>
+</div>
+<div class="bc-member-row">
+<div class="bc-avatar">T<div class="bc-live-badge"></div></div>
+<div class="bc-text"><div class="bc-name">Thabo Mkhize</div><div class="bc-status live">Sharing · 6 min to you</div></div>
+<div class="bc-msg-btn"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"></path></svg></div>
+</div>
+<div class="bc-member-row">
+<div class="bc-avatar">N<div class="bc-live-badge"></div></div>
+<div class="bc-text"><div class="bc-name">Nomvula Zulu</div><div class="bc-status live">Sharing · walking home</div></div>
+<div class="bc-msg-btn"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"></path></svg></div>
+</div>
+</div>
+</div>
+<div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+
+====================================
+NODE ID: node-beacon-mode
+CAPTION: Beacon → "Share my live location" — choose how to share: live location, or draw a path (new)
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="phone-content dim" style="padding:0;position:relative;overflow:hidden;"><div class="bc-map"><svg class="bc-grid" fill="none" stroke="#97C459" stroke-width="1"><path d="M0 90 H320 M0 180 H320 M0 270 H320 M0 360 H320 M60 0 V560 M160 0 V560 M240 0 V560"></path></svg></div>
+<div class="bc-topbar"><div class="bc-title-pill"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" ><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"/><circle cx="12" cy="9.5" r="2.3"/></svg>Beacon</div><div class="bc-add-btn"><svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" ><path d="M12 5v14M5 12h14"/></svg></div></div></div>
+<div class="modal-backdrop"><div class="sheet mode-sheet">
+<div class="sheet-handle"></div>
+<div class="sheet-title">How do you want to share?</div>
+<div class="sheet-sub">Choose how your circle follows you. You pick who sees it and for how long on the next step.</div>
+<div class="sh-use opt-live" style="align-items:center;border-radius:14px;"><div class="u-ic" style="background:var(--beacon-tint);width:36px;height:36px;color:var(--beacon);"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="18" height="18"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"/><circle cx="12" cy="9.5" r="2.3"/></svg></div><div style="flex:1;"><div class="u-t">Share live location</div><div class="u-d">Your circle sees you move on the map in real time. No route needed.</div></div><div style="color:#B0AFA5;width:14px;flex:0 0 auto;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><path d="m9 18 6-6-6-6"/></svg></div></div>
+<div class="sh-use opt-draw" style="align-items:center;border-radius:14px;"><div class="u-ic" style="background:var(--beacon-tint);width:36px;height:36px;color:var(--beacon);"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="18" height="18"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></svg></div><div style="flex:1;"><div class="u-t">Draw a path</div><div class="u-d">Draw where you are going. Your circle follows your progress and is alerted if you stray off it.</div><div style="display:inline-block;margin-top:6px;font-size:9.5px;font-weight:700;background:var(--beacon-tint);color:var(--beacon-deep);border-radius:99px;padding:2px 8px;">Safer for walks</div></div><div style="color:#B0AFA5;width:14px;flex:0 0 auto;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14"><path d="m9 18 6-6-6-6"/></svg></div></div>
+<div class="btn-flat ghost mode-cancel" style="border-radius:99px;margin-top:4px;">Cancel</div>
+</div>
+
+====================================
+NODE ID: node-beacon-draw
+CAPTION: Beacon → "Draw a path" — draw your route with a finger; shaded strip is the off-path alert zone (new)
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="phone-content" style="padding:0;position:relative;overflow:hidden;"><div class="bc-map"><svg class="bc-grid" fill="none" stroke="#97C459" stroke-width="1"><path d="M0 90 H320 M0 180 H320 M0 270 H320 M0 360 H320 M60 0 V560 M160 0 V560 M240 0 V560"></path></svg></div>
+<svg style="position:absolute;inset:0;width:100%;height:100%;" fill="none" stroke-linecap="round" stroke-linejoin="round"><path class="draw-zone" d="M60 385 C 75 340, 130 325, 140 285 S 95 235, 150 215 S 235 205, 225 165" stroke="rgba(28,140,153,.16)" stroke-width="34"/><path class="draw-line" d="M60 385 C 75 340, 130 325, 140 285 S 95 235, 150 215 S 235 205, 225 165" stroke="var(--beacon)" stroke-width="4"/></svg>
+<div class="bc-route-dot" style="top:385px;left:60px;transform:translate(-50%,-50%);"></div>
+<div class="draw-start" style="position:absolute;top:401px;left:60px;transform:translateX(-50%);background:#fff;border-radius:99px;padding:3px 9px;font-size:9.5px;font-weight:700;box-shadow:0 4px 10px rgba(22,36,31,.16);">You are here</div>
+<div class="draw-end" style="position:absolute;top:165px;left:225px;transform:translate(-50%,-92%);"><svg fill="var(--beacon)" height="32" stroke="var(--beacon)" stroke-width="1" viewBox="0 0 24 24" width="32"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5" fill="#fff"/></svg></div>
+<div class="bc-topbar draw-top" style="justify-content:flex-start;gap:8px;"><div class="draw-back" style="width:32px;height:32px;border-radius:50%;background:#fff;box-shadow:0 8px 18px rgba(22,36,31,.16);display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><span style="width:14px;height:14px;display:block;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" ><path d="m15 18-6-6 6-6"/></svg></span></div>
+<div class="bc-title-pill"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" ><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Draw your path</div></div>
+<div class="draw-hint" style="position:absolute;top:56px;left:12px;right:12px;background:#fff;border-radius:12px;padding:9px 12px;box-shadow:0 8px 18px rgba(22,36,31,.14);">
+<div style="font-size:11.5px;font-weight:700;">Path drawn · 1.4 km · about 18 min</div>
+<div style="font-size:10.5px;color:var(--ink-soft);margin-top:2px;line-height:1.45;">Drag your finger from where you are to where you are going. Lift to finish. The shaded strip is the alert zone.</div></div>
+<div class="draw-tools" style="position:absolute;left:12px;right:12px;bottom:14px;background:#fff;border-radius:16px;padding:10px;box-shadow:0 14px 30px rgba(22,36,31,.2);">
+<div class="draw-zone-key" style="display:flex;align-items:center;gap:7px;font-size:10px;color:var(--ink-soft);margin:0 2px 9px;"><span style="width:22px;height:10px;border-radius:99px;background:rgba(28,140,153,.25);display:inline-block;flex:0 0 auto;"></span>Alert zone · 100 m either side of your path</div>
+<div class="btn-row">
+<div class="ll-addbtn draw-undo"><span style="width:12px;height:12px;display:block;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" ><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></span>Undo</div>
+<div class="ll-addbtn draw-clear"><span style="width:12px;height:12px;display:block;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" ><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg></span>Clear</div>
+<div class="ll-addbtn draw-next" style="background:var(--beacon);border-color:var(--beacon);color:#fff;">Next</div></div></div>
+
+====================================
+NODE ID: node-beacon-confirm
+CAPTION: Beacon → Start sharing — choose who sees you, for how long, and the off-path alert (new). Live-location variant: no route card, no off-path alert row
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="phone-content" style="padding-bottom:14px;">
+<div class="m-chat-header" style="border-bottom:none;padding-bottom:8px;"><div class="ch-back"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" ><path d="m15 18-6-6 6-6"/></svg></div><div><div class="ch-title">Start sharing</div><div class="ch-sub">Walk to Musgrave Centre · 1.4 km</div></div></div>
+<div class="cf-route" style="position:relative;height:88px;border-radius:12px;overflow:hidden;border:1px solid var(--line);margin-bottom:4px;"><div class="bc-map"><svg class="bc-grid" fill="none" stroke="#97C459" stroke-width="1"><path d="M0 90 H320 M0 180 H320 M0 270 H320 M0 360 H320 M60 0 V560 M160 0 V560 M240 0 V560"></path></svg></div>
+<svg viewBox="0 0 300 88" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;" fill="none" stroke-linecap="round"><path d="M30 70 C 80 70, 90 30, 150 44 S 230 20, 270 18" stroke="rgba(28,140,153,.18)" stroke-width="16"/><path d="M30 70 C 80 70, 90 30, 150 44 S 230 20, 270 18" stroke="var(--beacon)" stroke-width="3"/></svg>
+<div style="position:absolute;right:8px;bottom:8px;background:#fff;border-radius:99px;padding:3px 9px;font-size:9.5px;font-weight:700;">~18 min · ETA 6:52 PM</div></div>
+<div class="m-sectiontitle" style="display:flex;justify-content:space-between;margin-top:12px;"><span>Share with</span><span style="color:var(--beacon-deep);text-transform:none;letter-spacing:0;">Select all</span></div>
+<div class="cf-members"><div class="bc-request-row"><div class="bc-avatar">T</div><div class="bc-text"><div class="bc-name">Thabo Mkhize</div><div class="bc-meta">In your circle</div></div><div class="cf-check on" style="width:20px;height:20px;border-radius:50%;background:var(--beacon);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:#fff;"><span style="width:12px;height:12px;display:block;"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" ><path d="m5 12 5 5 9-10"/></svg></span></div></div><div class="bc-request-row"><div class="bc-avatar">N</div><div class="bc-text"><div class="bc-name">Nomvula Zulu</div><div class="bc-meta">In your circle</div></div><div class="cf-check on" style="width:20px;height:20px;border-radius:50%;background:var(--beacon);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:#fff;"><span style="width:12px;height:12px;display:block;"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24" ><path d="m5 12 5 5 9-10"/></svg></span></div></div><div class="bc-request-row"><div class="bc-avatar">L</div><div class="bc-text"><div class="bc-name">Lindiwe Ngcobo</div><div class="bc-meta">In your circle</div></div><div class="cf-check" style="width:20px;height:20px;border-radius:50%;border:1.5px solid var(--line);background:#fff;flex:0 0 auto;"></div></div></div>
+<div class="m-sectiontitle">How long</div>
+<div class="cf-duration" style="display:flex;gap:6px;"><div class="cf-chip on" style="flex:1;text-align:center;font-size:11px;font-weight:700;padding:8px 4px;border-radius:99px;white-space:nowrap;background:var(--beacon-tint);border:1px solid var(--beacon);color:var(--beacon-deep);">Until I arrive</div><div class="cf-chip" style="flex:1;text-align:center;font-size:11px;font-weight:700;padding:8px 4px;border-radius:99px;white-space:nowrap;background:#fff;border:1px solid var(--line);color:var(--ink-soft);">30 min</div><div class="cf-chip" style="flex:1;text-align:center;font-size:11px;font-weight:700;padding:8px 4px;border-radius:99px;white-space:nowrap;background:#fff;border:1px solid var(--line);color:var(--ink-soft);">1 hour</div><div class="cf-chip" style="flex:1;text-align:center;font-size:11px;font-weight:700;padding:8px 4px;border-radius:99px;white-space:nowrap;background:#fff;border:1px solid var(--line);color:var(--ink-soft);">2 hours</div></div>
+<div class="cf-alert" style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:14px;">
+<div style="width:30px;height:30px;border-radius:9px;background:var(--amber-tint);color:var(--amber);display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><span style="width:15px;height:15px;display:block;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" ><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg></span></div>
+<div style="flex:1;"><div style="font-size:12px;font-weight:700;">Alert them if I stray off my path</div><div style="font-size:10.5px;color:var(--ink-soft);line-height:1.4;margin-top:1px;">Notified if you move more than 100 m from the line.</div></div>
+<div class="cf-toggle" style="width:34px;height:20px;border-radius:99px;background:var(--beacon);position:relative;flex:0 0 auto;"><div style="position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;"></div></div></div>
+<div class="bc-cta-share cf-start" style="margin:14px 0 6px;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" ><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"/><circle cx="12" cy="9.5" r="2.3"/></svg>Start sharing</div>
+<div style="font-size:10px;color:var(--ink-soft);text-align:center;line-height:1.4;">You can stop any time. Sharing ends when you arrive.</div>
+
+====================================
+NODE ID: node-beacon-session
+CAPTION: Beacon → "Share my live location" — session-based walk, ends on arrival, timer, or Stop sharing (new)
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="phone-content" style="padding:0;position:relative;overflow:hidden;">
+<div class="bc-map">
+<svg class="bc-grid" fill="none" stroke="#97C459" stroke-width="1"><path d="M0 90 H320 M0 180 H320 M0 270 H320 M0 360 H320 M60 0 V560 M160 0 V560 M240 0 V560"></path></svg>
+</div>
+<svg style="position:absolute;inset:0;width:100%;height:100%;" fill="none" stroke="var(--beacon)" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 9">
+<path d="M70 460 C 120 380, 90 300, 150 230 S 230 140, 220 70"></path>
+</svg>
+<div class="bc-route-dot" style="top:78%;left:20%;"></div>
+<div style="position:absolute;top:16%;left:66%;transform:translate(-50%,-92%);">
+<svg fill="var(--beacon)" height="32" stroke="var(--beacon)" stroke-width="1" viewbox="0 0 24 24" width="32"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"></path><circle cx="12" cy="10" r="2.5" fill="#fff"></circle></svg>
+</div>
+<div class="bc-session-card">
+<div class="bcs-row">
+<div class="bcs-avatars"><div class="bc-avatar">T</div><div class="bc-avatar">N</div></div>
+<div style="flex:1;"><div class="bcs-title">Sharing with Thabo, Nomvula</div><div class="bcs-sub">Walk to Musgrave Centre · ETA 6:52 PM</div></div>
+</div>
+<div class="bcs-stop">Stop sharing</div>
+</div>
+
+====================================
+NODE ID: node-beacon-offpath
+CAPTION: Beacon → live session — off-path alert state: sharer sees the banner, the circle is notified (new)
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="phone-content" style="padding:0;position:relative;overflow:hidden;"><div class="bc-map"><svg class="bc-grid" fill="none" stroke="#97C459" stroke-width="1"><path d="M0 90 H320 M0 180 H320 M0 270 H320 M0 360 H320 M60 0 V560 M160 0 V560 M240 0 V560"></path></svg></div>
+<svg style="position:absolute;inset:0;width:100%;height:100%;" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M60 430 C 80 360, 130 340, 140 280 S 90 200, 150 160 S 230 120, 225 70" stroke="rgba(28,140,153,.16)" stroke-width="34"/><path d="M60 430 C 80 360, 130 340, 140 280 S 90 200, 150 160 S 230 120, 225 70" stroke="var(--beacon)" stroke-width="3" stroke-dasharray="2 9"/></svg>
+<div style="position:absolute;top:70px;left:225px;transform:translate(-50%,-92%);"><svg fill="var(--beacon)" height="32" stroke="var(--beacon)" stroke-width="1" viewBox="0 0 24 24" width="32"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5" fill="#fff"/></svg></div>
+<div class="bc-route-dot" style="top:352px;left:228px;transform:translate(-50%,-50%);background:var(--amber);"></div>
+<div class="offpath-tag" style="position:absolute;top:366px;left:228px;transform:translateX(-50%);background:var(--amber-tint);color:#633806;border-radius:99px;padding:3px 9px;font-size:9.5px;font-weight:700;white-space:nowrap;">Off path · 140 m</div>
+<div class="bc-session-card"><div class="bcs-row"><div class="bcs-avatars"><div class="bc-avatar">T</div><div class="bc-avatar">N</div></div><div style="flex:1;"><div class="bcs-title">Sharing with Thabo, Nomvula</div><div class="bcs-sub">Walk to Musgrave Centre · ETA 6:52 PM</div></div></div>
+<div class="offpath-banner" style="display:flex;gap:8px;background:var(--amber-tint);border-radius:10px;padding:9px 10px;margin-top:10px;"><span style="width:14px;height:14px;color:var(--amber);flex:0 0 auto;margin-top:1px;display:block;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" ><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg></span><div style="font-size:11px;line-height:1.45;color:#633806;"><b>You are off your path.</b> Thabo and Nomvula have been notified.</div></div>
+<div class="btn-row" style="margin-top:10px;"><div class="btn-flat ghost offpath-update" style="padding:9px;font-size:11.5px;">Update path</div><div class="btn-flat offpath-ok" style="padding:9px;font-size:11.5px;background:var(--beacon);color:#fff;">I am fine</div></div>
+<div class="bcs-stop">Stop sharing</div></div>
+
+====================================
+NODE ID: node-beacon-add
+CAPTION: Beacon → "+" — add to circle: search by name/number, send a request, mutual accept required before location sharing unlocks (updated — search by name/number, or find people from contacts via the shared contacts permission; request/accept only)
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content">
+<div class="m-chat-header" style="border-bottom:none;padding-bottom:8px;">
+<div class="ch-back"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg></div>
+<div><div class="ch-title">Add to your circle</div><div class="ch-sub">Search CivicNeuro residents</div></div>
+</div>
+<div class="m-searchbar" style="display:flex;align-items:center;gap:8px;background:var(--paper-raised);border:1px solid var(--line);border-radius:11px;padding:9px 12px;margin-bottom:10px;">
+<svg fill="none" stroke="var(--ink-soft)" stroke-width="2" viewbox="0 0 24 24" width="15" height="15"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+<span style="font-size:12px;color:var(--ink-soft);">Search by name or phone number…</span>
+</div>
+<div class="ll-addbtn" style="margin-bottom:10px;justify-content:center;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"></path></svg>Find people from my contacts</div><div class="m-badges-note" style="margin-bottom:10px;">
+<svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16h.01"></path></svg>
+<div class="note-text">Search by name or number, or find people from your contacts. A request only completes once they accept.</div>
+</div>
+<div class="m-sectiontitle" style="margin-top:0;">Results · 3</div>
+<div class="bc-request-row">
+<div class="bc-avatar">M</div>
+<div class="bc-text"><div class="bc-name">Musa Khumalo</div><div class="bc-meta">Ward 12</div></div>
+<div class="bc-pillbtn primary">Request</div>
+</div>
+<div class="bc-request-row">
+<div class="bc-avatar">L</div>
+<div class="bc-text"><div class="bc-name">Lindiwe Ngcobo</div><div class="bc-meta">Ward 12</div></div>
+<div class="bc-pillbtn primary">Request</div>
+</div>
+<div class="bc-request-row">
+<div class="bc-avatar">D</div>
+<div class="bc-text"><div class="bc-name">David Pillay</div><div class="bc-meta">Ward 9</div></div>
+<div class="bc-pillbtn primary">Request</div>
+</div>
+<div class="m-sectiontitle">Pending</div>
+<div class="bc-request-row">
+<div class="bc-avatar">Z</div>
+<div class="bc-text"><div class="bc-name">Zanele Cele</div><div class="bc-meta">Wants to share with you</div></div>
+<div class="bc-request-actions">
+<div class="bc-pillbtn ghost">Decline</div>
+<div class="bc-pillbtn primary">Accept</div>
+</div>
+</div>
+<div class="bc-request-row">
+<div class="bc-avatar">S</div>
+<div class="bc-text"><div class="bc-name">Sipho Dube</div><div class="bc-meta">Request sent · awaiting accept</div></div>
+</div>
+<div style="font-size:10px;color:var(--ink-soft);text-align:center;margin-top:12px;line-height:1.4;">Not finding someone? They may not be on CivicNeuro yet, or their profile isn't set to discoverable.</div>
+</div>
+<div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+
+====================================
+NODE ID: node-beacon-chat
+CAPTION: Beacon → chat with a circle member — persistent, open any time; live-share status shows in the header (new)
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div><div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div>
+<div class="phone-content" style="display:flex;flex-direction:column;padding-bottom:10px;">
+<div class="m-chat-header">
+<div class="ch-back"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg></div>
+<div>
+<div class="ch-title">Thabo Mkhize</div>
+<div class="ch-sub" style="color:var(--beacon-deep);font-weight:700;">● Sharing live location · 6 min to you</div>
+</div>
+</div>
+<div style="flex:1;overflow:hidden;padding-top:6px;display:flex;flex-direction:column;">
+<div class="m-chat-daylabel">Today</div>
+<div class="bc-share-card">
+<div class="bc-share-label"><svg fill="none" stroke="currentColor" stroke-width="2.4" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path></svg>Live location started</div>
+<div class="bc-share-sub">Thabo shared his walk to Musgrave Centre · ETA 6:52 PM</div>
+</div>
+<div class="m-bubble-row org">
+<div class="org-avatar" style="background:var(--sage-line);color:#173404;font-family:'Source Serif 4',serif;font-weight:600;font-size:10px;">T</div>
+<div class="m-bubble-wrap"><div class="m-bubble">On my way, taking the Florida Road side so I'll pass your gate</div><div class="m-bubble-time">6:41 PM</div></div>
+</div>
+<div class="m-bubble-row me">
+<div class="m-bubble-wrap"><div class="m-bubble">Perfect, I'll watch for you 👍</div><div class="m-bubble-time">6:42 PM</div></div>
+</div>
+</div>
+<div class="m-chat-input">
+<div style="width:26px;height:26px;border-radius:50%;background:var(--beacon-tint);display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><svg fill="none" height="13" stroke="var(--beacon-deep)" stroke-width="2.2" viewbox="0 0 24 24" width="13"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path></svg></div>
+<input placeholder="Write a message…" readonly=""/>
+<div class="ci-send"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"></path></svg></div>
+</div>
+</div>
+<div class="phone-bottomnav">
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div>
+<div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div>
+<div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+
+====================================
+NODE ID: node-contacts-explainer
+CAPTION: Shared pre-permission screen — shown the FIRST time either Lifeline or Beacon needs contacts; explains both uses before the OS prompt (new)
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div><div class="phone-content"><div class="sh-hero"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"></path></svg></div><div style="font-family:'Source Serif 4',serif;font-size:19px;font-weight:600;text-align:center;">Use your contacts?</div><div style="font-size:11.5px;color:var(--ink-soft);text-align:center;line-height:1.5;margin:4px 0 14px;">One quick permission covers both features — we only ask once.</div><div class="sh-use"><div class="u-ic" style="background:var(--ll-tint);"><svg fill="none" stroke="#B03060" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg></div><div><div class="u-t">Lifeline</div><div class="u-d">Pick the people who get called when you tap Crime, Fire, Sickness, GBV or your own card.</div></div></div><div class="sh-use"><div class="u-ic" style="background:var(--beacon-tint);"><svg fill="none" stroke="#1C8C99" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg></div><div><div class="u-t">Beacon</div><div class="u-d">Find friends and family already on CivicNeuro and add them to your circle.</div></div></div><div class="sh-once"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg><div class="t">Only people you add to a card or send a Beacon request to are saved. You can switch this off any time in your phone's Settings.</div></div></div><div style="padding:6px 16px 16px;"><div class="m-submit-btn">Continue</div><div class="btn-flat ghost" style="margin-top:8px;border-radius:99px;">Not now</div></div><div class="phone-bottomnav"><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+
+====================================
+NODE ID: node-contacts-perm
+CAPTION: ONE native contacts permission prompt — shared by Lifeline and Beacon; never shown twice (new)
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="phone-content dim"><div class="ll-title">Contacts</div></div><div class="modal-backdrop center"><div class="dialog"><div class="dialog-icon warn" style="background:var(--blue-tint);"><svg fill="none" stroke="#185FA5" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"></path></svg></div><div class="dialog-title">Allow access to contacts?</div><div class="dialog-body">CivicNeuro uses your contacts for Lifeline and Beacon. Native OS permission prompt — asked once for the whole app.</div><div class="btn-row"><div class="btn-flat ghost">Don't allow</div><div class="btn-flat primary">Allow</div></div></div>
+
+====================================
+NODE ID: node-contacts-denied
+CAPTION: Contacts permission denied — both features keep working without it; one place to switch it on later (new)
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div><div class="phone-content" style="display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:20px;"><div style="width:52px;height:52px;border-radius:50%;background:var(--amber-tint);display:flex;align-items:center;justify-content:center;"><svg fill="none" stroke="#BA7517" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.86 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.86a2 2 0 0 0-3.4 0Z"></path></svg></div><div style="font-family:'Source Serif 4',serif;font-size:18px;font-weight:600;margin-top:14px;">Contacts access is off</div><div style="font-size:11.5px;color:var(--ink-soft);margin-top:6px;line-height:1.55;max-width:230px;">You can still <b>type numbers</b> on a Lifeline card, or <b>search by name or number</b> in Beacon. To pick from your contacts, switch access on in your phone's Settings.</div></div><div style="padding:6px 16px 16px;"><div class="m-submit-btn">Open Settings</div><div class="btn-flat ghost" style="margin-top:8px;border-radius:99px;">Continue without contacts</div></div><div class="phone-bottomnav"><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+
+====================================
+NODE ID: node-beacon-contacts
+CAPTION: Beacon → "Find from my contacts" — your contacts who are already on CivicNeuro; request/accept still required (new)
+HTML:
+<div class="phone-notch"><div class="pill-notch"></div></div>
+<div class="m-topbar"><div class="m-menubtn"><svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>Menu</div></div><div class="phone-content"><div class="m-chat-header" style="border-bottom:none;padding-bottom:6px;"><div class="ch-back"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg></div><div><div class="ch-title">Find from my contacts</div><div class="ch-sub">3 of your contacts are on CivicNeuro</div></div></div><div class="m-sectiontitle" style="margin-top:4px;">On CivicNeuro</div><div class="bc-request-row"><div class="bc-avatar">T</div><div class="bc-text"><div class="bc-name">Thabo Mkhize</div><div class="bc-meta">In your contacts</div></div><div class="bc-pillbtn primary">Request</div></div><div class="bc-request-row"><div class="bc-avatar">L</div><div class="bc-text"><div class="bc-name">Lindiwe Ngcobo</div><div class="bc-meta">In your contacts</div></div><div class="bc-pillbtn primary">Request</div></div><div class="bc-request-row"><div class="bc-avatar">S</div><div class="bc-text"><div class="bc-name">Sipho Dube</div><div class="bc-meta">Request sent · awaiting accept</div></div></div><div class="m-sectiontitle">Not on CivicNeuro yet</div><div class="bc-request-row"><div class="bc-avatar">G</div><div class="bc-text"><div class="bc-name">Gogo</div><div class="bc-meta">Invite by SMS</div></div><div class="bc-pillbtn ghost">Invite</div></div><div class="m-badges-note" style="margin-top:12px;"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16h.01"></path></svg><div class="note-text">Numbers are matched securely to find residents. Contacts who aren't on CivicNeuro are never saved.</div></div></div><div class="phone-bottomnav"><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.5a2 2 0 0 1 2-.5c1 .3 2 .5 3 .6a2 2 0 0 1 1.5 2Z"></path><path d="M14.05 2a9 9 0 0 1 8 7.94"></path><path d="M14.05 6A5 5 0 0 1 18 10"></path></svg>Lifeline</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M3 11 12 3l9 8"></path><path d="M5 10v10h14V10"></path></svg>Home</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Reports</div><div class="nav-item"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path></svg>Alerts</div><div class="nav-item active"><svg fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24"><path d="M12 22s7-7.6 7-12.5A7 7 0 0 0 5 9.5C5 14.4 12 22 12 22Z"></path><circle cx="12" cy="9.5" r="2.3"></circle></svg>Beacon</div>
+

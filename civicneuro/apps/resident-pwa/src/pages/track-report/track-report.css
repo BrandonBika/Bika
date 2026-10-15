@@ -1,0 +1,9 @@
+@import '../sign-in/sign-in.css';
+
+.cn-track-report-page {
+	min-height: calc(100dvh - 32px);
+}
+
+.cn-track-report-page .cn-auth-submit {
+	margin-top: auto;
+}

@@ -1,0 +1,11 @@
+.cn-beacon-indicator {
+  background-color: #e3fcef;
+  border-bottom: 1px solid #abf5d1;
+  color: #006644;
+  padding: 8px 16px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

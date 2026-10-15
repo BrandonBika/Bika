@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+supabase/.temp/
+supabase/.branches/
+*.pem
+*.key
+dist/
+coverage/
+.DS_Store
+*.log
+*.sqlite
+/tmp/

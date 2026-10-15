@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:wght@600;700&display=swap');
+
+/* Core Design System and Base Styles */
+@import '../../../../packages/design-tokens/src/tokens.css';
+@import '../../../../packages/design-tokens/src/themes-light-dark.css';
+@import '../../../../packages/design-tokens/src/typography.css';
+@import '../../../../packages/design-tokens/src/reset.css';
+@import '../../../../packages/ui/src/button/button.css';
+@import '../../../../packages/ui/src/input/input.css';
+@import '../../../../packages/ui/src/modal/modal.css';
+@import '../../../../packages/ui/src/table/table.css';
+@import '../../../../packages/ui/src/toast/toast.css';
+@import '../components/app-shell/app-shell.css';
+@import '../components/top-menu-button/top-menu-button.css';
+@import '../components/bottom-nav/bottom-nav.css';
+
+@import '../components/status-pill/status-pill.css';
+@import '../components/empty-state/empty-state.css';
+@import '../components/error-state/error-state.css';
+@import '../components/offline-queued/offline-queued.css';
+
+:root {
+  --cn-app-max-width: 480px;
+
+  /* CivicNeuro v7 Approved Design Tokens */
+  --ink: #16241F;
+  --ink-soft: #3E4A44;
+  --paper: #F6F4EE;
+  --paper-raised: #FFFFFF;
+  --line: #DAD5C6;
+  --teal: #0F6E56;
+  --teal-deep: #085041;
+  --teal-tint: #E1F5EE;
+  --blue: #185FA5;
+  --blue-tint: #E6F1FB;
+  --amber: #BA7517;
+  --amber-tint: #FAEEDA;
+  --red: #A32D2D;
+  --red-tint: #FCEBEB;
+  --sage: #EAF3DE;
+  --sage-line: #97C459;
+
+  /* Beacon feature colors */
+  --beacon: #1C8C99;
+  --beacon-deep: #0E5961;
+  --beacon-tint: #E3F3F5;
+
+  /* Shared contacts colors */
+  --sh: #7A6A1F;
+  --sh-tint: #F6F0D4;
+
+  /* Lifeline colors */
+  --ll: #B03060;
+  --ll-deep: #6E1636;
+  --ll-tint: #FBE8EF;
+
+  --muted: #8B8B85;
+  --muted-icons: #B0AFA5;
+  --timeline-line: #B9C4B9;
+  --disabled-teal: #B8CFC7;
+  --disabled-danger: #E7CFCF;
+  --danger-text: #792424;
+  --danger-border: #E6C3C3;
+  --scrim: rgba(22, 36, 31, 0.5);
+
+  --font-body: 'Public Sans', sans-serif;
+  --font-serif: 'Source Serif 4', serif;
+
+  --shadow-fab: 0 8px 18px rgba(15, 110, 86, 0.4);
+  --shadow-sheet: 0 -12px 30px rgba(0, 0, 0, 0.18);
+  --shadow-dialog: 0 25px 50px rgba(0, 0, 0, 0.3);
+}
+
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+cn-app-shell.cn-app-shell--welcome .cn-shell-header {
+  display: none;
+}
+
+cn-app-shell.cn-app-shell--welcome .cn-shell-main {
+  flex: 1;
+  min-height: 100dvh;
+  padding: 0;
+}
+
+.cn-route-page {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#app {
+  width: 100%;
+  max-width: var(--cn-app-max-width);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--paper);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 24px rgba(22, 36, 31, 0.08);
+}
+

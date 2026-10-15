@@ -1,0 +1,425 @@
+/**
+ * @file apps/resident-pwa/src/pages/beacon-draw-path/beacon-draw-path.css
+ * Screen A3: Draw your path styles.
+ */
+
+.cn-beacon-draw-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: calc(100vh - 22px);
+  min-height: calc(100dvh - 22px);
+  overflow: hidden;
+  background-color: var(--sage, #EAF3DE);
+  box-sizing: border-box;
+}
+
+.draw-map-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.draw-map-wrap .bc-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  isolation: isolate;
+}
+
+.draw-pointer-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  background: transparent;
+  touch-action: pan-x pan-y;
+  cursor: crosshair;
+}
+
+.draw-map-zoom-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 112px;
+  z-index: 2;
+  display: grid;
+  gap: 6px;
+}
+
+.draw-map-zoom-btn {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 10px;
+  background: var(--paper-raised, #FFFFFF);
+  color: var(--ink, #16241F);
+  box-shadow: 0 4px 12px rgba(22, 36, 31, 0.18);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* Floating top bar */
+.draw-topbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.draw-topbar > * {
+  pointer-events: auto;
+}
+
+.draw-back-btn {
+  width: 32px;
+  height: 32px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  background: var(--paper-raised, #FFFFFF);
+  border: none;
+  box-shadow: 0 8px 18px rgba(22, 36, 31, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex: 0 0 32px;
+}
+
+.draw-back-btn svg {
+  width: 14px;
+  height: 14px;
+  color: var(--ink, #16241F);
+}
+
+.draw-title-pill {
+  background: var(--paper-raised, #FFFFFF);
+  border-radius: 99px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink, #16241F);
+  box-shadow: 0 8px 18px rgba(22, 36, 31, 0.16);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.draw-title-pill svg {
+  width: 13px;
+  height: 13px;
+  color: var(--beacon, #1C8C99);
+}
+
+/* Hint / Summary Card */
+.draw-hint-card {
+  position: absolute;
+  top: 56px;
+  left: 12px;
+  right: 12px;
+  max-height: 42dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  background: var(--paper-raised, #FFFFFF);
+  border-radius: 12px;
+  padding: 9px 12px;
+  box-shadow: 0 8px 18px rgba(22, 36, 31, 0.14);
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.draw-hint-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink, #16241F);
+}
+
+.draw-hint-body {
+  font-size: 10.5px;
+  color: var(--ink-soft, #3E4A44);
+  margin-top: 2px;
+  line-height: 1.45;
+}
+
+.draw-hint-a11y-btn,
+.draw-hint-retry-btn,
+.draw-hint-manual-start-btn {
+  background: none;
+  border: none;
+  color: var(--beacon-deep, #0E5961);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 2px 0 0;
+  margin-top: 4px;
+  display: inline-block;
+}
+
+.draw-hint-retry-btn {
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.draw-hint-retry-btn[hidden] {
+  display: none;
+}
+
+.draw-hint-retry-btn:disabled,
+.draw-hint-manual-start-btn:disabled,
+.draw-hint-a11y-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.draw-accessible-route[hidden] {
+  display: none;
+}
+
+.draw-place-search {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  touch-action: auto;
+}
+
+.draw-place-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: var(--ink, #16241F);
+  font: inherit;
+  font-size: 11px;
+}
+
+.draw-place-search-btn {
+  min-width: 64px;
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: var(--beacon, #1C8C99);
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.draw-place-results {
+  display: grid;
+  gap: 4px;
+  max-height: 16dvh;
+  overflow-y: auto;
+  margin-top: 6px;
+  touch-action: pan-y;
+}
+
+.draw-place-result {
+  min-height: 44px;
+  padding: 7px 9px;
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: var(--ink, #16241F);
+  text-align: left;
+  font: inherit;
+  font-size: 10.5px;
+}
+
+.draw-place-search-status {
+  margin-top: 5px;
+  color: var(--ink-soft, #3E4A44);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+/* Map markers */
+.draw-start-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--beacon, #1C8C99);
+  border: 3px solid #FFFFFF;
+  box-shadow: 0 3px 8px rgba(22, 36, 31, 0.3);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.draw-start-label {
+  position: absolute;
+  transform: translate(-50%, 8px);
+  background: #FFFFFF;
+  border-radius: 99px;
+  padding: 3px 9px;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--ink, #16241F);
+  box-shadow: 0 4px 10px rgba(22, 36, 31, 0.16);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.draw-dest-pin {
+  position: absolute;
+  transform: translate(-50%, -92%);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* Toolbar */
+.draw-toolbar {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 14px;
+  background: var(--paper-raised, #FFFFFF);
+  border-radius: 16px;
+  padding: 10px;
+  box-shadow: 0 14px 30px rgba(22, 36, 31, 0.2);
+  z-index: 10;
+}
+
+.draw-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: var(--ink-soft, #3E4A44);
+  margin: 0 2px 9px;
+}
+
+.draw-legend-swatch {
+  width: 22px;
+  height: 10px;
+  border-radius: 99px;
+  background: rgba(28, 140, 153, 0.25);
+  display: inline-block;
+  flex: 0 0 22px;
+}
+
+.draw-btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.draw-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 9px 6px;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--line, #DAD5C6);
+  background: var(--paper-raised, #FFFFFF);
+  color: var(--ink, #16241F);
+  cursor: pointer;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.draw-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.draw-btn.primary {
+  background: var(--beacon, #1C8C99);
+  border-color: var(--beacon, #1C8C99);
+  color: #FFFFFF;
+}
+
+.draw-btn.primary:disabled {
+  background: #A9CFD4;
+  border-color: #A9CFD4;
+}
+
+/* Discard modal */
+.draw-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(22, 36, 31, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  z-index: 100;
+}
+
+.draw-dialog {
+  background: var(--paper-raised, #FFFFFF);
+  border-radius: 16px;
+  padding: 22px 18px 18px;
+  width: 100%;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+.draw-dialog-title {
+  font-family: var(--font-serif, 'Source Serif 4', serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink, #16241F);
+  margin-bottom: 6px;
+}
+
+.draw-dialog-body {
+  font-size: 11.5px;
+  color: var(--ink-soft, #3E4A44);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+/* Shared dialog button row */
+.btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-flat {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 11px;
+  border-radius: 99px;
+  cursor: pointer;
+  box-sizing: border-box;
+  user-select: none;
+  border: 1px solid var(--line, #DAD5C6);
+  background: var(--paper-raised, #FFFFFF);
+  color: var(--ink-soft, #3E4A44);
+}
+
+.btn-flat.danger {
+  background: var(--paper-raised, #FFFFFF);
+  border-color: #E6C3C3;
+  color: var(--red, #A32D2D);
+}
+
+.btn-flat.ghost {
+  background: var(--paper-raised, #FFFFFF);
+  color: var(--ink-soft, #3E4A44);
+}

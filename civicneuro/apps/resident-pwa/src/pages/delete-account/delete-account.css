@@ -1,0 +1,126 @@
+.cn-delete-page {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 20px 18px;
+  background: rgba(22, 36, 31, 0.5);
+}
+
+.cn-delete-dialog {
+  width: min(100%, 360px);
+  padding: 22px 18px 18px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+  color: var(--ink, #16241F);
+  font-family: var(--font-body, 'Public Sans', sans-serif);
+}
+
+.cn-delete-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: var(--red-tint, #FCEBEB);
+  color: var(--red, #A32D2D);
+  font-size: 20px;
+}
+
+.cn-delete-title {
+  margin: 0 0 6px;
+  text-align: center;
+  color: var(--ink, #16241F);
+  font: 600 16px/1.3 var(--font-serif, 'Source Serif 4', serif);
+}
+
+.cn-delete-body {
+  margin: 0 0 14px;
+  color: var(--ink-soft, #3E4A44);
+  font-size: 11.5px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.cn-delete-export {
+  width: 100%;
+  min-height: 38px;
+  margin-bottom: 10px;
+  border: 1px dashed var(--line, #DAD5C6);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--blue, #185FA5);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cn-delete-verify {
+  display: grid;
+  gap: 6px;
+  margin-top: 0;
+}
+
+.cn-delete-field-label {
+  color: var(--ink-soft, #3E4A44);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.cn-delete-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 9px 11px;
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 9px;
+  background: var(--paper, #F6F4EE);
+  color: var(--ink, #16241F);
+  text-align: center;
+  letter-spacing: 0.04em;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.cn-delete-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.cn-delete-action {
+  flex: 1 1 0;
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--line, #DAD5C6);
+  background: #fff;
+  color: var(--ink-soft, #3E4A44);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cn-delete-action--danger {
+  background: var(--red, #A32D2D);
+  border-color: var(--red, #A32D2D);
+  color: #fff;
+}
+
+.cn-delete-action--danger.is-disabled,
+.cn-delete-action--danger:disabled {
+  background: var(--disabled-danger, #E7CFCF);
+  border-color: var(--disabled-danger, #E7CFCF);
+  color: rgba(121, 36, 36, 0.8);
+  cursor: not-allowed;
+}
+
+.cn-delete-page button:focus-visible,
+.cn-delete-page input:focus-visible {
+  outline: 2px solid var(--teal, #0F6E56);
+  outline-offset: 2px;
+}

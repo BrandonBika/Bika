@@ -1,0 +1,297 @@
+/**
+ * @file apps/resident-pwa/src/pages/contacts-permission/contacts-permission.css
+ * Screen E: Contacts explainer, Screen F: OS Prompt, Screen H: Contacts denied.
+ */
+
+.cn-contacts-permission-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--paper, #F6F4EE);
+  color: var(--ink, #16241F);
+  box-sizing: border-box;
+}
+
+.perm-content-wrap {
+  flex: 1;
+  padding: 10px 16px 16px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* Screen E: Hero */
+.sh-hero {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: var(--blue-tint, #E6F1FB);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 6px auto 12px;
+}
+
+.sh-hero svg {
+  width: 26px;
+  height: 26px;
+  color: var(--blue, #185FA5);
+}
+
+.sh-title {
+  font-family: var(--font-serif, 'Source Serif 4', serif);
+  font-size: 19px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--ink, #16241F);
+}
+
+.sh-sub {
+  font-size: 11.5px;
+  color: var(--ink-soft, #3E4A44);
+  text-align: center;
+  line-height: 1.5;
+  margin: 4px 0 14px;
+}
+
+/* Screen E: Use Cards */
+.sh-use-card {
+  display: flex;
+  gap: 11px;
+  background: var(--paper-raised, #FFFFFF);
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 14px;
+  padding: 12px 13px;
+  margin-bottom: 9px;
+  box-sizing: border-box;
+}
+
+.sh-use-card .u-ic {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+}
+
+.sh-use-card .u-ic.ll {
+  background: var(--ll-tint, #FBE8EF);
+  color: var(--ll, #B03060);
+}
+
+.sh-use-card .u-ic.bc {
+  background: var(--beacon-tint, #E3F3F5);
+  color: var(--beacon, #1C8C99);
+}
+
+.sh-use-card .u-ic svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sh-use-card .u-t {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink, #16241F);
+}
+
+.sh-use-card .u-d {
+  font-size: 11px;
+  color: var(--ink-soft, #3E4A44);
+  line-height: 1.45;
+  margin-top: 2px;
+}
+
+/* Screen E: Privacy Note */
+.sh-privacy-note {
+  display: flex;
+  gap: 8px;
+  background: var(--sh-tint, #F6F0D4);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-top: 4px;
+}
+
+.sh-privacy-note svg {
+  width: 14px;
+  height: 14px;
+  color: var(--sh, #7A6A1F);
+  flex: 0 0 14px;
+  margin-top: 1px;
+}
+
+.sh-privacy-note .t {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #4A400F;
+}
+
+/* Button area at bottom */
+.perm-btn-area {
+  padding: 6px 16px 16px;
+  box-sizing: border-box;
+  margin-top: auto;
+}
+
+.perm-btn-continue {
+  background: var(--ink, #16241F);
+  color: #FFFFFF;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 13px;
+  border-radius: 99px;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.perm-btn-notnow {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 11px;
+  border-radius: 99px;
+  border: 1px solid var(--line, #DAD5C6);
+  color: var(--ink-soft, #3E4A44);
+  background: var(--paper-raised, #FFFFFF);
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Screen F: OS Dialog Modal */
+.modal-backdrop.perm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(22, 36, 31, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  z-index: 100;
+}
+
+.dialog.perm-dialog {
+  background: var(--paper-raised, #FFFFFF);
+  border-radius: 16px;
+  padding: 22px 18px 18px;
+  width: 100%;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.dialog-icon.blue {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--blue-tint, #E6F1FB);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+
+.dialog-icon.blue svg {
+  width: 22px;
+  height: 22px;
+  color: var(--blue, #185FA5);
+}
+
+.perm-dialog-title {
+  font-family: var(--font-serif, 'Source Serif 4', serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink, #16241F);
+  margin-bottom: 6px;
+}
+
+.perm-dialog-body {
+  font-size: 11.5px;
+  color: var(--ink-soft, #3E4A44);
+  line-height: 1.55;
+  margin-bottom: 16px;
+}
+
+/* Screen H: Denied State */
+.denied-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 20px;
+}
+
+.denied-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--amber-tint, #FAEEDA);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.denied-icon svg {
+  width: 24px;
+  height: 24px;
+  color: var(--amber, #BA7517);
+}
+
+.denied-title {
+  font-family: var(--font-serif, 'Source Serif 4', serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink, #16241F);
+  margin-top: 14px;
+}
+
+.denied-body {
+  font-size: 11.5px;
+  color: var(--ink-soft, #3E4A44);
+  margin-top: 6px;
+  line-height: 1.55;
+  max-width: 230px;
+}
+
+.denied-body b {
+  color: var(--ink, #16241F);
+}
+
+/* Shared dialog button row (also used by OS prompt modal) */
+.btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-flat {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 11px;
+  border-radius: 99px;
+  cursor: pointer;
+  box-sizing: border-box;
+  user-select: none;
+  border: 1px solid var(--line, #DAD5C6);
+  background: var(--paper-raised, #FFFFFF);
+  color: var(--ink-soft, #3E4A44);
+}
+
+.btn-flat.primary {
+  background: var(--teal, #0F6E56);
+  color: #FFFFFF;
+  border-color: var(--teal, #0F6E56);
+}
+
+.btn-flat.ghost {
+  background: var(--paper-raised, #FFFFFF);
+  color: var(--ink-soft, #3E4A44);
+}

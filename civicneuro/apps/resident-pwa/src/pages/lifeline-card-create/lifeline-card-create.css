@@ -1,0 +1,152 @@
+@import '../sign-in/sign-in.css';
+
+.cn-lifeline-form-page {
+	display: flex;
+	min-height: calc(100dvh - 96px);
+	flex-direction: column;
+	padding: 16px;
+	background: #F6F4EE;
+	color: #16241F;
+	font-family: 'Public Sans', sans-serif;
+}
+
+.cn-lifeline-form-title {
+	margin: 0;
+	color: #16241F;
+	font: 600 18px/1.35 'Source Serif 4', Georgia, serif;
+}
+
+.cn-lifeline-form-subtitle {
+	margin: 2px 0 12px;
+	color: #3E4A44;
+	font-size: 11px;
+	line-height: 1.45;
+}
+
+.cn-lifeline-form-page .cn-input-group {
+	margin-bottom: 9px;
+}
+
+.cn-lifeline-form-page .cn-input-label,
+.cn-lifeline-select-field {
+	color: #16241F;
+	font-size: 10.5px;
+	font-weight: 600;
+}
+
+.cn-lifeline-form-page .cn-input,
+.cn-lifeline-form-select {
+	min-height: 40px;
+	border: 1px solid #DAD5C6;
+	border-radius: 9px;
+	background: #FFFFFF;
+	color: #16241F;
+	font: 11px 'Public Sans', sans-serif;
+}
+
+.cn-lifeline-select-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-bottom: 9px;
+}
+
+.cn-lifeline-form-select {
+	width: 100%;
+	padding: 8px 10px;
+}
+
+.cn-lifeline-members-title {
+	margin: 4px 0 7px;
+	color: #16241F;
+	font-size: 11px;
+	font-weight: 700;
+}
+
+.cn-lifeline-member-fields {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.cn-lifeline-member-field {
+	padding: 9px;
+	border: 1px solid #DAD5C6;
+	border-radius: 10px;
+	background: #FFFFFF;
+}
+
+.cn-lifeline-member-field .cn-input-group {
+	margin-bottom: 7px;
+}
+
+.cn-lifeline-remove-member,
+.cn-lifeline-add-member {
+	min-height: 34px;
+	padding: 6px 10px;
+	border: 1px solid #DAD5C6;
+	border-radius: 9px;
+	background: #FFFFFF;
+	color: #16241F;
+	font: 700 10px 'Public Sans', sans-serif;
+	cursor: pointer;
+}
+
+.cn-lifeline-add-member {
+	width: 100%;
+	margin-top: 8px;
+	border-style: dashed;
+	color: #085041;
+}
+
+.cn-lifeline-pick-contacts {
+	width: 100%;
+	min-height: 38px;
+	margin-top: 8px;
+	padding: 7px 10px;
+	border: 1px solid #185FA5;
+	border-radius: 9px;
+	background: #FFFFFF;
+	color: #185FA5;
+	font: 700 10px 'Public Sans', sans-serif;
+	cursor: pointer;
+}
+
+.cn-lifeline-pick-contacts:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.cn-lifeline-add-member:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.cn-lifeline-save-group {
+	position: sticky;
+	bottom: 0;
+	z-index: 2;
+	width: 100%;
+	min-height: 44px;
+	margin-top: 12px;
+	padding: 10px 12px;
+	border: 0;
+	border-radius: 99px;
+	background: #16241F;
+	color: #FFFFFF;
+	font: 700 12px 'Public Sans', sans-serif;
+	cursor: pointer;
+	box-shadow: 0 -8px 18px rgba(246, 244, 238, 0.9);
+}
+
+.cn-lifeline-save-error {
+	margin: 10px 0 0;
+	color: #9C2B2B;
+	font-size: 11px;
+	line-height: 1.45;
+}
+
+.cn-lifeline-form-page button:focus-visible {
+	outline: 2px solid #185FA5;
+	outline-offset: 2px;
+}

@@ -1,0 +1,101 @@
+/**
+ * @file apps/resident-pwa/src/pages/beacon-safety-notice/beacon-safety-notice.css
+ * Beacon safety policy page styles.
+ */
+
+.cn-beacon-safety-page {
+  position: relative;
+  width: 100%;
+  min-height: 100%;
+  background-color: var(--paper, #F6F4EE);
+  padding: 20px 16px 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.safety-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--beacon-tint, #E3F3F5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.safety-icon svg {
+  width: 24px;
+  height: 24px;
+  color: var(--beacon, #1C8C99);
+}
+
+.safety-title {
+  font-family: var(--font-serif, 'Source Serif 4', serif);
+  font-size: 19px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--ink, #16241F);
+  margin-bottom: 12px;
+}
+
+.safety-item {
+  display: flex;
+  gap: 12px;
+  background: var(--paper-raised, #FFFFFF);
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+}
+
+.safety-item-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--beacon-tint, #E3F3F5);
+  color: var(--beacon-deep, #0E5961);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+}
+
+.safety-item-text {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-soft, #3E4A44);
+}
+
+.safety-item-text strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink, #16241F);
+  margin-bottom: 2px;
+}
+
+.safety-continue-btn {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink, #16241F);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 13px;
+  border-radius: 99px;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  transition: opacity 0.15s ease;
+}
+
+.safety-continue-btn:hover {
+  opacity: 0.9;
+}
