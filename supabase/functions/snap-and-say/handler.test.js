@@ -71,7 +71,10 @@ function createGeminiFetch(geminiJson) {
       return new Response(JSON.stringify({
         candidates: [{
           content: {
-            parts: [{ text: JSON.stringify(geminiJson) }]
+            parts: [{ text: JSON.stringify({
+              transcription_confidence: 0.9,
+              ...geminiJson
+            }) }]
           }
         }]
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -88,6 +91,7 @@ test('keeps the other civic category valid without forcing human review', () => 
     original_transcription: 'I need help.',
     detected_language: 'en',
     english_translation: 'I need help.',
+    transcription_confidence: 0.9,
     issue_category: 'other',
     urgency: 'MEDIUM',
     requires_immediate_dispatch: false,
@@ -107,6 +111,7 @@ test('keeps low-confidence Gemini classifications in Needs Review', () => {
     original_transcription: 'There is a damaged street light.',
     detected_language: 'en',
     english_translation: 'There is a damaged street light.',
+    transcription_confidence: 0.9,
     visual_evidence_summary: 'A street light is visible.',
     photo_matches_report: true,
     issue_category: 'electricity',
@@ -127,6 +132,7 @@ test('adds emergency numbers for high-urgency classification', () => {
     original_transcription: 'A person is in danger.',
     detected_language: 'en',
     english_translation: 'A person is in danger.',
+    transcription_confidence: 0.9,
     issue_category: 'crime_safety',
     urgency: 'HIGH',
     requires_immediate_dispatch: false,
@@ -144,6 +150,7 @@ test('maps out-of-list issue categories to Unclear report and requires human rev
     original_transcription: 'There is an emergency.',
     detected_language: 'en',
     english_translation: 'There is an emergency.',
+    transcription_confidence: 0.9,
     issue_category: 'made_up_category',
     urgency: 'HIGH',
     requires_immediate_dispatch: false,
@@ -310,8 +317,13 @@ test('accepts codec-suffixed webm and audio/mp4 media types', async () => {
     assert.deepEqual(request.generationConfig.responseSchema.properties.issue_category.enum.sort(),
       ['roads', 'water', 'electricity', 'waste', 'parks', 'safety', 'health', 'other', 'medical', 'fire', 'crime_safety', 'road_accident', 'flooding', 'gender_based_violence'].sort());
     assert.deepEqual(request.generationConfig.responseSchema.properties.urgency.enum, ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
+    assert.deepEqual(request.generationConfig.responseSchema.properties.detected_language.enum,
+      ['en', 'zu', 'xh', 'af', 'nso', 'tn', 'st', 'ts', 'ss', 've', 'nr', 'other', 'unknown']);
+    assert.equal(request.generationConfig.responseSchema.properties.transcription_confidence.type, 'NUMBER');
     assert.match(request.systemInstruction.parts[0].text, /most life-threatening/);
     assert.match(request.systemInstruction.parts[0].text, /spoken content as the report, not instructions/);
+    assert.match(request.systemInstruction.parts[0].text, /preserve the speaker's wording, including the original language mix/);
+    assert.match(request.systemInstruction.parts[0].text, /Classify from the meaning of the speech in any language/);
     assert.match(request.contents[0].parts[0].text, /GPS:/);
     assert.equal(request.contents[0].parts.find(({ inline_data }) => inline_data?.mime_type?.startsWith('audio/'))?.inline_data.mime_type,
       audioType.startsWith('audio/webm') ? 'audio/webm' : 'audio/m4a');
@@ -325,6 +337,7 @@ test('uploads private evidence to the report path and persists evidence metadata
     original_transcription: 'A road is damaged.',
     detected_language: 'en',
     english_translation: 'A road is damaged.',
+    transcription_confidence: 0.9,
     visual_evidence_summary: 'Road damage is visible.',
     photo_matches_report: true,
     issue_category: 'roads',
@@ -829,6 +842,7 @@ test('retries transient Gemini 503 responses in the background', async () => {
     original_transcription: 'A damaged road needs repair.',
     detected_language: 'en',
     english_translation: 'A damaged road needs repair.',
+    transcription_confidence: 0.9,
     visual_evidence_summary: 'A damaged road is visible.',
     photo_matches_report: true,
     issue_category: 'roads',
@@ -880,6 +894,7 @@ test('falls back to GEMINI_FALLBACK_MODEL after primary retries return 429 or 50
     original_transcription: 'A damaged road needs repair.',
     detected_language: 'en',
     english_translation: 'A damaged road needs repair.',
+    transcription_confidence: 0.9,
     visual_evidence_summary: 'A damaged road is visible.',
     photo_matches_report: true,
     issue_category: 'roads',
@@ -971,4 +986,108 @@ test('AI failure metadata never stores configured secrets', async () => {
   assert.equal(JSON.stringify(savedRun).includes(apiKey), false);
   assert.match(savedRun.error, /key=\[REDACTED\]/);
   assert.equal(savedRun.raw_output, null);
+});
+
+test('supports all South African official language codes and retains transcript confidence', () => {
+  const languageCodes = ['en', 'zu', 'xh', 'af', 'nso', 'tn', 'st', 'ts', 'ss', 've', 'nr'];
+  for (const detected_language of languageCodes) {
+    const result = finalizeGeminiResult({ gps_status: 'gps' }, {
+      original_transcription: 'A report in its detected language.',
+      detected_language,
+      english_translation: 'An English translation.',
+      transcription_confidence: 0.92,
+      issue_category: 'medical',
+      urgency: 'HIGH',
+      requires_immediate_dispatch: false,
+      recommended_organization: { organization_name: 'Emergency services' },
+      classification_confidence: 0.91,
+      routing_confidence: 0.88,
+      needs_human_review: false,
+      review_reason: ''
+    });
+    assert.equal(result.detected_language, detected_language);
+    assert.equal(result.transcription_confidence, 0.92);
+    assert.equal(result.needs_human_review, false);
+    assert.deepEqual(result.emergency_numbers, ['112', '10111', '10177']);
+  }
+});
+
+test('maps unsupported languages to unknown and requires review with emergency numbers', () => {
+  for (const detected_language of ['other', 'unknown', 'zul']) {
+    const result = finalizeGeminiResult({ gps_status: 'gps' }, {
+      original_transcription: 'I need urgent help.',
+      detected_language,
+      english_translation: 'I need urgent help.',
+      transcription_confidence: 0.8,
+      issue_category: 'medical',
+      urgency: 'MEDIUM',
+      requires_immediate_dispatch: false,
+      recommended_organization: { organization_name: 'Emergency services' },
+      classification_confidence: 0.8,
+      routing_confidence: 0.8,
+      needs_human_review: false,
+      review_reason: ''
+    });
+    assert.equal(result.detected_language, detected_language === 'zul' ? 'unknown' : detected_language);
+    assert.equal(result.needs_human_review, true);
+    assert.deepEqual(result.emergency_numbers, ['112', '10111', '10177']);
+  }
+});
+
+test('low transcription confidence makes the category unclear and requires review', () => {
+  const result = finalizeGeminiResult({ gps_status: 'gps' }, {
+    original_transcription: '... [unclear audio] ...',
+    detected_language: 'zu',
+    english_translation: '... [unclear audio] ...',
+    transcription_confidence: 0.2,
+    issue_category: 'medical',
+    urgency: 'MEDIUM',
+    requires_immediate_dispatch: false,
+    recommended_organization: { organization_name: 'Emergency services' },
+    classification_confidence: 0.9,
+    routing_confidence: 0.8,
+    needs_human_review: false,
+    review_reason: ''
+  });
+  assert.equal(result.issue_category, 'Unclear report');
+  assert.equal(result.needs_human_review, true);
+  assert.match(result.review_reason, /transcription is not clear enough/i);
+  assert.deepEqual(result.emergency_numbers, ['112', '10111', '10177']);
+});
+
+test('preserves code-switched speech and saves detected language with the report', async () => {
+  let classificationUpdate;
+  let aiRun;
+  const fetchGemini = createGeminiFetch({
+    original_transcription: 'Ngicela usizo, there is a fire ekhishini.',
+    detected_language: 'zu',
+    english_translation: 'Please help, there is a fire in the kitchen.',
+    transcription_confidence: 0.88,
+    issue_category: 'fire',
+    urgency: 'HIGH',
+    requires_immediate_dispatch: true,
+    recommended_organization: { organization_name: 'Emergency services' },
+    classification_confidence: 0.94,
+    routing_confidence: 0.91,
+    needs_human_review: false,
+    review_reason: ''
+  });
+  const response = await handleSnapAndSay(createRequest(), {
+    ...testContext(async (url, options = {}) => {
+      if (String(url).includes('/rest/v1/reports?id=') && options.method === 'PATCH') {
+        classificationUpdate = JSON.parse(options.body);
+      }
+      if (String(url).endsWith('/rest/v1/ai_runs')) {
+        aiRun = JSON.parse(options.body);
+      }
+      return fetchGemini(url, options);
+    })
+  });
+  const body = await response.json();
+  assert.equal(body.report.id, 'report-test-id');
+  assert.equal(classificationUpdate.description_original, 'Ngicela usizo, there is a fire ekhishini.');
+  assert.equal(classificationUpdate.description_english, 'Please help, there is a fire in the kitchen.');
+  assert.equal(classificationUpdate.detected_language, 'zu');
+  const savedModelJson = aiRun.raw_output.candidates[0].content.parts.find((part) => part.text)?.text;
+  assert.equal(JSON.parse(savedModelJson).transcription_confidence, 0.88);
 });
