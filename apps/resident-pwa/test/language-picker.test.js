@@ -44,7 +44,7 @@ test('language picker exposes the 11 official languages without mapping one lang
   ]);
   assert.deepEqual(availableLanguages.map(({ name }) => name), [
     'English', 'isiZulu', 'isiXhosa', 'Afrikaans', 'Sepedi', 'Setswana',
-    'Sesotho', 'itsonga', 'siSwati', 'Tshivenda', 'isiNdebele'
+    'Sesotho', '\u0058itsonga', 'siSwati', 'Tshivenda', 'isiNdebele'
   ]);
   assert.equal(availableLanguages.filter(({ hasTranslations }) => hasTranslations).map(({ code }) => code).join(','), 'en');
 });
