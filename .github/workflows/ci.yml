@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Run tests
+        run: npm test
+      - name: Run lint
+        run: npm exec --yes --package eslint@9 -- eslint .
+      - name: Check boundaries
+        run: npm run check:boundaries
+      - name: Check secrets
+        run: npm run check:no-secrets
+      - name: Check repository layout
+        run: npm run check:layout
+      - name: Check resident imports
+        run: npm run check:imports
