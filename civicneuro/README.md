@@ -7,7 +7,7 @@ Multi-tenant civic-issue reporting platform.
 - Front end: 3 static multi-page apps (resident PWA, org dashboard, platform admin portal), vanilla JS + Web Components, no build step required to run them.
 - Backend is entirely Supabase: Postgres + PostGIS (with RLS), Supabase Auth (including email verification, MFA, auth hooks), Supabase Storage (private buckets), Supabase Realtime (private channels), Supabase Edge Functions (written as `.js` modules), and `pg_cron` for scheduled jobs.
 - No Cloudflare of any kind (no Workers, R2, Access, WAF, Turnstile, wrangler). CAPTCHA is hCaptcha through Supabase Auth.
-- AI providers: Whisper for speech-to-text (called only from the `transcribe` Edge Function) and Gemini for the Snap & Say agent (called only from the `snap-and-say` Edge Function).
+- AI provider: Gemini handles Snap & Say transcription, translation, photo review, and classification in one background request from the `snap-and-say` Edge Function. Whisper is not used by the active Snap & Say flow.
 - Dev-only tooling is JS (ESLint, Prettier, node:test). No bundler is mandated.
 
 See docs/architecture/

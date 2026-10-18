@@ -143,7 +143,8 @@ The Snap & Say flow is available from the resident home screen and follows the q
 - Step 1: ask for camera, microphone and location permission with plain-language explanations.
 - Step 2: capture or retake a photo as evidence, or choose **Skip photo**.
 - Step 3: press and hold the record button to speak in South African languages or a mix; release to submit automatically, slide away to cancel, and discard recordings under 1 second.
-- Step 4: upload the media and GPS to the backend, then show the English translation, issue type, urgency, and routed organisation.
+- Step 4: upload the media and GPS to the backend. Gemini transcribes and classifies the audio and optional photo in a background request; the confirmation screen polls the saved report and then shows the original transcript, English translation, issue type, urgency, and emergency links when applicable. Whisper is not used by this flow.
+- The immediate receipt is explicitly marked as analysing and does not present a placeholder category as the result. If analysis fails or times out, the resident is told that a person will review the report.
 - If the device is offline or the endpoint returns a server error, the audio and optional photo Blobs are queued in IndexedDB and retried on reconnect. Validation/client errors are shown without queuing.
 
 Required backend config for the Supabase function includes `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `GEMINI_API_KEY`.
