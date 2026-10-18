@@ -21,6 +21,6 @@ function scan(dir) {
   }
 }
 
-scan(path.resolve('civicneuro/apps/resident-pwa/src'));
+scan(path.resolve('apps/resident-pwa/src'));
 if (failed) process.exit(1);
 console.log('✅ PASS: Boundary check passed.');

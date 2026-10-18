@@ -14,9 +14,10 @@
     "check:service-role": "node tools/check-service-role-usage.js",
     "check:forbidden-stack": "node tools/check-forbidden-stack.js",
     "check:boundaries": "node tools/check-boundaries.js",
+    "check:layout": "node tools/check-layout.js",
     "check:csp": "node tools/check-csp.js",
     "check:no-secrets": "node tools/check-no-secrets.js",
-    "check:all": "npm run check:innerhtml && npm run check:inline-scripts && npm run check:service-role && npm run check:forbidden-stack && npm run check:boundaries",
+    "check:all": "npm run check:innerhtml && npm run check:inline-scripts && npm run check:service-role && npm run check:forbidden-stack && npm run check:boundaries && npm run check:layout",
     "dev": "node tools/dev-server.js",
     "sync-shared": "node tools/sync-shared.js"
   },

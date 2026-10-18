@@ -25,7 +25,7 @@ function scanDir(dir) {
   }
 }
 
-scanDir(path.resolve('civicneuro/apps/resident-pwa/src'));
+scanDir(path.resolve('apps/resident-pwa/src'));
 
 if (failed) process.exit(1);
 console.log('✅ PASS: No hardcoded secrets found.');
