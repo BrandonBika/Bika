@@ -14,8 +14,7 @@ import {
   SNAP_AND_SAY_POLL_TIMEOUT_MS
 } from '../../features/snap-and-say/classification-poll.js';
 import { languageName, reportReviewMessage } from '../../features/snap-and-say/language-labels.js';
-import { goBack, navigate } from '../../router.js';
-import '../../components/back-button/back-button.js';
+import { navigate } from '../../router.js';
 import { sessionStore } from '../../session.js';
 
 const MAX_RECORD_SECONDS = MAX_AUDIO_DURATION_SEC;
@@ -596,6 +595,32 @@ export class PageSnapAndSay extends BaseElement {
   }
 
   render() {
+    try {
+      this._renderContent();
+    } catch (error) {
+      console.error('Snap & Say page render failed:', error);
+      this._renderFatalError();
+    }
+  }
+
+  _renderFatalError() {
+    this.replaceChildren();
+    const card = document.createElement('section');
+    card.setAttribute('role', 'alert');
+    card.style.cssText = 'max-width:430px;margin:24px auto;padding:24px 20px;border-radius:16px;background:#fff;color:#17222d;font-family:system-ui,sans-serif;';
+    const title = document.createElement('h2');
+    title.textContent = 'Snap & Say could not be displayed';
+    const message = document.createElement('p');
+    message.textContent = 'Please return to Home and try again.';
+    const home = document.createElement('button');
+    home.type = 'button';
+    home.textContent = 'Return to Home';
+    home.addEventListener('click', () => navigate('home'));
+    card.append(title, message, home);
+    this.appendChild(card);
+  }
+
+  _renderContent() {
     clearChildren(this);
     const shell = createElement('div', { cls: 'snap-shell' });
     shell.style.cssText = 'max-width:430px;margin:0 auto;padding:18px 16px 40px;font-family:system-ui,sans-serif;color:#17222d;background:#f3efe8;min-height:100vh;';

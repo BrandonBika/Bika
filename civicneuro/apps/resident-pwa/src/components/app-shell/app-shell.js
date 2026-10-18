@@ -7,6 +7,7 @@ import { clearChildren, createElement } from '@civicneuro/security-web';
 import '../bottom-nav/bottom-nav.js';
 import '../top-menu-button/top-menu-button.js';
 import '../offline-banner/offline-banner.js';
+import '../error-state/error-state.js';
 
 export class CnAppShell extends BaseElement {
   connectedCallback() {
@@ -58,9 +59,13 @@ export class CnAppShell extends BaseElement {
       }
       main.appendChild(pageEl);
     } catch (err) {
+      console.error(`Could not load the ${routeName} page.`, err);
       clearChildren(main);
       const errEl = createElement('cn-error-state', {
-        attrs: { 'error-msg': err.message || 'Page failed to load' }
+        attrs: {
+          title: 'Page failed to load',
+          'error-msg': 'This page could not be displayed. Please refresh and try again.'
+        }
       });
       main.appendChild(errEl);
     }
