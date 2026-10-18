@@ -63,7 +63,7 @@ node --test supabase\functions\reprocess-report\handler.test.js
 
 ## Multilingual audio evaluation harness
 
-The harness calls the same `callGeminiWithRetry` request/retry/fallback path, JSON parser, and `finalizeGeminiResult` validator used by the Edge Function. It does not write to Supabase or include an image; it tests model transcription and classification from audio. Use consented, non-sensitive recordings and keep the generated CSV private because it contains transcripts.
+The harness calls the same `callGeminiWithRetry` request/retry/fallback path and `finalizeGeminiResult` validator used by the Edge Function, and reads Gemini's structured JSON response. It does not write to Supabase or include an image; it tests model transcription and classification from audio. Use consented, non-sensitive recordings and keep the generated CSV private because it contains transcripts.
 
 Place recordings in a folder with filenames in the form `<language-code>_<expected-category>_<clip-id>.<extension>`, for example `zu_fire_01.webm`. Supported extensions are `.webm`, `.wav`, `.mp3`, `.aac`, `.ogg`, `.m4a`, and `.mp4`. Set `GEMINI_API_KEY` in the local environment and optionally set `GEMINI_MODEL` or `GEMINI_FALLBACK_MODEL`; the key is never printed. Do not run the harness against live audio without explicit approval.
 
