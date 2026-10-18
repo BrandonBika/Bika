@@ -3,7 +3,7 @@
  */
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
-import { navigate } from '../../router.js';
+import { goBack } from '../../router.js';
 import '../../components/confirm-dialog/confirm-dialog.js';
 
 export class PageDeleteAccount extends BaseElement {
@@ -11,10 +11,11 @@ export class PageDeleteAccount extends BaseElement {
     clearChildren(this);
     this.classList.add('cn-delete-page');
 
+    const deletionUnavailableMessage = "Account deletion isn't available in the app yet. To have your account and data deleted, contact support at [SUPPORT CONTACT - TODO: replace with verified support contact].";
     const dialog = createElement('div', { cls: 'cn-delete-dialog' });
     const icon = createElement('div', { cls: 'cn-delete-icon', text: '⚠', attrs: { 'aria-hidden': 'true' } });
-    const title = createElement('h1', { cls: 'cn-delete-title', text: 'Delete your account?' });
-    const body = createElement('p', { cls: 'cn-delete-body', text: 'This permanently removes your profile and contact details. Reports you\'ve submitted stay on record with the receiving organisation but will no longer be linked to you.' });
+    const title = createElement('h1', { cls: 'cn-delete-title', text: 'Account deletion is not available yet' });
+    const body = createElement('p', { cls: 'cn-delete-body', text: deletionUnavailableMessage });
 
     const exportLink = createElement('button', {
       cls: 'cn-delete-export',
@@ -37,11 +38,11 @@ export class PageDeleteAccount extends BaseElement {
       text: 'Cancel',
       attrs: { type: 'button' }
     });
-    cancelBtn.addEventListener('click', () => navigate('account'));
+    cancelBtn.addEventListener('click', () => goBack('account'));
 
     const deleteBtn = createElement('button', {
       cls: 'cn-delete-action cn-delete-action--danger',
-      text: 'Delete account permanently',
+      text: 'View deletion options',
       attrs: { type: 'button', disabled: 'disabled' }
     });
 
@@ -57,14 +58,11 @@ export class PageDeleteAccount extends BaseElement {
       const ConfirmDialog = customElements.get('cn-confirm-dialog');
       if (!ConfirmDialog) throw new Error('Confirmation dialog is unavailable.');
       ConfirmDialog.show({
-        title: 'Delete your account?',
-        message: 'This permanently removes your profile and contact details. Reports remain on record with the receiving organisation but are no longer linked to you.',
-        confirmText: 'Delete account',
-        danger: true,
-        onConfirm: () => {
-          showToast('Account deleted. You have been signed out.', { type: 'info' });
-          navigate('welcome');
-        }
+        title: 'Account deletion is not available yet',
+        message: deletionUnavailableMessage,
+        confirmText: 'Got it',
+        danger: false,
+        onConfirm: () => showToast(deletionUnavailableMessage, { type: 'info' })
       });
     });
 

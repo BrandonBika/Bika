@@ -5,6 +5,7 @@ import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { trackGuestReport } from '../../features/reports/reports.client.js';
 import { navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 import '../../components/captcha-widget/captcha-widget.js';
 
 export class PageTrackReport extends BaseElement {
@@ -15,6 +16,7 @@ export class PageTrackReport extends BaseElement {
   connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-auth-page', 'cn-track-report-page');
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'welcome' } }));
 
     const title = createElement('h1', { cls: 'cn-auth-title', text: 'Track a report' });
     const sub = createElement('p', { cls: 'cn-auth-sub', text: 'Enter the tracking number and lookup code from your confirmation.' });

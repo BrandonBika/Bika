@@ -7,6 +7,7 @@ import { navigate } from '../../router.js';
 import { getLifelineCards, saveLifelineCard } from '../../features/lifeline/lifeline.client.js';
 import { showToast } from '@civicneuro/ui';
 import { selectLifelineContacts } from '../../features/lifeline/lifeline-contacts.js';
+import '../../components/back-button/back-button.js';
 
 export class PageLifelineCardEdit extends BaseElement {
   init(params) {
@@ -34,14 +35,12 @@ export class PageLifelineCardEdit extends BaseElement {
     this._group.members = Array.isArray(this._group.members) ? this._group.members : [];
 
     const header = createElement('header', { cls: 'cn-lifeline-edit-header' });
-    const back = createElement('button', { cls: 'cn-lifeline-back', text: '‹', attrs: { type: 'button', 'aria-label': 'Back to Lifeline' } });
-    back.onclick = () => navigate('lifeline-home');
     const heading = createElement('div');
     heading.append(
       createElement('h1', { cls: 'cn-lifeline-form-title', text: this._group.name }),
       createElement('p', { cls: 'cn-lifeline-form-subtitle', text: 'Edit group members' })
     );
-    header.append(back, heading);
+    header.append(createElement('cn-back-button', { attrs: { fallback: 'lifeline-home' } }), heading);
 
     this._memberCount = createElement('h2', { cls: 'cn-lifeline-members-title' });
     this._memberList = createElement('div', { cls: 'cn-lifeline-member-list' });

@@ -5,10 +5,12 @@ import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { getNews } from '../../features/news/news.client.js';
 import { navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 
 export class PageNews extends BaseElement {
   async connectedCallback() {
     clearChildren(this);
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'home' } }));
     this.style.padding = '20px';
 
     const h = createElement('h1', { text: 'Municipal News & Bulletins' });

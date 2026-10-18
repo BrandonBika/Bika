@@ -4,7 +4,7 @@
  */
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
-import { navigate } from '../../router.js';
+import { goBack } from '../../router.js';
 
 export class CnOfflineQueued extends BaseElement {
   connectedCallback() {
@@ -51,7 +51,7 @@ export class CnOfflineQueued extends BaseElement {
       attrs: { type: 'button' },
       text: 'Back to My reports'
     });
-    backBtn.onclick = () => navigate('my-reports');
+    backBtn.onclick = () => goBack('my-reports');
     actions.appendChild(backBtn);
 
     this.appendChild(iconWrap);
@@ -105,7 +105,7 @@ export function createOfflineQueued(onBack = null) {
     attrs: { type: 'button' },
     text: 'Back to My reports'
   });
-  backBtn.onclick = onBack || (() => navigate('my-reports'));
+  backBtn.onclick = onBack || (() => goBack('my-reports'));
   actions.appendChild(backBtn);
 
   container.appendChild(iconWrap);

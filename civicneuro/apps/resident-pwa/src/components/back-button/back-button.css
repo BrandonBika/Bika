@@ -1,0 +1,32 @@
+cn-back-button {
+  display: inline-flex;
+}
+
+.cn-back-button__control {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft, #3E4A44);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cn-back-button__control svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.cn-back-button__control:focus-visible {
+  outline: 2px solid var(--teal, #0F6E56);
+  outline-offset: 2px;
+}

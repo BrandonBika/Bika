@@ -15,7 +15,7 @@ export class PageSurveySubmitted extends BaseElement {
     const h = createElement('h1', { text: 'Survey Completed' });
     const p = createElement('p', { text: 'Thank you for contributing to your community planning.' });
     const btn = createElement('button', { cls: 'cn-btn cn-btn--primary cn-btn--full', text: 'Back to Home' });
-    btn.onclick = () => navigate('home');
+    btn.onclick = () => navigate('home', {}, { replace: true });
 
     this.appendChild(icon);
     this.appendChild(h);

@@ -16,7 +16,7 @@ export class PageSessionExpired extends BaseElement {
     const sub = createElement('p', { cls: 'cn-auth-sub', text: 'For your security and POPIA compliance, your session has timed out. Please sign in again.' });
 
     const btn = createElement('button', { cls: 'cn-btn cn-btn--primary cn-btn--full', text: 'Sign In Again' });
-    btn.onclick = () => navigate('sign-in');
+    btn.onclick = () => navigate('sign-in', {}, { replace: true });
 
     this.appendChild(icon);
     this.appendChild(title);

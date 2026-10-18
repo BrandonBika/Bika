@@ -5,11 +5,13 @@ import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { continueAsGuest, signIn } from '../../features/auth/auth.client.js';
 import { navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 
 export class PageSignIn extends BaseElement {
   connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-auth-page');
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'welcome' } }));
 
     const title = createElement('h1', { cls: 'cn-auth-title', text: 'Sign in' });
     const sub = createElement('p', { cls: 'cn-auth-sub', text: 'Welcome back — track your reports in one place' });
@@ -65,7 +67,7 @@ export class PageSignIn extends BaseElement {
         submitBtn.textContent = 'Signing in…';
         await signIn(idVal, pwdVal);
         showToast('Signed in successfully', { type: 'success' });
-        navigate('home');
+        navigate('home', {}, { replace: true });
       } catch (err) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Sign In';

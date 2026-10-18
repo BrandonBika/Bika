@@ -5,6 +5,7 @@ import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { sessionStore } from '../../session.js';
 import { navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 
 function createRow({ label, value, icon = '•', clickRoute, type = 'value' }) {
   const row = createElement('button', {
@@ -41,6 +42,7 @@ export class PageAccount extends BaseElement {
   connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-account-page');
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'menu' } }));
 
     const session = sessionStore.get();
     const user = session.user || {

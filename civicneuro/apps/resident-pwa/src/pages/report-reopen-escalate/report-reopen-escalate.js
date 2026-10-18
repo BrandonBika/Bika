@@ -5,7 +5,7 @@
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { getReportById, reopenReportById } from '../../features/reports/reports.store.js';
-import { navigate } from '../../router.js';
+import { goBack, navigate } from '../../router.js';
 
 export class PageReportReopenEscalate extends BaseElement {
   init(params) {
@@ -52,7 +52,7 @@ export class PageReportReopenEscalate extends BaseElement {
       attrs: { type: 'button' },
       text: 'Cancel'
     });
-    cancelBtn.onclick = () => navigate('report-detail', { id: this._id });
+    cancelBtn.onclick = () => goBack('report-detail', { id: this._id });
 
     const submitBtn = createElement('button', {
       cls: ['btn-flat', 'primary'],

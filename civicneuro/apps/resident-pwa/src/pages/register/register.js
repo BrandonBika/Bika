@@ -5,12 +5,14 @@ import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { register } from '../../features/auth/auth.client.js';
 import { navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 import '../../components/consent-checkbox/consent-checkbox.js';
 
 export class PageRegister extends BaseElement {
   connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-auth-page');
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'welcome' } }));
 
     this.classList.add('cn-register-page');
 
@@ -79,7 +81,7 @@ export class PageRegister extends BaseElement {
           consentTimestamp: new Date().toISOString()
         });
         showToast('Registration successful! Please verify your email.', { type: 'success' });
-        navigate('verify-email', { email });
+        navigate('verify-email', { email }, { replace: true });
       } catch (err) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Create account';

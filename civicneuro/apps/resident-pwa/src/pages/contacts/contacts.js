@@ -3,6 +3,7 @@
  */
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
+import '../../components/back-button/back-button.js';
 
 const departments = [
   { name: 'Municipal Switchboard', hours: 'Mon–Fri, 07:30–16:00', phone: '+27310000000', email: 'switchboard@etown.gov.za' },
@@ -50,6 +51,7 @@ export class PageContacts extends BaseElement {
   connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-contacts-page');
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'menu' } }));
 
     this.appendChild(createElement('h1', { cls: 'cn-contacts-title', text: 'Contacts' }));
 

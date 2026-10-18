@@ -5,10 +5,12 @@ import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { getSurveys, submitSurvey } from '../../features/surveys/surveys.client.js';
 import { navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 
 export class PageSurvey extends BaseElement {
   async connectedCallback() {
     clearChildren(this);
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'home' } }));
     this.style.padding = '20px';
 
     const res = await getSurveys();
@@ -24,7 +26,7 @@ export class PageSurvey extends BaseElement {
     submitBtn.onclick = async () => {
       await submitSurvey(surv.id, [{ q1: 'Daily' }]);
       showToast('Survey submitted!', { type: 'success' });
-      navigate('survey-submitted');
+      navigate('survey-submitted', {}, { replace: true });
     };
     this.appendChild(submitBtn);
   }

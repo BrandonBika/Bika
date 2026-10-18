@@ -3,7 +3,8 @@
  */
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
-import { navigate } from '../../router.js';
+import { goBack } from '../../router.js';
+import '../../components/back-button/back-button.js';
 
 const badgeDefinitions = [
   { id: 'neighbourhood-watch', title: 'Neighbourhood Watch', description: 'Consistently reports local problems' },
@@ -20,6 +21,7 @@ export class PageBadgesEdit extends BaseElement {
   connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-badges-page');
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'account' } }));
 
     const title = createElement('h1', { cls: 'cn-badges-title', text: 'Community badges' });
     const sub = createElement('p', { cls: 'cn-badges-subtitle', text: 'Pick the badges that reflect how you contribute. These are shown on your profile and visible to organisations you report to.' });
@@ -72,7 +74,7 @@ export class PageBadgesEdit extends BaseElement {
 
     saveBtn.addEventListener('click', () => {
       showToast('Badges saved', { type: 'success' });
-      navigate('account');
+      goBack('account');
     });
 
     this.append(title, sub, note, list, saveBtn);

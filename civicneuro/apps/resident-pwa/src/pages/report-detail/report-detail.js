@@ -21,6 +21,7 @@ import {
 import { createStatusPill } from '../../components/status-pill/status-pill.js';
 import { createErrorState } from '../../components/error-state/error-state.js';
 import { navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 
 function createBuildingSvg() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -177,6 +178,7 @@ export class PageReportDetail extends BaseElement {
   _render() {
     clearChildren(this);
     this.classList.add('cn-report-detail-page');
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'my-reports' } }));
 
     const report = getReportById(this._reportId);
     if (!report) {
@@ -555,7 +557,7 @@ export class PageReportDetail extends BaseElement {
       const reason = reasonInput.value.trim() || 'Resident requested withdrawal';
       withdrawReportById(report.id, reason);
       this._closeOverlay();
-      navigate('my-reports');
+      navigate('my-reports', {}, { replace: true });
     };
 
     btnRow.appendChild(cancelBtn);
@@ -618,7 +620,7 @@ export class PageReportDetail extends BaseElement {
     yesBtn.onclick = () => {
       setReportSatisfaction(report.id, true);
       this._closeOverlay();
-      navigate('my-reports');
+      navigate('my-reports', {}, { replace: true });
     };
 
     btnRow.appendChild(noBtn);

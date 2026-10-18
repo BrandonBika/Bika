@@ -5,10 +5,12 @@ import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { getResidentProfile, updateResidentPreferences } from '@civicneuro/supabase-client';
 import { sessionStore } from '../../session.js';
+import '../../components/back-button/back-button.js';
 
 export class PageNotificationSettings extends BaseElement {
   async connectedCallback() {
     clearChildren(this);
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'account' } }));
     this.style.padding = '20px';
 
     const session = sessionStore.get();
