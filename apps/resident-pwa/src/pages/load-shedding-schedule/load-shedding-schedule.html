@@ -2,33 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Loadshedding</title>
+<title>Loadshedding - Bika</title>
 <link rel="stylesheet" href="./load-shedding-schedule.css">
 <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 <div class="header"><div class="pill"><i data-lucide="chevron-left"></i><b>Bika</b></div><div class="stage" id="stagePill"><i data-lucide="zap" style="width:12px"></i> <span id="stageText">Loading...</span></div></div>
 <div class="title">Loadshedding</div>
-<div class="sub">Plan your day around outages • Live ESP</div>
+<div class="sub">Whole South Africa • Live from EskomSePush</div>
 
 <div class="card">
-  <div class="search-row"><button class="btn" id="locBtn"><i data-lucide="map-pin"></i> Use current location</button></div>
+  <div class="search-row"><button class="btn" id="locBtn"><i data-lucide="map-pin"></i> Use current location</button><input id="q" placeholder="Search any suburb in SA..." /></div>
   <div class="select-group">
-    <div class="select" id="selProvince"><div class="sel-left"><div class="icon"><i data-lucide="map-pin"></i></div><span>Province</span></div><div class="sel-right"><b id="valProvince">Gauteng</b><i data-lucide="chevron-down" class="chev"></i></div></div>
-    <div class="select" id="selMunicipality"><div class="sel-left"><div class="icon"><i data-lucide="building-2"></i></div><span>Municipality</span></div><div class="sel-right"><b id="valMunicipality">Pretoria / Tshwane</b><i data-lucide="chevron-down" class="chev"></i></div></div>
-    <div class="select" id="selSuburb"><div class="sel-left"><div class="icon"><i data-lucide="home"></i></div><span>Suburb</span></div><div class="sel-right"><b id="valSuburb">Soshanguve North / South</b><i data-lucide="chevron-down" class="chev"></i></div></div>
-    <div class="select" id="selBlock"><div class="sel-left"><div class="icon"><i data-lucide="grid-2x2"></i></div><span>Block</span></div><div class="sel-right"><b id="valBlock">Block K</b><i data-lucide="chevron-down" class="chev"></i></div></div>
-    <div class="select" id="selWard"><div class="sel-left"><div class="icon"><i data-lucide="layout-grid"></i></div><span>Ward</span></div><div class="sel-right"><b id="valWard">Block L · Ward 5</b><i data-lucide="chevron-down" class="chev"></i></div></div>
+    <div class="select" id="selProvince"><div class="sel-left"><div class="icon"><i data-lucide="map-pin"></i></div><span>Province</span></div><div class="sel-right"><b id="valProvince">Select Province</b><i data-lucide="chevron-down" class="chev"></i></div></div>
+    <div class="select" id="selMunicipality"><div class="sel-left"><div class="icon"><i data-lucide="building-2"></i></div><span>Municipality / Town</span></div><div class="sel-right"><b id="valMunicipality">Select Town</b><i data-lucide="chevron-down" class="chev"></i></div></div>
+    <div class="select" id="selSuburb"><div class="sel-left"><div class="icon"><i data-lucide="home"></i></div><span>Suburb / Area</span></div><div class="sel-right"><b id="valSuburb">Select Suburb</b><i data-lucide="chevron-down" class="chev"></i></div></div>
+    <div class="select" id="selBlock"><div class="sel-left"><div class="icon"><i data-lucide="grid-2x2"></i></div><span>Block</span></div><div class="sel-right"><b id="valBlock">Select Block</b><i data-lucide="chevron-down" class="chev"></i></div></div>
   </div>
   <div id="dropdown" class="dropdown hidden"></div>
   <small id="status"></small>
 </div>
 
-<div class="card" id="schedCard">
-  <div class="card-head" id="toggleSched"><div class="icon"><i data-lucide="clock"></i></div><b>Today's Schedule</b><span class="badge" id="stageBadge">STAGE 2 · ONGOING</span></div>
-  <div id="scheduleWrap"></div>
-  <div id="footHint" style="text-align:center;padding:10px;font-size:12px;color:var(--teal)">Show 5 days ∨</div>
-</div>
+<div class="card"><div class="card-head" id="toggleSched"><div class="icon"><i data-lucide="clock"></i></div><b>Today's Schedule</b><span class="badge" id="stageBadge">LIVE</span></div><div id="scheduleWrap"></div><div id="footHint" style="text-align:center;padding:10px;font-size:12px;color:var(--teal);cursor:pointer">Show 5 days ∨</div></div>
 
 <script type="module" src="./load-shedding-schedule.js"></script>
 </body>
