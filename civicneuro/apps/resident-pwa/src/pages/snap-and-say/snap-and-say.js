@@ -13,6 +13,7 @@ import {
   pollSnapAndSayClassification,
   SNAP_AND_SAY_POLL_TIMEOUT_MS
 } from '../../features/snap-and-say/classification-poll.js';
+import { languageName, reportReviewMessage } from '../../features/snap-and-say/language-labels.js';
 import { goBack, navigate } from '../../router.js';
 import '../../components/back-button/back-button.js';
 import { sessionStore } from '../../session.js';
@@ -535,12 +536,14 @@ export class PageSnapAndSay extends BaseElement {
           ...report,
           processing: false,
           issue_category: issueCategory,
+          detected_language_name: languageName(report.detected_language),
           urgency,
           original_transcription: report.description_original || '',
           english_translation: report.description_english || '',
           analysisUnclear: issueCategory === 'Unclear report',
           requiresManualReview: report.status === 'Needs Review' || report.needs_human_review === true,
           emergency_numbers: ['HIGH', 'CRITICAL'].includes(String(urgency).toUpperCase())
+            || report.needs_human_review === true
             || report.requires_immediate_dispatch
             ? EMERGENCY_NUMBERS
             : []
@@ -886,7 +889,7 @@ export class PageSnapAndSay extends BaseElement {
       card.appendChild(explanation);
     } else if (this._result?.requiresManualReview) {
       const explanation = createElement('p', {
-        text: this._result.review_reason || 'We received your report. A person will review it before it is routed.'
+        text: reportReviewMessage(this._result.review_reason || 'We received your report. A person will review it before it is routed.')
       });
       explanation.style.cssText = 'margin:0 0 16px;color:#465663;line-height:1.6;';
       card.appendChild(explanation);
@@ -897,6 +900,12 @@ export class PageSnapAndSay extends BaseElement {
       bubble.style.cssText = 'background:#f4f8fb;border-radius:14px;padding:16px;margin-bottom:16px;';
       const transcript = this._result?.original_transcription || '';
       const translation = this._result?.english_translation || '';
+      const detectedLanguage = this._result?.detected_language || 'unknown';
+      const language = createElement('div', {
+        text: `Detected language: ${this._result?.detected_language_name || languageName(detectedLanguage)}`
+      });
+      language.style.cssText = 'font-size:12px;color:#465663;font-weight:700;margin-bottom:10px;';
+      bubble.appendChild(language);
       if (transcript) {
         const originalLabel = createElement('div', { text: 'Original transcript' });
         originalLabel.style.cssText = 'font-size:11px;color:#5b6f7d;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;';

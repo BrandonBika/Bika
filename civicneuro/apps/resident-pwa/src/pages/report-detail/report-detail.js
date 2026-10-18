@@ -206,10 +206,28 @@ export class PageReportDetail extends BaseElement {
     container.appendChild(header);
 
     // 2. DESCRIPTION CARD
-    const descCard = createElement('div', {
-      cls: 'detail-desc',
-      text: report.description || 'No description provided.'
-    });
+    const descCard = createElement('div', { cls: 'detail-desc' });
+    if (report.originalTranscript || report.englishTranslation) {
+      if (report.detectedLanguageName) {
+        descCard.appendChild(createElement('strong', {
+          text: `Detected language: ${report.detectedLanguageName}`
+        }));
+      }
+      if (report.originalTranscript) {
+        descCard.append(
+          createElement('div', { text: 'Original transcript' }),
+          createElement('p', { text: report.originalTranscript })
+        );
+      }
+      if (report.englishTranslation) {
+        descCard.append(
+          createElement('div', { text: 'English translation' }),
+          createElement('p', { text: report.englishTranslation })
+        );
+      }
+    } else {
+      descCard.textContent = report.description || 'No description provided.';
+    }
     container.appendChild(descCard);
 
     // 3. SECTION LABEL "STATUS"
