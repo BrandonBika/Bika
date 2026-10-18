@@ -9,6 +9,12 @@ import { sessionStore } from '../../session.js';
 
 export class PageWelcome extends BaseElement {
   connectedCallback() {
+    const session = sessionStore.get();
+    if (session.isAuthenticated && !session.isGuest) {
+      navigate('home', {}, { replace: true });
+      return;
+    }
+
     clearChildren(this);
     this.classList.add('cn-welcome-page');
 

@@ -4,13 +4,15 @@
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { getResidentProfile, updateResidentProfile, updateUserEmail } from '@civicneuro/supabase-client';
-import { navigate } from '../../router.js';
+import { goBack } from '../../router.js';
 import { sessionStore } from '../../session.js';
+import '../../components/back-button/back-button.js';
 
 export class PageProfileEdit extends BaseElement {
   async connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-profile-edit-page');
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'account' } }));
 
     const session = sessionStore.get();
     const ownerId = session.user?.id;
@@ -124,7 +126,7 @@ export class PageProfileEdit extends BaseElement {
             : 'Profile updated',
           { type: 'success' }
         );
-        navigate('account');
+        goBack('account');
       } catch (error) {
         showToast(
           profileSaved

@@ -52,7 +52,9 @@ export class PageReportSubmitted extends BaseElement {
       text: this._isGuest ? 'Create an account to save it' : 'Return to Home',
       attrs: { type: 'button' }
     });
-    homeBtn.onclick = () => navigate(this._isGuest ? 'register' : 'home');
+    homeBtn.onclick = () => this._isGuest
+      ? navigate('register')
+      : navigate('home', {}, { replace: true });
     const actions = createElement('div', { cls: 'cn-report-actions' });
     actions.append(trackBtn, homeBtn);
 

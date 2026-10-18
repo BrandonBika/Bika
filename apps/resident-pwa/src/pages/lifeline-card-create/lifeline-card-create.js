@@ -97,7 +97,7 @@ export class PageLifelineCardCreate extends BaseElement {
           members: validMembers
         });
         showToast('Group saved', { type: 'success' });
-        navigate('lifeline-home');
+        navigate('lifeline-home', {}, { replace: true });
       } catch (error) {
         save.disabled = false;
         saveError.textContent = error.message || 'Could not save group.';

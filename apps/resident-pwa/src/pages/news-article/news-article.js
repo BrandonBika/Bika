@@ -4,6 +4,7 @@
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { getNews } from '../../features/news/news.client.js';
+import '../../components/back-button/back-button.js';
 
 export class PageNewsArticle extends BaseElement {
   init(params) {
@@ -11,6 +12,7 @@ export class PageNewsArticle extends BaseElement {
   }
   async connectedCallback() {
     clearChildren(this);
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'news' } }));
     this.style.padding = '20px';
 
     const res = await getNews();

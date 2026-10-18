@@ -7,7 +7,8 @@ import { enqueueReport, generateIdempotencyKey } from '@civicneuro/offline-queue
 import { getAccessToken } from '@civicneuro/supabase-client';
 import { validateEvidenceFile } from '../../features/reports/evidence-validation.js';
 import { reportCategoryLabel } from '../../features/reports/report-category.js';
-import { navigate } from '../../router.js';
+import { goBack, navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 import { sessionStore } from '../../session.js';
 
 const MAX_RECORD_SECONDS = 60;
@@ -565,7 +566,7 @@ export class PageSnapAndSay extends BaseElement {
     const back = createElement('button', { text: '� Back' });
     back.type = 'button';
     back.style.cssText = 'background:transparent;border:none;color:#1b2f39;font-size:16px;font-weight:700;padding:8px 0;';
-    back.onclick = () => navigate('home');
+    back.onclick = () => goBack('home');
     const title = createElement('h2', { text: 'Snap evidence' });
     title.style.cssText = 'margin:0;font-size:24px;';
     top.append(back, title);

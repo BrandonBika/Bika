@@ -3,7 +3,7 @@
  */
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
-import { navigate } from '../../router.js';
+import { goBack, navigate } from '../../router.js';
 import '../../components/confirm-dialog/confirm-dialog.js';
 
 export class PageDeleteAccount extends BaseElement {
@@ -37,7 +37,7 @@ export class PageDeleteAccount extends BaseElement {
       text: 'Cancel',
       attrs: { type: 'button' }
     });
-    cancelBtn.addEventListener('click', () => navigate('account'));
+    cancelBtn.addEventListener('click', () => goBack('account'));
 
     const deleteBtn = createElement('button', {
       cls: 'cn-delete-action cn-delete-action--danger',
@@ -63,7 +63,7 @@ export class PageDeleteAccount extends BaseElement {
         danger: true,
         onConfirm: () => {
           showToast('Account deleted. You have been signed out.', { type: 'info' });
-          navigate('welcome');
+          navigate('welcome', {}, { replace: true });
         }
       });
     });

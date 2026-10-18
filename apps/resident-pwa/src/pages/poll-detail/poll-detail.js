@@ -4,6 +4,7 @@
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { votePoll, getPolls } from '../../features/polls/polls.client.js';
+import '../../components/back-button/back-button.js';
 
 export class PagePollDetail extends BaseElement {
   init(params) {
@@ -11,6 +12,7 @@ export class PagePollDetail extends BaseElement {
   }
   async connectedCallback() {
     clearChildren(this);
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'polls' } }));
     this.style.padding = '20px';
 
     const res = await getPolls();

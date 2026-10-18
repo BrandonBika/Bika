@@ -11,6 +11,7 @@
 @import '../../../../packages/ui/src/table/table.css';
 @import '../../../../packages/ui/src/toast/toast.css';
 @import '../components/app-shell/app-shell.css';
+@import '../components/back-button/back-button.css';
 @import '../components/top-menu-button/top-menu-button.css';
 @import '../components/bottom-nav/bottom-nav.css';
 
@@ -111,4 +112,3 @@ cn-app-shell.cn-app-shell--welcome .cn-shell-main {
   flex-direction: column;
   box-shadow: 0 0 24px rgba(22, 36, 31, 0.08);
 }
-

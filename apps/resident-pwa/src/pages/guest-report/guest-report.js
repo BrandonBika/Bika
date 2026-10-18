@@ -6,6 +6,7 @@ import { clearChildren, createElement } from '@civicneuro/security-web';
 import { submitReport } from '../../features/reports/reports.client.js';
 import { validateEvidenceFile } from '../../features/reports/evidence-validation.js';
 import { navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 import '../../components/captcha-widget/captcha-widget.js';
 import '../../components/map-pin-picker/map-pin-picker.js';
 
@@ -28,6 +29,7 @@ export class PageGuestReport extends BaseElement {
   connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-guest-report-page');
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'welcome' } }));
 
     const title = createElement('h1', { cls: 'cn-guest-title', text: 'Report an issue' });
     const sub = createElement('div', { cls: 'cn-guest-note' });
@@ -167,10 +169,10 @@ export class PageGuestReport extends BaseElement {
         }, true);
 
         if (res.queued) {
-          navigate('offline-queued');
+          navigate('offline-queued', {}, { replace: true });
           return;
         }
-        navigate('report-submitted', { ref: res.referenceNumber, isGuest: 'true' });
+        navigate('report-submitted', { ref: res.referenceNumber, isGuest: 'true' }, { replace: true });
       } catch (err) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Submit report';

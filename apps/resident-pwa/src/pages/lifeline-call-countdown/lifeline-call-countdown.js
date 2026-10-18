@@ -53,7 +53,7 @@ export class PageLifelineCallCountdown extends BaseElement {
       cancelBtn.disabled = true;
       try {
         await startLifelineGroupCall(this._groupId);
-        navigate('lifeline-calling-status', { groupId: this._groupId });
+        navigate('lifeline-calling-status', { groupId: this._groupId }, { replace: true });
       } catch (error) {
         this._dispatching = false;
         cancelBtn.disabled = false;

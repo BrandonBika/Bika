@@ -9,14 +9,14 @@ import { sessionStore } from '../../session.js';
 import '../../components/confirm-dialog/confirm-dialog.js';
 
 const communityItems = [
-  { label: 'Safety & emergency info', icon: '△', tone: 'danger', route: 'safety-info' },
-  { label: 'Help & FAQs', icon: '?', tone: 'sage', route: 'help-and-safety' },
-  { label: 'Contacts', icon: '☎', tone: 'sage', route: 'contacts' }
+  { label: 'Load shedding schedule', icon: '◷', tone: 'sage', route: 'load-shedding-schedule' },
+  { label: 'Help & FAQs', icon: '?', tone: 'sage', route: 'help-and-safety' }
 ];
 
 const accountItems = [
-  { label: 'Profile & settings', icon: '◌', tone: 'sage', route: 'account' },
-  { label: 'Language', icon: '文', tone: 'sage', route: 'language' }
+  { label: 'Language', icon: '文', tone: 'sage', route: 'language' },
+  { label: 'Settings', icon: '⚙', tone: 'sage', route: 'settings' },
+  { label: 'Privacy policy', icon: '▤', tone: 'sage', route: 'privacy-policy' }
 ];
 
 function createMenuRow(item) {
@@ -125,9 +125,12 @@ export class PageMenu extends BaseElement {
         message: "You'll need to sign in again to see your reports, alerts, and badges.",
         confirmText: 'Sign out',
         danger: true,
-        onConfirm: () => {
-          signOut();
-          navigate('welcome');
+        onConfirm: async () => {
+          try {
+            await signOut();
+          } finally {
+            navigate('welcome', {}, { replace: true });
+          }
         }
       });
     });

@@ -24,7 +24,7 @@ export class PageVerifyEmail extends BaseElement {
     });
 
     const btn = createElement('button', { cls: 'cn-btn cn-btn--primary cn-btn--full', text: 'Go to Sign In' });
-    btn.onclick = () => navigate('sign-in');
+    btn.onclick = () => navigate('sign-in', {}, { replace: true });
     const resendBtn = createElement('button', {
       cls: 'cn-btn cn-btn--secondary cn-btn--full',
       text: 'Resend verification email',

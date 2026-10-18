@@ -4,10 +4,12 @@
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { exportMyData } from '../../features/account/account.client.js';
+import '../../components/back-button/back-button.js';
 
 export class PageDataExport extends BaseElement {
   connectedCallback() {
     clearChildren(this);
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'account' } }));
     this.style.padding = '20px';
 
     const h = createElement('h1', { text: 'Export My Personal Data' });

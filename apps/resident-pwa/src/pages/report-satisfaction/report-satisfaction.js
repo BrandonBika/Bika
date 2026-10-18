@@ -6,6 +6,7 @@ import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { getReportById, setReportSatisfaction } from '../../features/reports/reports.store.js';
 import { navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 
 export class PageReportSatisfaction extends BaseElement {
   init(params) {
@@ -15,6 +16,12 @@ export class PageReportSatisfaction extends BaseElement {
   connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-satisfaction-page');
+    this.appendChild(createElement('cn-back-button', {
+      attrs: {
+        fallback: 'report-detail',
+        'fallback-params': new URLSearchParams({ id: this._id }).toString()
+      }
+    }));
 
     const report = getReportById(this._id);
     const orgName = report?.organisation?.name || 'eThekwini Water & Sanitation';
@@ -63,7 +70,7 @@ export class PageReportSatisfaction extends BaseElement {
     });
     yesBtn.onclick = () => {
       setReportSatisfaction(this._id, true);
-      navigate('my-reports');
+      navigate('my-reports', {}, { replace: true });
     };
 
     btnRow.appendChild(noBtn);

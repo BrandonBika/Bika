@@ -3,7 +3,7 @@
  */
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
-import { navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 
 const sections = [
   { heading: 'Data we collect', body: 'We collect the contact and address details needed to manage your resident profile, report submissions, and service delivery notifications.' },
@@ -18,13 +18,6 @@ export class PagePrivacyPolicy extends BaseElement {
     clearChildren(this);
     this.classList.add('cn-legal-page');
 
-    const back = createElement('button', {
-      cls: 'cn-legal-back',
-      text: '‹ Account',
-      attrs: { type: 'button' }
-    });
-    back.addEventListener('click', () => navigate('account'));
-
     const title = createElement('h1', { cls: 'cn-legal-title', text: 'Privacy policy' });
     const updated = createElement('p', { cls: 'cn-legal-updated', text: 'Last updated 12 August 2026' });
 
@@ -35,7 +28,7 @@ export class PagePrivacyPolicy extends BaseElement {
       content.append(h, p);
     });
 
-    this.append(back, title, updated, content);
+    this.append(createElement('cn-back-button', { attrs: { fallback: 'menu' } }), title, updated, content);
   }
 }
 customElements.define('page-privacy-policy', PagePrivacyPolicy);

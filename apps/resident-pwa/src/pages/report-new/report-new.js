@@ -9,6 +9,7 @@ import { submitReport } from '../../features/reports/reports.client.js';
 import { validateEvidenceFile } from '../../features/reports/evidence-validation.js';
 import { navigate } from '../../router.js';
 import { sessionStore } from '../../session.js';
+import '../../components/back-button/back-button.js';
 import '../../components/map-pin-picker/map-pin-picker.js';
 
 const CATEGORIES = [
@@ -54,7 +55,6 @@ function svg(paths, extra = '') {
   }
   return el;
 }
-const ICON_BACK   = ['m15 18-6-6 6-6'];
 const ICON_DOWN   = ['m6 9 6 6 6-6'];
 const ICON_PIN    = ['M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z', { tag: 'circle', cx: '12', cy: '10', r: '2.5' }];
 const ICON_PHOTO  = [{ tag: 'rect', x: '3', y: '3', w: '18', h: '18', rx: '2' }, { tag: 'circle', cx: '8.5', cy: '8.5', r: '1.5' }, 'm21 15-5-5L5 21'];
@@ -107,14 +107,9 @@ export class PageReportNew extends BaseElement {
   }
 
   _build() {
-    /* Back */
-    const backBar = createElement('div', { cls: 'rn-back-bar', attrs: { role: 'button', 'aria-label': 'Back', tabindex: '0' } });
-    const backBtn = createElement('div', { cls: 'rn-back-btn' });
-    backBtn.appendChild(svg(ICON_BACK));
-    backBar.appendChild(backBtn);
+    const backBar = createElement('div', { cls: 'rn-back-bar' });
+    backBar.appendChild(createElement('cn-back-button', { attrs: { fallback: 'home' } }));
     backBar.appendChild(createElement('span', { cls: 'rn-back-label', text: 'Reports' }));
-    backBar.addEventListener('click', () => navigate('my-reports'));
-    backBar.addEventListener('keydown', e => { if (e.key === 'Enter') navigate('my-reports'); });
 
     /* Title */
     const titleEl = createElement('h1', { cls: 'rn-title', text: 'Report an issue' });
@@ -278,11 +273,11 @@ export class PageReportNew extends BaseElement {
           video: this._videoFile
         }, isGuest);
         if (res.queued) {
-          navigate('offline-queued');
+          navigate('offline-queued', {}, { replace: true });
           return;
         }
         showToast('Report submitted!', { type: 'success' });
-        navigate('report-submitted', { ref: res?.referenceNumber || '', isGuest: String(!!isGuest) });
+        navigate('report-submitted', { ref: res?.referenceNumber || '', isGuest: String(!!isGuest) }, { replace: true });
       } catch (err) {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Submit report';

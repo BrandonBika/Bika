@@ -7,7 +7,7 @@
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { reportsStore, getReportById, addReportMessage, markReportAsRead } from '../../features/reports/reports.store.js';
-import { navigate } from '../../router.js';
+import { goBack } from '../../router.js';
 
 function createBackArrowSvg() {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -102,7 +102,7 @@ export class PageReportThread extends BaseElement {
       attrs: { type: 'button', 'aria-label': 'Back to report detail', id: 'thread-back-btn' }
     });
     backBtn.appendChild(createBackArrowSvg());
-    backBtn.onclick = () => navigate('report-detail', { id: report.id });
+    backBtn.onclick = () => goBack('report-detail', { id: report.id });
 
     const titlesCol = createElement('div');
     const orgName = report.organisation?.name || 'eThekwini Municipality';

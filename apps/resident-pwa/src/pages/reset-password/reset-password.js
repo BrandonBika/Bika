@@ -5,6 +5,7 @@ import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { resetPassword } from '../../features/auth/auth.client.js';
 import { navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 
 export class PageResetPassword extends BaseElement {
   init(params) {
@@ -14,6 +15,7 @@ export class PageResetPassword extends BaseElement {
   connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-auth-page');
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'sign-in' } }));
 
     const title = createElement('h1', { cls: 'cn-auth-title', text: 'Create New Password' });
     const p1 = createElement('cn-input', { attrs: { label: 'New Password', type: 'password', placeholder: 'Min. 8 characters' } });
@@ -35,7 +37,7 @@ export class PageResetPassword extends BaseElement {
         btn.disabled = true;
         await resetPassword(this._token, p1.value);
         showToast('Password updated! Please sign in.', { type: 'success' });
-        navigate('sign-in');
+        navigate('sign-in', {}, { replace: true });
       } catch (error) {
         showToast(error.message || 'Could not update your password.', { type: 'error' });
       } finally {

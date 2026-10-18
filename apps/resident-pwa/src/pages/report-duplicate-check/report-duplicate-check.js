@@ -7,6 +7,7 @@
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -68,6 +69,16 @@ export class PageReportDuplicateCheck extends BaseElement {
   }
 
   _render() {
+    const fallbackParams = {
+      skipDupeCheck: 'true',
+      ...(this._draftId ? { draftId: this._draftId } : {})
+    };
+    this.appendChild(createElement('cn-back-button', {
+      attrs: {
+        fallback: 'report-new',
+        'fallback-params': new URLSearchParams(fallbackParams).toString()
+      }
+    }));
     const container = createElement('div', { cls: 'dc-page' });
 
     // ---- Icon banner ----

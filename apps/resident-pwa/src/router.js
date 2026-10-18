@@ -4,6 +4,7 @@
  */
 import { sessionStore } from './session.js';
 import { clearChildren, createElement, setText } from '@civicneuro/security-web';
+import { createRouteHistory } from './route-history.js';
 
 const routes = {
   'welcome': { auth: false, guest: true },
@@ -67,6 +68,8 @@ const routes = {
   'terms': { auth: true, guest: true },
   'contacts': { auth: true, guest: true },
   'language': { auth: true, guest: true },
+  'settings': { auth: true, guest: true },
+  'load-shedding-schedule': { auth: true, guest: true },
   'data-export': { auth: true, guest: false },
   'delete-account': { auth: true, guest: false },
   'pilot-org-select': { auth: true, guest: true }
@@ -74,6 +77,16 @@ const routes = {
 
 let currentRoute = null;
 let currentParams = {};
+const routeHistory = createRouteHistory(window);
+
+export const canGoBack = routeHistory.canGoBack;
+export const goBack = routeHistory.goBack;
+export const navigate = routeHistory.navigate;
+export function getPreviousRoute() {
+  const history = routeHistory.getRoutes();
+  const previous = history[history.length - 2];
+  return previous ? previous.split('?')[0] : null;
+}
 
 export function parseHash() {
   const hash = window.location.hash.slice(1) || 'welcome';
@@ -88,13 +101,9 @@ export function parseHash() {
   return { path, params };
 }
 
-export function navigate(route, params = {}) {
-  const query = new URLSearchParams(params).toString();
-  window.location.hash = query ? `${route}?${query}` : route;
-}
-
 export async function handleRouteChange() {
   const { path: routeName, params } = parseHash();
+  routeHistory.recordRouteChange(window.location.hash.slice(1) || 'welcome');
   const session = sessionStore.get();
 
   const routeDef = routes[routeName] || routes['welcome'];
@@ -108,11 +117,11 @@ export async function handleRouteChange() {
 
   // Auth guards
   if (routeDef.auth && !session.isAuthenticated) {
-    navigate('welcome');
+    navigate('welcome', {}, { replace: true });
     return;
   }
   if (!routeDef.guest && session.isGuest) {
-    navigate('sign-in');
+    navigate('sign-in', {}, { replace: true });
     return;
   }
 
@@ -126,6 +135,11 @@ export async function handleRouteChange() {
 }
 
 export function initRouter() {
+  routeHistory.initialize();
+  window.addEventListener('click', (event) => {
+    const link = event.target?.closest?.('a[href^="#"]');
+    if (link?.hash) routeHistory.trackForwardRoute(link.hash.slice(1));
+  }, true);
   window.addEventListener('hashchange', handleRouteChange);
   handleRouteChange();
 }

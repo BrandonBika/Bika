@@ -4,7 +4,8 @@
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { availableLanguages, switchLanguage, getCurrentLanguage } from '../../features/i18n/language.js';
-import { navigate } from '../../router.js';
+import { goBack } from '../../router.js';
+import '../../components/back-button/back-button.js';
 
 export class PageLanguage extends BaseElement {
   connectedCallback() {
@@ -14,6 +15,7 @@ export class PageLanguage extends BaseElement {
     const initialCode = getCurrentLanguage();
     let selectedCode = initialCode;
 
+    this.appendChild(createElement('cn-back-button', { attrs: { fallback: 'menu' } }));
     this.appendChild(createElement('h1', { cls: 'cn-language-title', text: 'Language' }));
     this.appendChild(createElement('p', { cls: 'cn-language-sub', text: 'Choose the language used across the app' }));
 
@@ -60,7 +62,7 @@ export class PageLanguage extends BaseElement {
     saveBtn.addEventListener('click', () => {
       switchLanguage(selectedCode);
       showToast(`Language set to ${availableLanguages.find((lang) => lang.code === selectedCode)?.name || 'English'}`, { type: 'success' });
-      navigate('account');
+      goBack('account');
     });
 
     this.appendChild(list);
