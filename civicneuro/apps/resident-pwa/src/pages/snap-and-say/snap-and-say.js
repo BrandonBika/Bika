@@ -673,7 +673,7 @@ export class PageSnapAndSay extends BaseElement {
 
     const top = createElement('div');
     top.style.cssText = 'display:flex;align-items:center;justify-content:space-between;';
-    const back = createElement('button', { text: '� Back' });
+    const back = createElement('button', { text: '← Back' });
     back.type = 'button';
     back.style.cssText = 'background:transparent;border:none;color:#1b2f39;font-size:16px;font-weight:700;padding:8px 0;';
     back.onclick = () => navigate('home');
@@ -778,7 +778,7 @@ export class PageSnapAndSay extends BaseElement {
     button.type = 'button';
     button.setAttribute('data-record-button', '');
     button.style.touchAction = 'none';
-    button.textContent = this._recording ? 'Recording�' : 'Hold to record';
+    button.textContent = this._recording ? 'Recording…' : 'Hold to record';
     button.style.cssText = 'width:150px;height:150px;border-radius:50%;border:none;background:linear-gradient(180deg,#0f6e56,#0a3a2d);color:#fff;font-size:18px;font-weight:800;box-shadow:0 18px 30px rgba(20,106,86,0.35);';
 
     const waveform = createElement('div');
@@ -833,7 +833,7 @@ export class PageSnapAndSay extends BaseElement {
   _renderSending() {
     const card = createElement('div');
     card.style.cssText = 'background:#fff;border-radius:20px;padding:28px 20px;text-align:center;';
-    const title = createElement('h2', { text: 'Sending your report�' });
+    const title = createElement('h2', { text: 'Sending your report…' });
     title.style.cssText = 'margin:0 0 12px;font-size:28px;';
     const text = createElement('p', { text: 'We are checking the photo and audio, then routing it to the right organisation.' });
     text.style.cssText = 'margin:0;color:#465663;line-height:1.6;';
