@@ -19,6 +19,17 @@ export class PageLanguage extends BaseElement {
 
     const list = createElement('div', { cls: 'cn-language-card' });
     const choices = [];
+    const availabilityNote = createElement('p', {
+      cls: 'cn-language-availability',
+      attrs: { role: 'status', 'aria-live': 'polite' }
+    });
+    const showTranslationAvailability = (code) => {
+      const language = availableLanguages.find((item) => item.code === code);
+      availabilityNote.textContent = language?.hasTranslations
+        ? 'App text is shown in English.'
+        : `App text is currently in English. ${language?.name || 'This language'} translations are not available yet.`;
+    };
+    showTranslationAvailability(selectedCode);
 
     availableLanguages.forEach((lang) => {
       const row = createElement('button', {
@@ -38,6 +49,7 @@ export class PageLanguage extends BaseElement {
       row.append(textWrap, radio);
       row.addEventListener('click', () => {
         selectedCode = lang.code;
+        showTranslationAvailability(selectedCode);
         choices.forEach((choice) => {
           const isSelected = choice.dataset.code === selectedCode;
           choice.classList.toggle('selected', isSelected);
@@ -59,11 +71,17 @@ export class PageLanguage extends BaseElement {
 
     saveBtn.addEventListener('click', () => {
       switchLanguage(selectedCode);
-      showToast(`Language set to ${availableLanguages.find((lang) => lang.code === selectedCode)?.name || 'English'}`, { type: 'success' });
+      const language = availableLanguages.find((lang) => lang.code === selectedCode);
+      showToast(
+        language?.hasTranslations
+          ? `Language set to ${language.name}.`
+          : `Language set to ${language?.name || 'English'}. App text remains in English until translations are available.`,
+        { type: language?.hasTranslations ? 'success' : 'warning' }
+      );
       navigate('account');
     });
 
-    this.appendChild(list);
+    this.append(list, availabilityNote);
     this.appendChild(saveBtn);
   }
 }
