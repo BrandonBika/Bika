@@ -48,3 +48,18 @@ test('rejects evidence larger than 25 MiB and accepts the exact limit', () => {
     'This file is too large (max 25 MB)'
   );
 });
+
+test('enforces the Snap & Say photo and audio server limits with friendly messages', () => {
+  const imageLimit = 8 * 1024 * 1024;
+  const audioLimit = 5 * 1024 * 1024;
+  assert.equal(validateEvidenceFile({ type: 'image/jpeg', size: imageLimit }, 'snap-photo'), null);
+  assert.match(
+    validateEvidenceFile({ type: 'image/jpeg', size: imageLimit + 1 }, 'snap-photo'),
+    /below 8 MiB/
+  );
+  assert.equal(validateEvidenceFile({ type: 'audio/webm;codecs=opus', size: audioLimit }, 'snap-audio'), null);
+  assert.match(
+    validateEvidenceFile({ type: 'audio/webm', size: audioLimit + 1 }, 'snap-audio'),
+    /maximum 5 MiB/
+  );
+});

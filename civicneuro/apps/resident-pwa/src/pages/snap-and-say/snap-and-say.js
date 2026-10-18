@@ -4,13 +4,20 @@
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { enqueueReport, generateIdempotencyKey } from '@civicneuro/offline-queue';
+import { compressImage, MAX_AUDIO_DURATION_SEC, MAX_IMAGE_SIZE } from '@civicneuro/media-client';
 import { getAccessToken } from '@civicneuro/supabase-client';
 import { validateEvidenceFile } from '../../features/reports/evidence-validation.js';
 import { reportCategoryLabel } from '../../features/reports/report-category.js';
-import { navigate } from '../../router.js';
+import { getSnapAndSayReport } from '../../features/reports/reports.client.js';
+import {
+  pollSnapAndSayClassification,
+  SNAP_AND_SAY_POLL_TIMEOUT_MS
+} from '../../features/snap-and-say/classification-poll.js';
+import { goBack, navigate } from '../../router.js';
+import '../../components/back-button/back-button.js';
 import { sessionStore } from '../../session.js';
 
-const MAX_RECORD_SECONDS = 60;
+const MAX_RECORD_SECONDS = MAX_AUDIO_DURATION_SEC;
 const EMERGENCY_NUMBERS = ['112', '10111', '10177'];
 
 function numberToTime(totalSeconds) {
@@ -49,6 +56,7 @@ export class PageSnapAndSay extends BaseElement {
     this._audioAnalyser = null;
     this._queuedKey = null;
     this._submissionKey = null;
+    this._analysisPollAttempt = 0;
     this._syncedHandler = (event) => {
       if (event.detail?.idempotencyKey !== this._queuedKey) return;
       this._queuedKey = null;
@@ -76,6 +84,7 @@ export class PageSnapAndSay extends BaseElement {
   }
 
   disconnectedCallback() {
+    this._analysisPollAttempt += 1;
     this._stopRecordingTimer();
     window.removeEventListener('offline-report-synced', this._syncedHandler);
     window.removeEventListener('offline-report-failed', this._failedHandler);
@@ -178,8 +187,8 @@ export class PageSnapAndSay extends BaseElement {
       const supportedTypes = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'];
       const mimeType = supportedTypes.find((type) => MediaRecorder.isTypeSupported?.(type));
       const recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
+        ? new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 64000 })
+        : new MediaRecorder(stream, { audioBitsPerSecond: 64000 });
       this._mediaRecorder = recorder;
       this._audioMime = recorder.mimeType || mimeType || 'audio/webm';
       this._recordStartAt = Date.now();
@@ -215,6 +224,16 @@ export class PageSnapAndSay extends BaseElement {
           if (button) button.textContent = 'Hold to record';
           if (this._recordHint) this._recordHint.textContent = this._error;
           if (this._recordTimer) this._recordTimer.textContent = numberToTime(elapsedSeconds);
+          return;
+        }
+        const audioValidationMessage = validateEvidenceFile(audioBlob, 'snap-audio');
+        if (audioValidationMessage) {
+          this._error = audioValidationMessage;
+          this._audioBlob = null;
+          this._recording = false;
+          const button = this.querySelector('[data-record-button]');
+          if (button) button.textContent = 'Hold to record';
+          if (this._recordHint) this._recordHint.textContent = this._error;
           return;
         }
         this._audioMime = audioBlob.type || recorder.mimeType || mimeType || 'audio/webm';
@@ -363,11 +382,24 @@ export class PageSnapAndSay extends BaseElement {
 
   async _postReport(payload) {
     const formData = new FormData();
+    const audioValidationMessage = validateEvidenceFile(payload.audioBlob, 'snap-audio');
+    if (audioValidationMessage) {
+      throw Object.assign(new Error(audioValidationMessage), { status: 413, code: 'AUDIO_TOO_LARGE' });
+    }
     const audioType = payload.audioBlob.type || payload.audioMime || this._audioMime || 'audio/webm';
     const baseMime = audioType.split(';', 1)[0].toLowerCase();
     const extension = baseMime.includes('mp4') ? 'mp4' : baseMime.includes('ogg') ? 'ogg' : baseMime.includes('aac') ? 'aac' : baseMime.includes('mpeg') ? 'mp3' : baseMime.includes('wav') ? 'wav' : 'webm';
     formData.append('audio', payload.audioBlob, `snap-${Date.now()}.${extension}`);
-    if (payload.imageBlob) formData.append('image', payload.imageBlob, `evidence-${Date.now()}`);
+    if (payload.imageBlob) {
+      const imageBlob = payload.imageBlob.size > MAX_IMAGE_SIZE
+        ? await compressImage(payload.imageBlob, { maxWidth: 1600, maxBytes: MAX_IMAGE_SIZE })
+        : payload.imageBlob;
+      const imageValidationMessage = validateEvidenceFile(imageBlob, 'snap-photo');
+      if (imageValidationMessage) {
+        throw Object.assign(new Error(imageValidationMessage), { status: 413, code: 'IMAGE_TOO_LARGE' });
+      }
+      formData.append('image', imageBlob, `evidence-${Date.now()}.jpg`);
+    }
     formData.append('duration_seconds', String(payload.durationSeconds));
     formData.append('latitude', String(payload.location.latitude ?? ''));
     formData.append('longitude', String(payload.location.longitude ?? ''));
@@ -436,10 +468,37 @@ export class PageSnapAndSay extends BaseElement {
       this._result = await this._postReport(payload);
       this._screen = 'confirmation';
       this.render();
+      if (this._result.processing && this._result.id) {
+        this._pollForAnalysis(this._result.id);
+      } else if (this._result.processing) {
+        this._result = {
+          ...this._result,
+          processing: false,
+          analysisFailed: true,
+          emergency_numbers: EMERGENCY_NUMBERS
+        };
+        this.render();
+      } else if (/^Analysis failed:/i.test(this._result.review_reason || '')) {
+        this._result = {
+          ...this._result,
+          analysisFailed: true,
+          emergency_numbers: EMERGENCY_NUMBERS
+        };
+        this.render();
+      } else if (this._result.issue_category === 'Unclear report') {
+        this._result = { ...this._result, analysisUnclear: true };
+        this.render();
+      }
     } catch (error) {
       if (error.status === 422 && error.code === 'AUDIO_TOO_SHORT') {
         this._error = 'Hold the button and speak for at least one second.';
         this._screen = 'recording';
+        this.render();
+        return;
+      }
+      if (['AUDIO_TOO_LARGE', 'IMAGE_TOO_LARGE'].includes(error.code)) {
+        this._error = error.message;
+        this._screen = error.code === 'IMAGE_TOO_LARGE' ? 'camera' : 'recording';
         this.render();
         return;
       }
@@ -457,6 +516,55 @@ export class PageSnapAndSay extends BaseElement {
       this._screen = 'confirmation';
       this.render();
     }
+  }
+
+  async _pollForAnalysis(reportId) {
+    const attempt = ++this._analysisPollAttempt;
+    try {
+      const outcome = await pollSnapAndSayClassification(
+        () => getSnapAndSayReport(reportId),
+        { timeoutMs: SNAP_AND_SAY_POLL_TIMEOUT_MS, pollIntervalMs: 1500 }
+      );
+      if (attempt !== this._analysisPollAttempt) return;
+      if (outcome.state === 'completed') {
+        const report = outcome.report;
+        const urgency = report.urgency || report.report_level || 'MEDIUM';
+        const issueCategory = report.ai_category || 'Unclear report';
+        this._result = {
+          ...this._result,
+          ...report,
+          processing: false,
+          issue_category: issueCategory,
+          urgency,
+          original_transcription: report.description_original || '',
+          english_translation: report.description_english || '',
+          analysisUnclear: issueCategory === 'Unclear report',
+          requiresManualReview: report.status === 'Needs Review' || report.needs_human_review === true,
+          emergency_numbers: ['HIGH', 'CRITICAL'].includes(String(urgency).toUpperCase())
+            || report.requires_immediate_dispatch
+            ? EMERGENCY_NUMBERS
+            : []
+        };
+      } else {
+        this._result = {
+          ...this._result,
+          processing: false,
+          analysisFailed: outcome.state === 'failed',
+          analysisTimedOut: outcome.state === 'timed-out',
+          emergency_numbers: EMERGENCY_NUMBERS
+        };
+      }
+    } catch (error) {
+      if (attempt !== this._analysisPollAttempt) return;
+      console.error('Could not check Snap & Say analysis status:', error);
+      this._result = {
+        ...this._result,
+        processing: false,
+        analysisFailed: true,
+        emergency_numbers: EMERGENCY_NUMBERS
+      };
+    }
+    if (attempt === this._analysisPollAttempt) this.render();
   }
 
   async _queueSubmission(payload, cause) {
@@ -591,7 +699,7 @@ export class PageSnapAndSay extends BaseElement {
       if (!this._fileInput) {
         const input = createElement('input', { attrs: { type: 'file', accept: 'image/heic,image/heif,image/jpeg,image/jpg,image/png,image/webp', capture: 'environment' } });
         input.style.display = 'none';
-        input.onchange = (event) => {
+        input.onchange = async (event) => {
           const [file] = event.target.files || [];
           if (!file) return;
           const validationMessage = validateEvidenceFile(file, 'photo');
@@ -601,11 +709,23 @@ export class PageSnapAndSay extends BaseElement {
             this.render();
             return;
           }
-          if (this._photoUrl) URL.revokeObjectURL(this._photoUrl);
-          this._photoFile = file;
-          this._photoUrl = URL.createObjectURL(file);
-          this._error = '';
-          this.render();
+          try {
+            const photo = file.size > MAX_IMAGE_SIZE
+              ? await compressImage(file, { maxWidth: 1600, maxBytes: MAX_IMAGE_SIZE })
+              : file;
+            const photoError = validateEvidenceFile(photo, 'snap-photo');
+            if (photoError) throw new Error(photoError);
+            if (this._photoUrl) URL.revokeObjectURL(this._photoUrl);
+            this._photoFile = photo;
+            this._photoUrl = URL.createObjectURL(photo);
+            this._error = '';
+            this.render();
+          } catch (error) {
+            this._error = error.message || 'This photo could not be prepared. Choose a smaller photo.';
+            this.render();
+          } finally {
+            event.target.value = '';
+          }
         };
         this._fileInput = input;
       }
@@ -729,7 +849,8 @@ export class PageSnapAndSay extends BaseElement {
 
     const outcome = this._result?.failure ? 'Not submitted'
       : this._result?.queued ? 'Queued offline'
-        : this._result?.processing ? 'Processing'
+        : this._result?.processing ? 'Analysing'
+          : this._result?.analysisFailed || this._result?.analysisTimedOut ? 'Needs human review'
           : 'Report received';
     const badge = createElement('div', { text: outcome });
     badge.style.cssText = 'display:inline-flex;padding:6px 10px;border-radius:999px;background:#e6f4ec;color:#0f5c44;font-weight:700;font-size:12px;';
@@ -737,26 +858,66 @@ export class PageSnapAndSay extends BaseElement {
     const title = createElement('h2', {
       text: this._result?.failure ? 'Your report was not submitted'
         : this._result?.queued ? 'Saved for retry'
+          : this._result?.processing ? 'Analysing your report...'
+            : this._result?.analysisFailed || this._result?.analysisTimedOut ? 'A person will review your report'
           : 'Your report was received'
     });
     title.style.cssText = 'margin:16px 0 10px;font-size:28px;';
 
     if (this._result?.processing) {
       const processing = createElement('p', {
-        text: 'Your recording was received and is being processed. Your transcript and category will appear in My Reports when analysis finishes.'
+        text: 'We received your recording. We are analysing what you said and any photo you attached.'
       });
       processing.style.cssText = 'margin:0 0 16px;color:#465663;line-height:1.6;';
       card.appendChild(processing);
     }
 
-    if (!this._result?.processing && this._result?.english_translation) {
+    if (this._result?.analysisFailed || this._result?.analysisTimedOut) {
+      const explanation = createElement('p', {
+        text: 'We received your report, but automated analysis could not be completed. A person will review it.'
+      });
+      explanation.style.cssText = 'margin:0 0 16px;color:#465663;line-height:1.6;';
+      card.appendChild(explanation);
+    } else if (this._result?.analysisUnclear) {
+      const explanation = createElement('p', {
+        text: 'We received your report, but could not determine its type with confidence. A person will review it.'
+      });
+      explanation.style.cssText = 'margin:0 0 16px;color:#465663;line-height:1.6;';
+      card.appendChild(explanation);
+    } else if (this._result?.requiresManualReview) {
+      const explanation = createElement('p', {
+        text: this._result.review_reason || 'We received your report. A person will review it before it is routed.'
+      });
+      explanation.style.cssText = 'margin:0 0 16px;color:#465663;line-height:1.6;';
+      card.appendChild(explanation);
+    }
+
+    if (!this._result?.processing && !this._result?.analysisFailed && !this._result?.analysisTimedOut) {
       const bubble = createElement('div');
       bubble.style.cssText = 'background:#f4f8fb;border-radius:14px;padding:16px;margin-bottom:16px;';
-      const label = createElement('div', { text: 'What you said' });
-      label.style.cssText = 'font-size:11px;color:#5b6f7d;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;';
-      const text = createElement('div', { text: this._result.english_translation });
-      text.style.cssText = 'margin-top:8px;line-height:1.5;color:#17222d;';
-      bubble.append(label, text);
+      const transcript = this._result?.original_transcription || '';
+      const translation = this._result?.english_translation || '';
+      if (transcript) {
+        const originalLabel = createElement('div', { text: 'Original transcript' });
+        originalLabel.style.cssText = 'font-size:11px;color:#5b6f7d;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;';
+        const originalText = createElement('div', { text: transcript });
+        originalText.style.cssText = 'margin-top:8px;line-height:1.5;color:#17222d;';
+        bubble.append(originalLabel, originalText);
+      }
+      if (translation) {
+        const englishLabel = createElement('div', { text: 'English translation' });
+        englishLabel.style.cssText = 'margin-top:12px;font-size:11px;color:#5b6f7d;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;';
+        const englishText = createElement('div', { text: translation });
+        englishText.style.cssText = 'margin-top:8px;line-height:1.5;color:#17222d;';
+        bubble.append(englishLabel, englishText);
+      }
+      if (!transcript && !translation) {
+        const noTranscript = createElement('p', {
+          text: 'No transcript could be recovered from the recording. A person will review the report.'
+        });
+        noTranscript.style.cssText = 'margin:0;color:#465663;line-height:1.5;';
+        bubble.appendChild(noTranscript);
+      }
       card.appendChild(bubble);
     }
 
@@ -780,13 +941,15 @@ export class PageSnapAndSay extends BaseElement {
       );
       card.appendChild(lookup);
     }
-    const items = [
-      ['Type', reportCategoryLabel({
-        status: this._result?.status,
-        ai_category: this._result?.issue_category
-      })],
-      ['Urgency', this._result?.urgency || 'MEDIUM']
-    ];
+    const items = this._result?.processing || this._result?.analysisFailed || this._result?.analysisTimedOut
+      ? []
+      : [
+          ['Type', this._result?.analysisUnclear ? 'Unclear report' : reportCategoryLabel({
+            status: this._result?.status,
+            ai_category: this._result?.issue_category
+          })],
+          ['Urgency', this._result?.urgency || 'MEDIUM']
+        ];
     for (const [label, value] of items) {
       const row = createElement('div');
       row.style.cssText = 'padding:12px 14px;border:1px solid #e8edf1;border-radius:12px;background:#fbfcfd;';
@@ -797,7 +960,8 @@ export class PageSnapAndSay extends BaseElement {
       row.append(labelEl, valueEl);
       facts.appendChild(row);
     }
-    card.append(badge, title, facts);
+    card.append(badge, title);
+    if (items.length) card.appendChild(facts);
     if (this._result?.failure && this._result.error) {
       const errorText = createElement('p', { text: this._result.error });
       errorText.style.cssText = 'margin:16px 0 0;padding:12px;background:#fff0f0;border-radius:10px;color:#7b1d1d;line-height:1.5;';
@@ -825,6 +989,7 @@ export class PageSnapAndSay extends BaseElement {
     edit.type = 'button';
     edit.style.cssText = 'width:100%;margin-top:18px;padding:16px;border:none;border-radius:12px;background:#edf2f5;color:#1c2b38;font-weight:700;';
     edit.onclick = () => {
+      this._analysisPollAttempt += 1;
       this._screen = 'camera';
       this._result = null;
       this.render();
