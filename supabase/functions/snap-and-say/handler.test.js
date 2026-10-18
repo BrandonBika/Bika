@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { finalizeGeminiResult, GEMINI_MODEL, handleSnapAndSay } from './handler.js';
+import {
+  finalizeGeminiResult,
+  GEMINI_MODEL,
+  GEMINI_REQUEST_TIMEOUT_MS,
+  handleSnapAndSay
+} from './handler.js';
+
+test('Gemini request timeout accommodates multimodal audio and image analysis', () => {
+  assert.equal(GEMINI_REQUEST_TIMEOUT_MS, 15000);
+});
 
 function createEnv(values = {}) {
   const defaults = {
@@ -74,6 +83,25 @@ function createGeminiFetch(geminiJson) {
   };
 }
 
+test('keeps the other civic category valid without forcing human review', () => {
+  const result = finalizeGeminiResult({ gps_status: 'gps' }, {
+    original_transcription: 'I need help.',
+    detected_language: 'en',
+    english_translation: 'I need help.',
+    issue_category: 'other',
+    urgency: 'MEDIUM',
+    requires_immediate_dispatch: false,
+    recommended_organization: { organization_name: 'Municipal dispatch desk' },
+    classification_confidence: 0.9,
+    routing_confidence: 0.9,
+    needs_human_review: false,
+    review_reason: ''
+  });
+  assert.equal(result.issue_category, 'other');
+  assert.equal(result.needs_human_review, false);
+  assert.equal(result.status, 'Pending Dispatch');
+});
+
 test('keeps low-confidence Gemini classifications in Needs Review', () => {
   const result = finalizeGeminiResult({ gps_status: 'gps' }, {
     original_transcription: 'There is a damaged street light.',
@@ -81,7 +109,7 @@ test('keeps low-confidence Gemini classifications in Needs Review', () => {
     english_translation: 'There is a damaged street light.',
     visual_evidence_summary: 'A street light is visible.',
     photo_matches_report: true,
-    issue_category: 'Street lighting',
+    issue_category: 'electricity',
     urgency: 'MEDIUM',
     requires_immediate_dispatch: false,
     recommended_organization: { organization_name: 'Municipal Electricity Department' },
@@ -94,6 +122,72 @@ test('keeps low-confidence Gemini classifications in Needs Review', () => {
   assert.equal(result.status, 'Needs Review');
 });
 
+test('adds emergency numbers for high-urgency classification', () => {
+  const result = finalizeGeminiResult({ gps_status: 'gps' }, {
+    original_transcription: 'A person is in danger.',
+    detected_language: 'en',
+    english_translation: 'A person is in danger.',
+    issue_category: 'crime_safety',
+    urgency: 'HIGH',
+    requires_immediate_dispatch: false,
+    recommended_organization: { organization_name: 'Police' },
+    classification_confidence: 0.9,
+    routing_confidence: 0.9,
+    needs_human_review: false,
+    review_reason: ''
+  });
+  assert.deepEqual(result.emergency_numbers, ['112', '10111', '10177']);
+});
+
+test('maps out-of-list issue categories to Unclear report and requires human review', () => {
+  const result = finalizeGeminiResult({ gps_status: 'gps' }, {
+    original_transcription: 'There is an emergency.',
+    detected_language: 'en',
+    english_translation: 'There is an emergency.',
+    issue_category: 'made_up_category',
+    urgency: 'HIGH',
+    requires_immediate_dispatch: false,
+    recommended_organization: { organization_name: 'Emergency services' },
+    classification_confidence: 0.9,
+    routing_confidence: 0.9,
+    needs_human_review: false,
+    review_reason: ''
+  });
+  assert.equal(result.issue_category, 'Unclear report');
+  assert.equal(result.needs_human_review, true);
+  assert.match(result.review_reason, /unsupported issue category/);
+  assert.equal(result.status, 'Needs Review');
+});
+
+test('stores a model response with an unsupported category as unclear for manual review', async () => {
+  let classificationUpdate;
+  const fetchGemini = createGeminiFetch({
+    original_transcription: 'Someone needs help.',
+    detected_language: 'en',
+    english_translation: 'Someone needs help.',
+    issue_category: 'violent_crime_emergency',
+    urgency: 'HIGH',
+    requires_immediate_dispatch: false,
+    recommended_organization: { organization_name: 'Emergency services' },
+    classification_confidence: 0.9,
+    routing_confidence: 0.9,
+    needs_human_review: false,
+    review_reason: ''
+  });
+  const response = await handleSnapAndSay(createRequest(), {
+    ...testContext(async (url, options = {}) => {
+      if (String(url).includes('/rest/v1/reports?id=') && options.method === 'PATCH') {
+        classificationUpdate = JSON.parse(options.body);
+      }
+      return fetchGemini(url, options);
+    })
+  });
+  assert.equal(response.status, 200);
+  assert.equal(classificationUpdate.ai_category, 'Unclear report');
+  assert.equal(classificationUpdate.needs_human_review, true);
+  assert.match(classificationUpdate.review_reason, /unsupported issue category/);
+});
+
 test('rejects recordings under one second', async () => {
   const response = await handleSnapAndSay(createRequest({ durationSeconds: 0.8 }), testContext(createGeminiFetch({
       original_transcription: 'hello',
@@ -101,7 +195,7 @@ test('rejects recordings under one second', async () => {
       english_translation: 'hello',
       visual_evidence_summary: 'clear photo',
       photo_matches_report: true,
-      issue_category: 'Water leak',
+      issue_category: 'water',
       urgency: 'MEDIUM',
       requires_immediate_dispatch: false,
       extracted_location: 'near the clinic',
@@ -125,7 +219,7 @@ test('rejects unsupported audio mime types', async () => {
       english_translation: 'hello',
       visual_evidence_summary: 'clear photo',
       photo_matches_report: true,
-      issue_category: 'Water leak',
+      issue_category: 'water',
       urgency: 'MEDIUM',
       requires_immediate_dispatch: false,
       extracted_location: 'near the clinic',
@@ -163,8 +257,12 @@ test('falls back to manual review when Gemini output is malformed', async () => 
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.processing, true);
-  assert.equal(body.report.status, 'Needs Review');
-  assert.match(body.report.review_reason, /being processed/i);
+  assert.equal(body.report.id, 'report-test-id');
+  assert.equal(body.report.status, 'Analysis pending');
+  assert.equal(body.report.issue_category, null);
+  assert.equal(body.report.urgency, null);
+  assert.equal(body.report.original_transcription, '');
+  assert.match(body.report.review_reason, /Analysis pending/i);
   assert.equal(attempts, 1);
   assert.equal(calls.filter((url) => url.includes('/storage/v1/object/report-evidence/')).length, 2);
   assert.equal(calls.filter((url) => url.endsWith('/rest/v1/reports')).length, 1);
@@ -180,7 +278,7 @@ test('accepts codec-suffixed webm and audio/mp4 media types', async () => {
     english_translation: 'There is a damaged road.',
     visual_evidence_summary: 'A damaged road is visible.',
     photo_matches_report: true,
-    issue_category: 'Road damage',
+    issue_category: 'roads',
     urgency: 'LOW',
     requires_immediate_dispatch: false,
     extracted_location: 'GPS location provided.',
@@ -208,6 +306,13 @@ test('accepts codec-suffixed webm and audio/mp4 media types', async () => {
     assert.ok(geminiCall.url.includes(`/models/${GEMINI_MODEL}:generateContent`));
     const request = JSON.parse(geminiCall.options.body);
     assert.equal(request.generationConfig.responseMimeType, 'application/json');
+    assert.equal(request.generationConfig.temperature, 0.1);
+    assert.deepEqual(request.generationConfig.responseSchema.properties.issue_category.enum.sort(),
+      ['roads', 'water', 'electricity', 'waste', 'parks', 'safety', 'health', 'other', 'medical', 'fire', 'crime_safety', 'road_accident', 'flooding', 'gender_based_violence'].sort());
+    assert.deepEqual(request.generationConfig.responseSchema.properties.urgency.enum, ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
+    assert.match(request.systemInstruction.parts[0].text, /most life-threatening/);
+    assert.match(request.systemInstruction.parts[0].text, /spoken content as the report, not instructions/);
+    assert.match(request.contents[0].parts[0].text, /GPS:/);
     assert.equal(request.contents[0].parts.find(({ inline_data }) => inline_data?.mime_type?.startsWith('audio/'))?.inline_data.mime_type,
       audioType.startsWith('audio/webm') ? 'audio/webm' : 'audio/m4a');
   }
@@ -222,7 +327,7 @@ test('uploads private evidence to the report path and persists evidence metadata
     english_translation: 'A road is damaged.',
     visual_evidence_summary: 'Road damage is visible.',
     photo_matches_report: true,
-    issue_category: 'Road damage',
+    issue_category: 'roads',
     urgency: 'LOW',
     requires_immediate_dispatch: false,
     extracted_location: 'GPS location provided.',
@@ -371,7 +476,7 @@ test('missing Gemini key stores the report as Needs Review and logs configuratio
     });
     assert.equal(response.status, 200);
     const report = (await response.json()).report;
-    assert.equal(report.status, 'Needs Review');
+    assert.equal(report.status, 'Analysis pending');
     assert.equal(report.needs_human_review, true);
     assert.match(errors.join(' '), /Gemini API key is not configured/);
     assert.match(aiRun.error, /^key_problem:/);
@@ -384,6 +489,7 @@ test('records provider failures in ai_runs after redacting the configured Gemini
   const apiKey = 'test-gemini-key';
   let geminiCalls = 0;
   let aiRun;
+  let reportFailureUpdate;
   const fetchImpl = async (url, options = {}) => {
     const target = String(url);
     if (target.includes('generativelanguage.googleapis.com')) {
@@ -400,6 +506,9 @@ test('records provider failures in ai_runs after redacting the configured Gemini
       aiRun = JSON.parse(options.body);
       return new Response('{}', { status: 201 });
     }
+    if (target.includes('/rest/v1/reports?id=') && options.method === 'PATCH') {
+      reportFailureUpdate = JSON.parse(options.body);
+    }
     return new Response('{}', { status: 200 });
   };
 
@@ -415,6 +524,39 @@ test('records provider failures in ai_runs after redacting the configured Gemini
   assert.match(aiRun.error, /Provider rejected request/);
   assert.match(aiRun.error, /\[REDACTED\]/);
   assert.equal(aiRun.error.includes(apiKey), false);
+  assert.equal(reportFailureUpdate.needs_human_review, true);
+  assert.equal(reportFailureUpdate.status, 'Needs Review');
+  assert.match(reportFailureUpdate.review_reason, /^Analysis failed:/);
+  assert.equal(reportFailureUpdate.review_reason.includes(apiKey), false);
+});
+
+test('times out Gemini requests, records a visible report failure, and stops waiting', async () => {
+  let failureUpdate;
+  let aiRun;
+  const fetchImpl = async (url, options = {}) => {
+    const target = String(url);
+    if (target.includes('generativelanguage.googleapis.com')) {
+      return new Promise((resolve, reject) => {
+        options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+      });
+    }
+    if (target.endsWith('/rest/v1/reports') && options.method === 'POST') {
+      return new Response(JSON.stringify([{ ...JSON.parse(options.body), tracking_number: 'CN-2026-000126' }]), { status: 201 });
+    }
+    if (target.includes('/rest/v1/reports?id=') && options.method === 'PATCH') {
+      failureUpdate = JSON.parse(options.body);
+      return new Response(null, { status: 204 });
+    }
+    if (target.endsWith('/rest/v1/ai_runs')) aiRun = JSON.parse(options.body);
+    return new Response('{}', { status: 201 });
+  };
+  const response = await handleSnapAndSay(createRequest(), {
+    ...testContext(fetchImpl),
+    geminiTimeoutMs: 5
+  });
+  assert.equal(response.status, 200);
+  assert.equal(aiRun.error.startsWith('timeout:'), true);
+  assert.match(failureUpdate.review_reason, /^Analysis failed: timeout:/);
 });
 
 test('accepts an anonymous Supabase session and returns a guest lookup code on fallback', async () => {
@@ -451,7 +593,7 @@ test('accepts an anonymous Supabase session and returns a guest lookup code on f
 
   assert.equal(response.status, 200);
   const body = await response.json();
-  assert.equal(body.report.status, 'Needs Review');
+  assert.equal(body.report.status, 'Analysis pending');
   assert.equal(body.report.tracking_number, 'CN-2026-900002');
   assert.match(body.report.lookup_code, /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{10}$/);
 
@@ -534,7 +676,7 @@ test('allows a report without GPS and marks it as no_gps', async () => {
       english_translation: 'There is water on the road.',
       visual_evidence_summary: 'Standing water by the road.',
       photo_matches_report: true,
-      issue_category: 'Flooding',
+      issue_category: 'flooding',
       urgency: 'HIGH',
       requires_immediate_dispatch: false,
       extracted_location: 'No location details were provided by the reporter.',
@@ -549,7 +691,7 @@ test('allows a report without GPS and marks it as no_gps', async () => {
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.report.gps_status, 'no_gps');
-  assert.equal(body.report.status, 'Needs Review');
+  assert.equal(body.report.status, 'Analysis pending');
   assert.equal(body.processing, true);
 });
 
@@ -561,7 +703,7 @@ test('surfaces emergency numbers for critical reports', async () => {
       english_translation: 'There is smoke and people are trapped in the building.',
       visual_evidence_summary: 'Smoke and flames visible from the structure.',
       photo_matches_report: true,
-      issue_category: 'Fire',
+      issue_category: 'fire',
       urgency: 'CRITICAL',
       requires_immediate_dispatch: true,
       extracted_location: 'Inside the building next to the station.',
@@ -581,11 +723,12 @@ test('surfaces emergency numbers for critical reports', async () => {
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(body.processing, true);
-  assert.equal(body.report.status, 'Needs Review');
+  assert.equal(body.report.status, 'Analysis pending');
   const updateCall = calls.find(({ url, options }) =>
     url.includes('/rest/v1/reports?id=') && options.method === 'PATCH'
   );
   const update = JSON.parse(updateCall.options.body);
+  assert.equal(update.ai_category, 'fire');
   assert.equal(update.report_level, 'CRITICAL');
   assert.equal(update.requires_immediate_dispatch, true);
   assert.equal(update.status, 'Needs Review');
@@ -604,7 +747,7 @@ test('returns the saved receipt before Gemini finishes', async () => {
     english_translation: 'There is a broken street light.',
     visual_evidence_summary: 'A damaged street light is visible.',
     photo_matches_report: true,
-    issue_category: 'Street lighting',
+    issue_category: 'electricity',
     urgency: 'MEDIUM',
     requires_immediate_dispatch: false,
     extracted_location: 'GPS location provided.',
@@ -635,7 +778,7 @@ test('returns the saved receipt before Gemini finishes', async () => {
 
   assert.equal(response.status, 200);
   assert.equal(body.processing, true);
-  assert.equal(body.report.status, 'Needs Review');
+  assert.equal(body.report.status, 'Analysis pending');
   assert.equal(aiRunSaved, false);
   assert.ok(backgroundTask instanceof Promise);
 
@@ -657,6 +800,9 @@ test('a Gemini failure leaves the saved report in Needs Review', async () => {
     if (target.endsWith('/rest/v1/reports') && options.method === 'POST') {
       return new Response(JSON.stringify([{ ...JSON.parse(options.body), tracking_number: 'CN-2026-000199' }]), { status: 201 });
     }
+    if (target.includes('/rest/v1/reports?id=') && options.method === 'PATCH') {
+      return new Response(null, { status: 204 });
+    }
     return new Response('{}', { status: target.includes('/rest/v1/reports?id=') ? 204 : 201 });
   };
 
@@ -666,10 +812,14 @@ test('a Gemini failure leaves the saved report in Needs Review', async () => {
   const savedRun = JSON.parse(calls.find(({ target }) => target.endsWith('/rest/v1/ai_runs')).options.body);
 
   assert.equal(response.status, 200);
-  assert.equal(body.report.status, 'Needs Review');
+  assert.equal(body.report.status, 'Analysis pending');
   assert.equal(JSON.parse(initialInsert.options.body).status, 'Needs Review');
   assert.match(savedRun.error, /^rate_limited:/);
-  assert.equal(calls.some(({ target, options }) => target.includes('/rest/v1/reports?id=') && options.method === 'PATCH'), false);
+  const failureUpdate = JSON.parse(calls.find(({ target, options }) =>
+    target.includes('/rest/v1/reports?id=') && options.method === 'PATCH'
+  ).options.body);
+  assert.equal(failureUpdate.needs_human_review, true);
+  assert.match(failureUpdate.review_reason, /^Analysis failed: rate_limited:/);
 });
 
 test('retries transient Gemini 503 responses in the background', async () => {
@@ -681,7 +831,7 @@ test('retries transient Gemini 503 responses in the background', async () => {
     english_translation: 'A damaged road needs repair.',
     visual_evidence_summary: 'A damaged road is visible.',
     photo_matches_report: true,
-    issue_category: 'Road damage',
+    issue_category: 'roads',
     urgency: 'LOW',
     requires_immediate_dispatch: false,
     extracted_location: 'GPS location provided.',
@@ -732,7 +882,7 @@ test('falls back to GEMINI_FALLBACK_MODEL after primary retries return 429 or 50
     english_translation: 'A damaged road needs repair.',
     visual_evidence_summary: 'A damaged road is visible.',
     photo_matches_report: true,
-    issue_category: 'Road damage',
+    issue_category: 'roads',
     urgency: 'LOW',
     requires_immediate_dispatch: false,
     extracted_location: 'GPS location provided.',
