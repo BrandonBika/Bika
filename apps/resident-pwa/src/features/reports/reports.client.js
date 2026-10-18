@@ -101,11 +101,21 @@ export async function listMyReports() {
   const rows = await selectRows(
     'reports',
     { reporter_id: user.id },
-    'id,tracking_number,status,ai_category,user_selected_category,category,user_reported_address,location_name,extracted_location,description_english,description,description_original,user_selected_organization,created_at,updated_at,resolved_at'
+    'id,tracking_number,status,ai_category,user_selected_category,category,review_reason,user_reported_address,location_name,extracted_location,description_english,description,description_original,user_selected_organization,created_at,updated_at,resolved_at'
   );
   const reports = rows.map(mapReportRow);
   replaceReports(reports);
   return { reports };
+}
+
+export async function getSnapAndSayReport(reportId) {
+  if (!reportId) throw new Error('A report ID is required to check Snap & Say analysis.');
+  const rows = await selectRows(
+    'reports',
+    { id: reportId },
+    'id,tracking_number,status,ai_category,urgency,report_level,description_original,description_english,review_reason,needs_human_review,requires_immediate_dispatch'
+  );
+  return rows[0] || null;
 }
 
 export async function getReport(idOrRef) {
