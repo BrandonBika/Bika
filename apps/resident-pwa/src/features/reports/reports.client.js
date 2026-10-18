@@ -6,6 +6,7 @@ import { invokeFunction, Endpoints } from '@civicneuro/functions-client';
 import { enqueueReport, generateIdempotencyKey } from '@civicneuro/offline-queue';
 import { selectRows } from '@civicneuro/supabase-client';
 import { sessionStore } from '../../session.js';
+import { languageName } from '../snap-and-say/language-labels.js';
 import { isAwaitingAiClassification, reportCategoryLabel } from './report-category.js';
 import {
   getAllReports,
@@ -48,6 +49,10 @@ function mapReportRow(row) {
     displayTime,
     lastUpdatedAt: row.updated_at || createdAt,
     description: row.description_english || row.description || row.description_original || '',
+    originalTranscript: row.description_original || '',
+    englishTranslation: row.description_english || '',
+    detectedLanguage: row.detected_language || 'unknown',
+    detectedLanguageName: languageName(row.detected_language),
     organisation: row.user_selected_organization ? { name: row.user_selected_organization } : null,
     unreadCount: 0,
     satisfaction: null,
@@ -101,7 +106,7 @@ export async function listMyReports() {
   const rows = await selectRows(
     'reports',
     { reporter_id: user.id },
-    'id,tracking_number,status,ai_category,user_selected_category,category,review_reason,user_reported_address,location_name,extracted_location,description_english,description,description_original,user_selected_organization,created_at,updated_at,resolved_at'
+    'id,tracking_number,status,ai_category,user_selected_category,category,review_reason,user_reported_address,location_name,extracted_location,description_english,description,description_original,detected_language,user_selected_organization,created_at,updated_at,resolved_at'
   );
   const reports = rows.map(mapReportRow);
   replaceReports(reports);
@@ -113,7 +118,7 @@ export async function getSnapAndSayReport(reportId) {
   const rows = await selectRows(
     'reports',
     { id: reportId },
-    'id,tracking_number,status,ai_category,urgency,report_level,description_original,description_english,review_reason,needs_human_review,requires_immediate_dispatch'
+    'id,tracking_number,status,ai_category,urgency,report_level,description_original,description_english,detected_language,review_reason,needs_human_review,requires_immediate_dispatch'
   );
   return rows[0] || null;
 }
