@@ -10,6 +10,7 @@ Browser `audio/webm;codecs=opus` is normalized to `audio/webm`; browser `audio/m
 - `SUPABASE_ANON_KEY` (recommended for auth user validation)
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `GEMINI_API_KEY`
+- `GUEST_LOOKUP_HMAC_KEY` (required to issue lookup credentials for anonymous residents)
 - Optional `GEMINI_MODEL` (defaults to `gemini-3.8-flash`)
 - Optional `GEMINI_FALLBACK_MODEL` (no fallback model is selected when unset)
 
