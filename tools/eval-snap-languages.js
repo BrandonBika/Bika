@@ -3,8 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   callGeminiWithRetry,
-  finalizeGeminiResult,
-  parseGeminiJson
+  finalizeGeminiResult
 } from '../supabase/functions/snap-and-say/handler.js';
 
 const AUDIO_MIME_TYPES = new Map([
@@ -47,6 +46,12 @@ function parseFilename(filename) {
 function csvCell(value) {
   const text = value === null || value === undefined ? '' : String(value);
   return `"${text.replaceAll('"', '""')}"`;
+}
+
+function parseGeminiResponse(response) {
+  const text = response?.candidates?.[0]?.content?.parts?.find((part) => typeof part.text === 'string')?.text;
+  if (!text) throw new Error('No structured response');
+  return JSON.parse(text);
 }
 
 function updateSummary(summary, key, isCorrect) {
@@ -111,7 +116,7 @@ export async function evaluateDirectory(inputDirectory, outputFile) {
           gps_status: 'no_gps'
         }
       });
-      const result = finalizeGeminiResult({ gps_status: 'no_gps' }, parseGeminiJson(response.output));
+      const result = finalizeGeminiResult({ gps_status: 'no_gps' }, parseGeminiResponse(response.output));
       row.detected_language = result.detected_language;
       row.transcript = result.original_transcription;
       row.english_translation = result.english_translation;
