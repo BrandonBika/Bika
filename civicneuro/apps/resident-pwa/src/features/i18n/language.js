@@ -13,7 +13,7 @@ export const availableLanguages = [
   { code: 'nso', name: 'Sepedi', nativeName: 'Sepedi', hasTranslations: false },
   { code: 'tn', name: 'Setswana', nativeName: 'Setswana', hasTranslations: false },
   { code: 'st', name: 'Sesotho', nativeName: 'Sesotho', hasTranslations: false },
-  { code: 'ts', name: 'itsonga', nativeName: 'itsonga', hasTranslations: false },
+  { code: 'ts', name: '\u0058itsonga', nativeName: '\u0058itsonga', hasTranslations: false },
   { code: 'ss', name: 'siSwati', nativeName: 'siSwati', hasTranslations: false },
   { code: 've', name: 'Tshivenda', nativeName: 'Tshivenda', hasTranslations: false },
   { code: 'nr', name: 'isiNdebele', nativeName: 'isiNdebele', hasTranslations: false }
