@@ -3,10 +3,12 @@ import test from 'node:test';
 import {
   ageLabel,
   descriptionOf,
+  descriptionExcerpt,
   evidenceCountMap,
   formatCoordinate,
   priorityBadge,
   priorityRank,
+  reporterTypeOf,
   relativeTime,
   truncateText
 } from '../src/features/sheet-format.js';
@@ -16,9 +18,10 @@ test('priorityBadge recognizes the supported priorities case-insensitively', () 
   assert.deepEqual(priorityBadge('MEDIUM'), { label: 'Medium', level: 'medium' });
   assert.deepEqual(priorityBadge('High'), { label: 'High', level: 'high' });
   assert.deepEqual(priorityBadge('critical'), { label: 'Critical', level: 'critical' });
-  assert.deepEqual(priorityBadge(null), { label: 'Not set', level: 'unknown' });
-  assert.deepEqual(priorityBadge('   '), { label: 'Not set', level: 'unknown' });
-  assert.deepEqual(priorityBadge('urgent'), { label: 'Not set', level: 'unknown' });
+  assert.deepEqual(priorityBadge(null), { label: '–', level: 'unknown' });
+  assert.deepEqual(priorityBadge('   '), { label: '–', level: 'unknown' });
+  assert.deepEqual(priorityBadge('urgent'), { label: 'urgent', level: 'unknown' });
+  assert.deepEqual(priorityBadge('  Urgent  '), { label: 'Urgent', level: 'unknown' });
 });
 
 test('priorityRank orders recognized values and puts unknown values last', () => {
@@ -48,15 +51,26 @@ test('descriptionOf uses translated, original, then fallback description', () =>
   assert.equal(descriptionOf(null), '');
 });
 
-test('ageLabel formats elapsed days, weeks, and months and rejects invalid dates', () => {
+test('descriptionExcerpt supplies a dash for empty text and shortens long descriptions', () => {
+  assert.equal(descriptionExcerpt(null), '–');
+  assert.equal(descriptionExcerpt({ description: '  ' }), '–');
+  const excerpt = descriptionExcerpt({ description: 'x'.repeat(100) });
+  assert.equal(excerpt.length, 81);
+  assert.equal(excerpt.endsWith('…'), true);
+});
+
+test('reporterTypeOf uses the loaded resident and guest distinction', () => {
+  assert.equal(reporterTypeOf({ kind: 'resident' }), 'Resident');
+  assert.equal(reporterTypeOf({ kind: 'guest' }), 'Guest');
+  assert.equal(reporterTypeOf({ kind: 'anonymous' }), 'Anonymous');
+  assert.equal(reporterTypeOf(null), 'Anonymous');
+});
+
+test('ageLabel formats days and rejects invalid or future dates', () => {
   const now = new Date('2026-10-24T12:00:00.000Z');
-  assert.equal(ageLabel('2026-10-24T11:00:00.000Z', now), 'Today');
-  assert.equal(ageLabel('2026-10-23T12:00:00.000Z', now), '1 day');
-  assert.equal(ageLabel('2026-10-19T12:00:00.000Z', now), '5 days');
-  assert.equal(ageLabel('2026-10-10T12:00:00.000Z', now), '2 weeks');
-  assert.equal(ageLabel('2026-10-03T12:00:00.000Z', now), '3 weeks');
-  assert.equal(ageLabel('2026-09-24T12:00:00.000Z', now), '1 month');
-  assert.equal(ageLabel('2026-08-25T12:00:00.000Z', now), '2 months');
+  assert.equal(ageLabel('2026-10-24T11:00:00.000Z', now), '<1d');
+  assert.equal(ageLabel('2026-10-23T12:00:00.000Z', now), '1d');
+  assert.equal(ageLabel('2026-10-21T12:00:00.000Z', now), '3d');
   assert.equal(ageLabel('not a date', now), '');
   assert.equal(ageLabel('2026-10-25T12:00:00.000Z', now), '');
   assert.equal(ageLabel(null, now), '');

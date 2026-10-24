@@ -13,7 +13,12 @@ export function priorityBadge(urgency) {
     : null;
   return priority
     ? { label: priority.label, level: priority.level }
-    : { label: 'Not set', level: 'unknown' };
+    : {
+      label: urgency === null || urgency === undefined || String(urgency).trim() === ''
+        ? '–'
+        : String(urgency).trim(),
+      level: 'unknown'
+    };
 }
 
 export function priorityRank(urgency) {
@@ -35,18 +40,23 @@ export function descriptionOf(report) {
     || '';
 }
 
+export function descriptionExcerpt(report, max = 80) {
+  return truncateText(descriptionOf(report), max) || '–';
+}
+
+export function reporterTypeOf(reporter) {
+  if (reporter?.kind === 'resident') return 'Resident';
+  if (reporter?.kind === 'guest') return 'Guest';
+  return 'Anonymous';
+}
+
 export function ageLabel(createdAt, now) {
   const created = Date.parse(createdAt);
   const current = now instanceof Date ? now.getTime() : Date.parse(now);
   if (!Number.isFinite(created) || !Number.isFinite(current) || created > current) return '';
 
   const days = Math.floor((current - created) / DAY_MS);
-  if (days === 0) return 'Today';
-  if (days === 1) return '1 day';
-  if (days < 14) return `${days} days`;
-  if (days < 30) return `${Math.floor(days / 7)} weeks`;
-  const months = Math.floor(days / 30);
-  return `${months} ${months === 1 ? 'month' : 'months'}`;
+  return days === 0 ? '<1d' : `${days}d`;
 }
 
 export function relativeTime(updatedAt, now) {

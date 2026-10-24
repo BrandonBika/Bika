@@ -1,3 +1,7 @@
+.sheet-table-wrap {
+  overflow-x: auto;
+}
+
 .sheet-table {
   width: max-content;
   min-width: 100%;
@@ -87,6 +91,11 @@
 }
 
 .sheet-description-cell {
+  white-space: normal;
+}
+
+.sheet-table .sheet-empty-cell {
+  text-align: center;
   white-space: normal;
 }
 

@@ -8,6 +8,9 @@ supabase/.branches/
 *.key
 dist/
 coverage/
+.artifacts/beacon-e2e/
+.artifacts/alerts-e2e/
+.artifacts/alerts-demo/
 .DS_Store
 *.log
 *.sqlite

@@ -1,0 +1,17 @@
+{
+  "users": {
+    "A": "3fe7070f-8264-468a-b770-dcafe8775e16",
+    "B": "e4d9cab5-795a-4172-aa42-3a679185cfb6",
+    "C": "451e8e48-26f8-42aa-bec4-a0d1d5d37fbd"
+  },
+  "createdProfiles": [
+    "3fe7070f-8264-468a-b770-dcafe8775e16",
+    "e4d9cab5-795a-4172-aa42-3a679185cfb6",
+    "451e8e48-26f8-42aa-bec4-a0d1d5d37fbd"
+  ],
+  "connectionId": "876eb07c-c82c-49ec-acdc-8c36807d02d2",
+  "connectionCreated": true,
+  "conversationId": "5e1fef03-8e1d-4b8b-98a8-531cda01eeeb",
+  "conversationCreated": true,
+  "rateLimitEventIds": []
+}

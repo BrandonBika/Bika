@@ -25,12 +25,12 @@ import {
 import { reportCoordinates } from '../../features/report-coordinates.js';
 import { renderFilterChips } from '../../features/filter-chips.js';
 import * as filterStore from '../../features/filter-store.js';
+import { ATTENDED_STATUSES, isMapVisible } from '../../features/map-visibility.js';
 import { createQueryBuilderDialog } from '../../features/query-builder-dialog.js';
 import { getCategoryLabel, getStatusLabel } from '../../features/status-labels.js';
 import { setSafeText } from '../../features/safe-dom.js';
 import { withTimeout } from '../../features/with-timeout.js';
 
-const ATTENDED_STATUSES = new Set(['Resolved', 'Rejected', 'Duplicate']);
 const CATEGORY_COLOURS = ['#A32D2D', '#2A7F78', '#BA7517', '#185FA5', '#A3A6AC'];
 const CHART_COLLAPSED_KEY = 'civicneuro-platform-dashboard-chart-collapsed';
 const STATS_COLLAPSED_KEY = 'civicneuro-platform-dashboard-stats-collapsed';
@@ -1510,12 +1510,6 @@ function categoryOf(report) {
   return getCategoryLabel(
     report.category ?? report.issue_category ?? report.user_selected_category ?? report.ai_category
   );
-}
-
-function isMapVisible(report) {
-  return !ATTENDED_STATUSES.has(report.status)
-    && coordinate(report.latitude, report.location_lat) !== null
-    && coordinate(report.longitude, report.location_lng) !== null;
 }
 
 function coordinate(primary, fallback) {

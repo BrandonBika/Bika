@@ -58,7 +58,8 @@ export default [
   {
     ignores: [
       '**/node_modules/**',
-      'apps/resident-pwa/public/vendor/**'
+      'apps/resident-pwa/public/vendor/**',
+      'apps/resident-pwa/vendor/**'
     ]
   },
   {

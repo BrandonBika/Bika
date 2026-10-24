@@ -14,16 +14,18 @@ import * as filterStore from '../../features/filter-store.js';
 import { createQueryBuilderDialog } from '../../features/query-builder-dialog.js';
 import { filterReportCandidates } from '../../features/report-sheet-filters.js';
 import { reportCoordinates } from '../../features/report-coordinates.js';
+import { mapPinState } from '../../features/map-visibility.js';
 import { getReportSheetData, listOrganizations } from '../../features/reports.client.js';
 import { resolveReporterDisplay } from '../../features/reporter-display.js';
 import {
   ageLabel,
   descriptionOf,
+  descriptionExcerpt,
   formatCoordinate,
   priorityBadge,
   priorityRank,
-  relativeTime,
-  truncateText
+  reporterTypeOf,
+  relativeTime
 } from '../../features/sheet-format.js';
 import { getCategoryLabel, getStatusLabel } from '../../features/status-labels.js';
 
@@ -156,32 +158,10 @@ function renderReportSheet(target, data) {
   table.className = 'sheet-table';
   const thead = document.createElement('thead');
   const headingRow = document.createElement('tr');
-  for (const title of [
-    'Reporter',
-    'Organisation',
-    'Category',
-    'Priority',
-    'Description',
-    'Location',
-    'Date reported',
-    'Last updated',
-    'Evidence',
-    'Status',
-    'Actions'
-  ]) {
-    const heading = document.createElement('th');
-    heading.textContent = title;
-    headingRow.append(heading);
-  }
-  const sortDate = createSortButton('Date reported', 'date');
-  headingRow.children[6].replaceChildren(sortDate);
-  const sortPriority = createSortButton('Priority', 'priority');
-  headingRow.children[3].replaceChildren(sortPriority);
   thead.append(headingRow);
   const tbody = document.createElement('tbody');
   table.append(thead, tbody);
   tableWrap.append(table);
-  const emptyState = document.createElement('div');
   const clearEmptyQueryButton = makeButton('Clear query');
   clearEmptyQueryButton.addEventListener('click', clearQuery);
   const pagination = document.createElement('div');
@@ -198,13 +178,16 @@ function renderReportSheet(target, data) {
     drawRows();
   });
   pagination.append(pageInfo, previous, next);
-  page.append(toolbar, tabs, countLine, tableWrap, emptyState, pagination);
+  page.append(toolbar, tabs, countLine, tableWrap, pagination);
 
   function createSortButton(label, field) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'sheet-sort';
-    button.textContent = `${label} ${field === 'date' ? '↓' : '↕'}`;
+    const direction = state.sortBy === field
+      ? (state.sortAscending ? '↑' : '↓')
+      : '↕';
+    button.textContent = `${label} ${direction}`;
     button.addEventListener('click', () => {
       if (state.sortBy === field) {
         state.sortAscending = !state.sortAscending;
@@ -216,6 +199,43 @@ function renderReportSheet(target, data) {
       drawRows();
     });
     return button;
+  }
+
+  function renderTableHeader() {
+    const columns = [
+      ['Reporter'],
+      [state.tab === 'historical' ? 'Assigned to' : 'Organisation'],
+      ['Category'],
+      ['Priority', 'priority'],
+      ['Description'],
+      ['Location'],
+      ['Date reported', 'date'],
+      ['Last updated'],
+      ['Evidence'],
+      ['Status']
+    ];
+    if (state.tab === 'historical') columns.push(['Map pin']);
+    columns.push(['Actions']);
+    headingRow.replaceChildren(...columns.map(([title, sortField]) => {
+      const heading = document.createElement('th');
+      if (sortField) {
+        heading.append(createSortButton(title, sortField));
+      } else {
+        heading.textContent = title;
+      }
+      return heading;
+    }));
+  }
+
+  function createEmptyRow({ title, message, clearQuery = false, colSpan }) {
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.className = 'sheet-empty-cell';
+    cell.colSpan = colSpan;
+    cell.append(createEmptyState({ title, message }));
+    if (clearQuery) cell.append(clearEmptyQueryButton);
+    row.append(cell);
+    return row;
   }
 
   function clearQuery() {
@@ -304,28 +324,30 @@ function renderReportSheet(target, data) {
     state.page = Math.min(state.page, Math.max(0, pageCount - 1));
     const pageRows = rowsToShow.slice(state.page * PAGE_SIZE, (state.page + 1) * PAGE_SIZE);
     const now = new Date();
-    tbody.replaceChildren(...pageRows.map((report) => createReportRow(report, data, reportsById, now)));
-    sortDate.textContent = `Date reported ${state.sortBy === 'date' ? (state.sortAscending ? '↑' : '↓') : '↕'}`;
-    sortPriority.textContent = `Priority ${state.sortBy === 'priority' ? (state.sortAscending ? '↑' : '↓') : '↕'}`;
-    emptyState.replaceChildren();
+    renderTableHeader();
+    tbody.replaceChildren(...pageRows.map((report) => createReportRow(
+      report,
+      data,
+      reportsById,
+      now,
+      state.tab === 'historical'
+    )));
     if (pageRows.length === 0 && activeFilters && candidates.length === 0) {
-      const noQueryMatches = createEmptyState({
+      tbody.append(createEmptyRow({
         title: 'No reports match this query',
-        message: 'Adjust or clear the query conditions to see reports.'
-      });
-      emptyState.replaceChildren(noQueryMatches, clearEmptyQueryButton);
+        message: 'Adjust or clear the query conditions to see reports.',
+        clearQuery: true,
+        colSpan: headingRow.cells.length
+      }));
     } else if (pageRows.length === 0) {
-      emptyState.replaceChildren(createEmptyState({
+      tbody.append(createEmptyRow({
         title: state.tab === 'historical' ? 'No historical reports' : 'No reports match these filters',
         message: state.tab === 'historical'
           ? 'Resolved, rejected, and duplicate reports will appear here when available.'
-          : 'Try changing or clearing the filters.'
+          : 'Try changing or clearing the filters.',
+        colSpan: headingRow.cells.length
       }));
-    } else {
-      emptyState.replaceChildren();
     }
-    tableWrap.hidden = pageRows.length === 0;
-    emptyState.hidden = pageRows.length !== 0;
     pageInfo.textContent = rowsToShow.length
       ? `Showing ${state.page * PAGE_SIZE + 1}–${Math.min((state.page + 1) * PAGE_SIZE, rowsToShow.length)} of ${rowsToShow.length}`
       : '0 reports';
@@ -346,7 +368,7 @@ function renderReportSheet(target, data) {
   void queryBuilder.loadStoredBoundary();
 }
 
-function createReportRow(report, data, reportsById, now) {
+function createReportRow(report, data, reportsById, now, showMapPin) {
   const row = document.createElement('tr');
   const reporter = resolveReporterDisplay({
     report,
@@ -359,10 +381,7 @@ function createReportRow(report, data, reportsById, now) {
   const reporterName = document.createElement('span');
   reporterName.className = 'rep-name';
   reporterName.textContent = reporter.name;
-  const reporterType = createPill(
-    reporter.kind === 'resident' ? 'Resident' : reporter.kind === 'guest' ? 'Guest' : 'Anonymous',
-    `reporter-type reporter-type-${reporter.kind}`
-  );
+  const reporterType = createPill(reporterTypeOf(reporter), `reporter-type reporter-type-${reporter.kind}`);
   reporterLine.append(reporterName, reporterType);
   const tracking = document.createElement('div');
   tracking.className = 'rep-sub';
@@ -381,7 +400,7 @@ function createReportRow(report, data, reportsById, now) {
   } else {
     organizationCell.textContent = data.organizations
       .find((organization) => organization.id === report.assigned_organization_id)?.name
-      ?? 'Organisation unavailable';
+      ?? '–';
   }
   const categoryCell = document.createElement('td');
   categoryCell.textContent = categoryOf(report);
@@ -394,7 +413,7 @@ function createReportRow(report, data, reportsById, now) {
   const description = String(descriptionOf(report));
   const descriptionText = document.createElement('span');
   descriptionText.className = 'sheet-description';
-  descriptionText.textContent = truncateText(description, 90) || '–';
+  descriptionText.textContent = descriptionExcerpt(report);
   descriptionText.title = description;
   descriptionCell.append(descriptionText);
   const locationCell = document.createElement('td');
@@ -425,23 +444,27 @@ function createReportRow(report, data, reportsById, now) {
   const evidenceCounts = data.evidenceCounts;
   if (evidenceCounts instanceof Map) {
     const count = evidenceCounts.get(report.id) ?? 0;
-    const clipMark = document.createElement('span');
-    clipMark.className = 'sheet-evidence-mark';
-    clipMark.setAttribute('aria-hidden', 'true');
-    const evidenceCount = document.createElement('span');
-    evidenceCount.textContent = String(count);
-    if (count === 0) evidenceCount.className = 'sheet-evidence-zero';
-    evidenceCell.append(clipMark, evidenceCount);
+    if (count > 0) {
+      const clipMark = document.createElement('span');
+      clipMark.className = 'sheet-evidence-mark';
+      clipMark.setAttribute('aria-hidden', 'true');
+      const evidenceCount = document.createElement('span');
+      evidenceCount.textContent = String(count);
+      evidenceCell.append(clipMark, evidenceCount);
+    } else {
+      evidenceCell.textContent = '–';
+      evidenceCell.className += ' sheet-evidence-zero';
+    }
   } else {
     evidenceCell.textContent = '–';
     evidenceCell.className += ' sheet-evidence-unknown';
   }
   const statusCell = document.createElement('td');
-  const statusPill = createPill(getStatusLabel(report.status), statusClass(report.status));
+  const statusPill = createPill(getStatusLabel(report.status) ?? '–', statusClass(report.status));
   statusPill.title = String(report.status ?? '');
   statusCell.className = 'sheet-status-cell';
   statusCell.append(statusPill);
-  if (report.duplicate_of) {
+  if (report.status === 'Duplicate' || report.duplicate_of) {
     const duplicate = reportsById.get(report.duplicate_of);
     const duplicateTag = createPill(
       duplicate?.tracking_number ? `Duplicate of ${duplicate.tracking_number}` : 'Duplicate',
@@ -456,7 +479,7 @@ function createReportRow(report, data, reportsById, now) {
     window.location.hash = `/report-detail/${encodeURIComponent(report.id)}`;
   });
   actionCell.append(view);
-  row.append(
+  const cells = [
     reporterCell,
     organizationCell,
     categoryCell,
@@ -466,9 +489,15 @@ function createReportRow(report, data, reportsById, now) {
     dateCell,
     updatedCell,
     evidenceCell,
-    statusCell,
-    actionCell
-  );
+    statusCell
+  ];
+  if (showMapPin) {
+    const mapPinCell = document.createElement('td');
+    mapPinCell.textContent = mapPinState(report);
+    cells.push(mapPinCell);
+  }
+  cells.push(actionCell);
+  row.append(...cells);
   return row;
 }
 
