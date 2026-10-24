@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   createDatabaseClient,
+  assertDevelopmentEnvironment,
   loadDevConfig,
   repoRoot,
   safeError
@@ -11,6 +12,7 @@ import { configureSupabaseClient } from '../packages/supabase-client/src/client.
 import { sendAlert } from '../apps/resident-pwa/src/features/messaging/messaging.client.js';
 
 const config = loadDevConfig();
+assertDevelopmentEnvironment(config.env);
 const labels = ['A', 'B'];
 const accounts = Object.fromEntries(labels.map((label) => [label, {
   email: config.env.get(`TEST_USER_${label}_EMAIL`),

@@ -6,6 +6,7 @@
 
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
+import runtimeConfig from '../../../runtime-config.js';
 import {
   getBeaconState,
   subscribeBeacon,
@@ -56,9 +57,10 @@ export class PageBeaconHome extends BaseElement {
     this._locationAccuracyMessage = 'GPS accuracy · searching';
     this._accuracyWaitStartedAt = Date.now();
     this._accuracyGuidanceExpired = false;
-    this._debugEnabled = this._params?.geodebug === '1'
+    const debugRequested = this._params?.geodebug === '1'
       || new URLSearchParams(window.location.search).get('geodebug') === '1'
       || new URLSearchParams(window.location.hash.split('?')[1] || '').get('geodebug') === '1';
+    this._debugEnabled = runtimeConfig.appEnvironment === 'development' && debugRequested;
     this._openModeAfterLocationPrompt = this._params?.mode === 'choose';
 
     this._unsubscribe = subscribeBeacon(() => {

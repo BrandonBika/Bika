@@ -1,6 +1,7 @@
 const runtimeConfig = {
   supabaseUrl: '',
-  supabaseAnonKey: ''
+  supabaseAnonKey: '',
+  appEnvironment: 'production'
 };
 
 export default runtimeConfig;

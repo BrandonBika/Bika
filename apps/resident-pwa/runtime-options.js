@@ -1,5 +1,5 @@
 const runtimeOptions = {
-  env: 'development',
+  env: 'production',
   useMock: false,
   beaconEnabled: false
 };

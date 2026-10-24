@@ -27,7 +27,8 @@ const CONTENT_SECURITY_POLICY = [
 ].join('; ');
 const runtimeConfig = {
   supabaseUrl: demoMode ? devConfig.supabaseUrl : process.env.SUPABASE_URL || '',
-  supabaseAnonKey: demoMode ? devConfig.anonKey : process.env.SUPABASE_ANON_KEY || ''
+  supabaseAnonKey: demoMode ? devConfig.anonKey : process.env.SUPABASE_ANON_KEY || '',
+  appEnvironment: 'development'
 };
 const runtimeConfigSource = `const runtimeConfig = ${JSON.stringify(runtimeConfig)};\nexport default runtimeConfig;\n`;
 const runtimeOptionsSource = `const runtimeOptions = ${JSON.stringify({

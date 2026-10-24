@@ -37,8 +37,17 @@ function getPublicConfig() {
 
   return {
     supabaseUrl: process.env.SUPABASE_URL.trim(),
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY.trim()
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY.trim(),
+    appEnvironment: getAppEnvironment()
   };
+}
+
+function getAppEnvironment() {
+  const values = [process.env.APP_ENV, process.env.NODE_ENV]
+    .map((value) => String(value || '').trim().toLowerCase())
+    .filter(Boolean);
+  if (values.some((value) => value !== 'development')) return 'production';
+  return values.length > 0 ? 'development' : 'production';
 }
 
 function copyDirectory(sourceDir, targetDir, { excludeIndex = false } = {}) {
@@ -179,8 +188,12 @@ function validateBuild() {
     const configMatch = runtimeConfig.match(/const runtimeConfig = (\{.*\});/);
     if (!configMatch) throw new Error(`Could not validate ${app} runtime config.`);
     const keys = Object.keys(JSON.parse(configMatch[1])).sort();
-    if (keys.join(',') !== 'supabaseAnonKey,supabaseUrl') {
-      throw new Error(`${app} runtime config must contain only Supabase URL and anon key.`);
+    if (keys.join(',') !== 'appEnvironment,supabaseAnonKey,supabaseUrl') {
+      throw new Error(`${app} runtime config must contain Supabase URL, anon key, and app environment.`);
+    }
+    const config = JSON.parse(configMatch[1]);
+    if (!['development', 'production'].includes(config.appEnvironment)) {
+      throw new Error(`${app} runtime config has an invalid app environment.`);
     }
   }
 

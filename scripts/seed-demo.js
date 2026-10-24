@@ -2,12 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   createDatabaseClient,
+  assertDevelopmentEnvironment,
   loadDevConfig,
   repoRoot,
   safeError
 } from './dev-supabase-test-helpers.js';
 
 const config = loadDevConfig();
+assertDevelopmentEnvironment(config.env);
 const labels = ['A', 'B', 'C'];
 const displayNames = {
   A: 'Amara Nkosi',

@@ -74,9 +74,10 @@ Beacon keeps listening while its page is open, replaces its watch on Retry,
 and stops it when leaving the page. If no fix under 50 m arrives for 60 seconds,
 Beacon explains that the device may be using network/IP location and suggests
 checking precise location and trying near a window or outdoors. For temporary
-phone diagnostics, add `?geodebug=1` to the app URL (or `&geodebug=1` to the
-Beacon hash route). The panel reports permission, accuracy, fix count, and
-errors, but never includes coordinates or sends the report to a server.
+phone diagnostics in a development build only, add `?geodebug=1` to the app URL
+(or `&geodebug=1` to the Beacon hash route). Production builds ignore this flag.
+The panel reports permission, accuracy, fix count, and errors, but never includes
+coordinates or sends the report to a server.
 
 For real-device testing, open Beacon over HTTPS (localhost is also a secure
 context), grant location permission to the browser or installed app being

@@ -1,3 +1,5 @@
+import { getAppEnvironment } from './environment.js';
+
 const DEVELOPMENT_ORIGINS = new Set([
   'http://localhost:3000',
   'http://127.0.0.1:3000',
@@ -29,11 +31,8 @@ export function isAllowedOrigin(origin, env) {
     .filter(Boolean);
   if (configuredOrigins.includes(normalizedOrigin)) return true;
 
-  const environment = [readEnv(env, 'NODE_ENV'), readEnv(env, 'APP_ENV')]
-    .map((value) => String(value).toLowerCase());
-  const production = environment.includes('production');
-  const development = environment.includes('development');
-  return !production && development && DEVELOPMENT_ORIGINS.has(normalizedOrigin);
+  return getAppEnvironment(env) === 'development'
+    && DEVELOPMENT_ORIGINS.has(normalizedOrigin);
 }
 
 export function corsHeaders(request, env, {

@@ -111,6 +111,19 @@ export function loadDevConfig() {
   return { supabaseUrl: supabase.origin, anonKey, databaseUrl, env };
 }
 
+export function assertDevelopmentEnvironment(env) {
+  const appEnvironment = String(env?.get('APP_ENV') || process.env.APP_ENV || '')
+    .trim()
+    .toLowerCase();
+  const nodeEnvironment = String(env?.get('NODE_ENV') || process.env.NODE_ENV || '')
+    .trim()
+    .toLowerCase();
+
+  if (appEnvironment !== 'development' || nodeEnvironment === 'production') {
+    throw new Error('This demo seed utility requires APP_ENV=development.');
+  }
+}
+
 export function createDatabaseClient(databaseUrl) {
   return new Client({
     connectionString: databaseUrl,

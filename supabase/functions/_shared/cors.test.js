@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isAllowedOrigin, withCors } from './cors.js';
+import { getAppEnvironment } from './environment.js';
 
 test('allows only exact configured origins in production', () => {
   const env = {
@@ -13,6 +14,8 @@ test('allows only exact configured origins in production', () => {
 });
 
 test('local fallback requires an explicit development environment', () => {
+  assert.equal(getAppEnvironment({}), 'production');
+  assert.equal(getAppEnvironment({ APP_ENV: 'development' }), 'development');
   assert.equal(isAllowedOrigin('http://localhost:3000', { APP_ENV: 'development' }), true);
   assert.equal(isAllowedOrigin('http://localhost:3000', {}), false);
   assert.equal(isAllowedOrigin('http://localhost:3000', {
