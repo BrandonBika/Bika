@@ -8,13 +8,9 @@ import {
   parseGeminiJson,
   PROMPT_VERSION
 } from '../snap-and-say/handler.js';
+import { withCors } from '../_shared/cors.js';
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'apikey, content-type, x-admin-task-secret',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json'
-};
+const CORS_HEADERS = { 'Content-Type': 'application/json' };
 const STAGING_HOST = 'gnwaaedtofazlkjkurea.supabase.co';
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TRACKING_NUMBER_PATTERN = /^CN-\d{4}-\d{4,}$/;
@@ -279,7 +275,7 @@ async function processReport(identifier, env, serviceRole, secrets, fetchImpl) {
   }
 }
 
-async function handleReprocessReport(request, context = {}) {
+async function handleReprocessReportInternal(request, context = {}) {
   const env = context.env || { get: (name) => Deno.env.get(name) };
   const fetchImpl = context.fetchImpl || fetch;
   if (request.method === 'OPTIONS') return jsonResponse({ ok: true });
@@ -347,6 +343,13 @@ async function handleReprocessReport(request, context = {}) {
       ])
     }, status);
   }
+}
+
+async function handleReprocessReport(request, context = {}) {
+  const result = await handleReprocessReportInternal(request, context);
+  return withCors(result, request, context.env, {
+    allowHeaders: 'apikey, content-type, x-admin-task-secret'
+  });
 }
 
 export { handleReprocessReport, constantTimeEqual };

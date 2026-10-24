@@ -1,14 +1,10 @@
 import { Buffer } from 'node:buffer';
 import { createGuestLookupCredentials } from '../_shared/report-submission.js';
+import { withCors } from '../_shared/cors.js';
 import { ReportCategory, ReportCategoryDefinitions } from '../../../packages/config/src/enums.js';
 import { MAX_AUDIO_SIZE, MAX_IMAGE_SIZE } from '../../../packages/media-client/src/limits.js';
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json'
-};
+const CORS_HEADERS = { 'Content-Type': 'application/json' };
 
 export const MAX_AUDIO_BYTES = MAX_AUDIO_SIZE;
 export const MAX_IMAGE_BYTES = MAX_IMAGE_SIZE;
@@ -1014,7 +1010,7 @@ async function parseReport(request) {
   return payload;
 }
 
-async function handleSnapAndSay(request, context = {}) {
+async function handleSnapAndSayInternal(request, context = {}) {
   const env = context.env || { get: () => '' };
   const fetchImpl = context.fetchImpl || fetch;
 
@@ -1112,9 +1108,17 @@ async function handleSnapAndSay(request, context = {}) {
   }
 }
 
+async function handleSnapAndSay(request, context = {}) {
+  const result = await handleSnapAndSayInternal(request, context);
+  return withCors(result, request, context.env, {
+    allowHeaders: 'authorization, apikey, content-type'
+  });
+}
+
 export {
   handleSnapAndSay,
   buildFallbackResponse,
+  parseGeminiJson,
   finalizeGeminiResult,
   validateGeminiResult,
   configuredGeminiModel

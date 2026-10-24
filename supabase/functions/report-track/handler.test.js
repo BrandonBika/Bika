@@ -233,5 +233,5 @@ test('answers preflight requests with CORS headers', async () => {
   ));
 
   assert.equal(response.status, 204);
-  assert.equal(response.headers.get('Access-Control-Allow-Origin'), '*');
+  assert.equal(response.headers.get('Access-Control-Allow-Origin'), null);
 });

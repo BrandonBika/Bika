@@ -1,3 +1,5 @@
+import { withCors } from '../_shared/cors.js';
+
 const TOKEN_TTL_SECONDS = 60 * 60;
 const IV_CHARACTERS = '0123456789abcdefghijklmnopqrstuvwxyz';
 const textEncoder = new TextEncoder();
@@ -75,7 +77,7 @@ function toZegoUserId(authUserId) {
   return authUserId.replaceAll('-', '');
 }
 
-export async function handleZegoToken(request, {
+async function handleZegoTokenInternal(request, {
   env,
   supabaseUrl,
   anonKey,
@@ -92,6 +94,7 @@ export async function handleZegoToken(request, {
   } catch {
     return json({ error: 'Call service is not configured.' }, 503);
   }
+
   if (!supabaseUrl || !anonKey) return json({ error: 'Authentication service is not configured.' }, 503);
 
   let authResponse;
@@ -121,4 +124,11 @@ export async function handleZegoToken(request, {
   } catch {
     return json({ error: 'Could not create a call token.' }, 500);
   }
+}
+
+export async function handleZegoToken(request, options = {}) {
+  const result = await handleZegoTokenInternal(request, options);
+  return withCors(result, request, options.env, {
+    allowHeaders: 'authorization, apikey, content-type'
+  });
 }

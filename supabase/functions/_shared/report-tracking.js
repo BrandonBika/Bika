@@ -1,20 +1,13 @@
+import { withCors } from './cors.js';
+
 const GENERIC_FAILURE = Object.freeze({
   error: 'Unable to retrieve report details.'
 });
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
-};
-
 function response(body, status = 200) {
   return new Response(body === null ? null : JSON.stringify(body), {
     status,
-    headers: {
-      ...CORS_HEADERS,
-      'Content-Type': 'application/json'
-    }
+    headers: { 'Content-Type': 'application/json' }
   });
 }
 
@@ -117,7 +110,7 @@ function queryUrl(base, table, params) {
   return `${base}/rest/v1/${table}?${query.toString()}`;
 }
 
-export async function handleReportTracking(request, context = {}) {
+async function handleReportTrackingInternal(request, context = {}) {
   if (request.method === 'OPTIONS') return response(null, 204);
   if (request.method !== 'POST') return response(GENERIC_FAILURE, 400);
 
@@ -244,4 +237,9 @@ export async function handleReportTracking(request, context = {}) {
     console.error('report-track request failed');
     return response(GENERIC_FAILURE, 400);
   }
+}
+
+export async function handleReportTracking(request, context = {}) {
+  const result = await handleReportTrackingInternal(request, context);
+  return withCors(result, request, context.env);
 }

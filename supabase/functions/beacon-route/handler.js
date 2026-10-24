@@ -1,9 +1,6 @@
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json'
-};
+import { withCors } from '../_shared/cors.js';
+
+const CORS_HEADERS = { 'Content-Type': 'application/json' };
 
 const MAX_SEARCH_LENGTH = 120;
 const MAX_ROUTE_METERS = 10000;
@@ -233,10 +230,11 @@ async function getRoute(origin, destination, env, fetchImpl) {
   };
 }
 
-export async function handleBeaconRoute(request, { env, fetchImpl = fetch } = {}) {
+async function handleBeaconRouteInternal(request, { env, fetchImpl = fetch } = {}) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
+
   if (request.method !== 'POST') {
     return jsonResponse({ code: 'METHOD_NOT_ALLOWED', message: 'Use POST for Beacon route requests' }, 405);
   }
@@ -273,4 +271,11 @@ export async function handleBeaconRoute(request, { env, fetchImpl = fetch } = {}
       message: error?.message || 'The Beacon route service could not complete the request'
     }, status);
   }
+}
+
+export async function handleBeaconRoute(request, options = {}) {
+  const result = await handleBeaconRouteInternal(request, options);
+  return withCors(result, request, options.env, {
+    allowHeaders: 'authorization, apikey, content-type'
+  });
 }

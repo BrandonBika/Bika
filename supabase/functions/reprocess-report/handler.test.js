@@ -4,12 +4,13 @@ import { Buffer } from 'node:buffer';
 import { handleReprocessReport } from './handler.js';
 
 const serviceToken = `header.${Buffer.from(JSON.stringify({ role: 'service_role' })).toString('base64url')}.signature`;
+const stagingUrl = 'https://gnwaaedtofazlkjkurea.supabase.co';
 const envValues = {
   ADMIN_TASK_SECRET: 'test-admin-secret',
   GEMINI_API_KEY: 'test-gemini-key',
   GEMINI_MODEL: 'configured-flash-model',
   SUPABASE_SERVICE_ROLE_KEY: 'test-service-role',
-  SUPABASE_URL: 'https://test-project.supabase.co'
+  SUPABASE_URL: stagingUrl
 };
 const result = {
   original_transcription: 'A street light is broken.',
@@ -17,7 +18,7 @@ const result = {
   english_translation: 'A street light is broken.',
   visual_evidence_summary: 'A street light is visible.',
   photo_matches_report: true,
-  issue_category: 'Street lighting',
+  issue_category: 'electricity',
   urgency: 'MEDIUM',
   requires_immediate_dispatch: false,
   extracted_location: 'GPS location provided.',
@@ -28,6 +29,7 @@ const result = {
   },
   alternative_organizations: [],
   classification_confidence: 0.9,
+  transcription_confidence: 0.9,
   routing_confidence: 0.85,
   needs_human_review: false,
   review_reason: ''
@@ -44,7 +46,7 @@ function request({
   secret = 'test-admin-secret'
 } = {}) {
   const token = `header.${Buffer.from(JSON.stringify({ role })).toString('base64url')}.signature`;
-  return new Request('https://test-project.supabase.co/functions/v1/reprocess-report', {
+  return new Request(`${stagingUrl}/functions/v1/reprocess-report`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${role === 'service_role' ? serviceToken : token}`,
@@ -56,7 +58,7 @@ function request({
 }
 
 function requestWithoutJwt({ reports = ['CN-2026-000014'], secret = 'test-admin-secret' } = {}) {
-  return new Request('https://test-project.supabase.co/functions/v1/reprocess-report', {
+  return new Request(`${stagingUrl}/functions/v1/reprocess-report`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -151,7 +153,7 @@ test('reprocesses only Needs Review reports with audio and records the result', 
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(body.ok, true);
+  assert.equal(body.ok, true, body.results.map((item) => item.error || 'ok').join('; '));
   assert.equal(body.results[0].report.transcription, result.original_transcription);
   assert.equal(body.results[0].report.translation, result.english_translation);
   assert.equal(body.results[0].report.category, result.issue_category);

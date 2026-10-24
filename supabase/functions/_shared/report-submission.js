@@ -1,9 +1,6 @@
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json'
-};
+import { withCors } from './cors.js';
+
+const CORS_HEADERS = { 'Content-Type': 'application/json' };
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024;
 const MAX_DESCRIPTION_LENGTH = 10000;
@@ -586,15 +583,21 @@ async function processSubmission(request, context, expectedGuest) {
 }
 
 export async function handleReportSubmission(request, context = {}, expectedGuest = false) {
-  if (request.method === 'OPTIONS') return jsonResponse({ ok: true });
+  if (request.method === 'OPTIONS') {
+    return withCors(jsonResponse({ ok: true }), request, context.env);
+  }
   if (request.method !== 'POST') {
-    return jsonResponse({ ok: false, code: 'METHOD_NOT_ALLOWED', message: 'Only POST is supported.' }, 405);
+    return withCors(
+      jsonResponse({ ok: false, code: 'METHOD_NOT_ALLOWED', message: 'Only POST is supported.' }, 405),
+      request,
+      context.env
+    );
   }
   try {
     const result = await processSubmission(request, context, expectedGuest);
-    return jsonResponse({ ok: true, ...result });
+    return withCors(jsonResponse({ ok: true, ...result }), request, context.env);
   } catch (error) {
-    return jsonResponse({
+    return withCors(jsonResponse({
       ok: false,
       code: error.code || 'REPORT_SUBMISSION_FAILED',
       message: error.message || 'The report could not be submitted.',
@@ -602,6 +605,6 @@ export async function handleReportSubmission(request, context = {}, expectedGues
         cleanup_status: error.cleanup_status,
         original_error_code: error.original_error_code || error.code
       } : {})
-    }, error.status || 500);
+    }, error.status || 500), request, context.env);
   }
 }
