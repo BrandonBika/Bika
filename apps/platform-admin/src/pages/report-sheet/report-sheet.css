@@ -1,0 +1,136 @@
+.sheet-table {
+  width: max-content;
+  min-width: 100%;
+}
+
+.sheet-table th,
+.sheet-table td {
+  white-space: nowrap;
+}
+
+.sheet-table .sheet-description-cell {
+  width: 280px;
+  max-width: 280px;
+  white-space: normal;
+}
+
+.sheet-description {
+  display: block;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-reporter-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reporter-type,
+.priority-badge,
+.sheet-duplicate-tag {
+  width: fit-content;
+  padding: 3px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.reporter-type-resident {
+  background: #edf0ed;
+  color: #45534a;
+}
+
+.reporter-type-guest {
+  background: #f4eee4;
+  color: #785d37;
+}
+
+.reporter-type-anonymous {
+  background: #efedf3;
+  color: #5f586b;
+}
+
+.sheet-priority-cell,
+.sheet-evidence-cell,
+.sheet-updated-cell {
+  white-space: nowrap;
+}
+
+.priority-low {
+  background: #e8e9e8;
+  color: #4f5350;
+}
+
+.priority-medium {
+  background: #fff0cb;
+  color: #7b5700;
+}
+
+.priority-high {
+  background: #fbe0dc;
+  color: #a22f24;
+}
+
+.priority-critical {
+  background: #751d1d;
+  color: #fff;
+}
+
+.priority-unknown {
+  border: 1px dashed #9a9da1;
+  background: #f4f4f4;
+  color: #65686b;
+}
+
+.sheet-description-cell {
+  white-space: normal;
+}
+
+.sheet-age,
+.sheet-evidence-zero,
+.sheet-evidence-unknown {
+  color: var(--ink-soft);
+}
+
+.sheet-evidence-cell {
+  text-align: center;
+}
+
+.sheet-evidence-mark {
+  position: relative;
+  display: inline-block;
+  width: 7px;
+  height: 10px;
+  margin-right: 5px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  vertical-align: -1px;
+}
+
+.sheet-evidence-mark::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 3px;
+  height: 5px;
+  border: 1px solid currentColor;
+  border-right: 0;
+  border-radius: 3px 0 0 3px;
+  content: '';
+}
+
+.sheet-status-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.sheet-duplicate-tag {
+  background: #f1edf7;
+  color: #5f4c76;
+}

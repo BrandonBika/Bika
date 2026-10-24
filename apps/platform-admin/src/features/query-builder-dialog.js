@@ -128,12 +128,14 @@ export function createQueryBuilderDialog({
         if (type === 'numeric') input.step = 'any';
         input.value = String(values[index] ?? '');
         input.addEventListener('input', () => {
-          if (isBetween) condition.value = [values[0] ?? '', values[1] ?? ''];
-          else condition.value = input.value;
           if (isBetween) {
-            condition.value[index] = input.value;
+            const current = Array.isArray(condition.value)
+              ? [...condition.value]
+              : [condition.value ?? '', condition.valueTo ?? ''];
+            current[index] = input.value;
+            condition.value = current;
             delete condition.valueTo;
-          }
+          } else condition.value = input.value;
           updateApplyState();
         });
         return input;
@@ -283,7 +285,9 @@ export function createQueryBuilderDialog({
     groupAdd.addEventListener('click', () => {
       group.children.push(emptyCondition());
       renderRows();
-      block.querySelector('.query-group-children .query-condition:last-child select')?.focus();
+      rows.children[index]
+        ?.querySelector('.query-group-children .query-condition:last-child select')
+        ?.focus();
     });
     const groupActions = document.createElement('div');
     groupActions.className = 'query-group-actions';

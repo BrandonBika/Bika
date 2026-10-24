@@ -1,6 +1,15 @@
 import { createEmptyState, createRetryState } from '../../components/state-message/state-message.js';
 import { getReportSheetData } from '../../features/reports.client.js';
 import { resolveReporterDisplay } from '../../features/reporter-display.js';
+import {
+  ageLabel,
+  descriptionOf,
+  formatCoordinate,
+  priorityBadge,
+  priorityRank,
+  relativeTime,
+  truncateText
+} from '../../features/sheet-format.js';
 import { getCategoryLabel, getStatusLabel } from '../../features/status-labels.js';
 
 const HISTORICAL_STATUSES = new Set(['Resolved', 'Rejected', 'Duplicate']);
@@ -23,6 +32,7 @@ export async function mountReportSheet(target) {
 
 function renderReportSheet(target, data) {
   const { reports, organizations } = data;
+  const reportsById = new Map(reports.map((report) => [report.id, report]));
   const state = {
     tab: 'active',
     status: '',
@@ -30,6 +40,7 @@ function renderReportSheet(target, data) {
     organization: '',
     unassigned: false,
     search: '',
+    sortBy: 'date',
     sortAscending: false,
     page: 0
   };
@@ -41,8 +52,8 @@ function renderReportSheet(target, data) {
   const search = document.createElement('input');
   search.className = 'sheet-search';
   search.type = 'search';
-  search.placeholder = 'Search tracking number';
-  search.setAttribute('aria-label', 'Search tracking number');
+  search.placeholder = 'Search tracking number or description';
+  search.setAttribute('aria-label', 'Search tracking number or description');
   search.addEventListener('input', () => {
     state.search = search.value.trim().toLocaleLowerCase();
     state.page = 0;
@@ -110,22 +121,27 @@ function renderReportSheet(target, data) {
   table.className = 'sheet-table';
   const thead = document.createElement('thead');
   const headingRow = document.createElement('tr');
-  for (const title of ['Reporter', 'Organisation', 'Category', 'Location', 'Date reported', 'Status', 'Actions']) {
+  for (const title of [
+    'Reporter',
+    'Organisation',
+    'Category',
+    'Priority',
+    'Description',
+    'Location',
+    'Date reported',
+    'Last updated',
+    'Evidence',
+    'Status',
+    'Actions'
+  ]) {
     const heading = document.createElement('th');
     heading.textContent = title;
     headingRow.append(heading);
   }
-  const dateHeading = headingRow.children[4];
-  const sortDate = document.createElement('button');
-  sortDate.type = 'button';
-  sortDate.className = 'sheet-sort';
-  sortDate.textContent = 'Date reported ↓';
-  sortDate.addEventListener('click', () => {
-    state.sortAscending = !state.sortAscending;
-    sortDate.textContent = `Date reported ${state.sortAscending ? '↑' : '↓'}`;
-    drawRows();
-  });
-  dateHeading.replaceChildren(sortDate);
+  const sortDate = createSortButton('Date reported', 'date');
+  headingRow.children[6].replaceChildren(sortDate);
+  const sortPriority = createSortButton('Priority', 'priority');
+  headingRow.children[3].replaceChildren(sortPriority);
   thead.append(headingRow);
   const tbody = document.createElement('tbody');
   table.append(thead, tbody);
@@ -147,6 +163,24 @@ function renderReportSheet(target, data) {
   pagination.append(pageInfo, previous, next);
   page.append(toolbar, tabs, countLine, tableWrap, emptyState, pagination);
 
+  function createSortButton(label, field) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'sheet-sort';
+    button.textContent = `${label} ${field === 'date' ? '↓' : '↕'}`;
+    button.addEventListener('click', () => {
+      if (state.sortBy === field) {
+        state.sortAscending = !state.sortAscending;
+      } else {
+        state.sortBy = field;
+        state.sortAscending = false;
+      }
+      state.page = 0;
+      drawRows();
+    });
+    return button;
+  }
+
   function drawRows() {
     const candidates = reports.filter((report) => {
       const category = categoryOf(report);
@@ -154,7 +188,11 @@ function renderReportSheet(target, data) {
       if (state.category && category !== state.category) return false;
       if (state.organization && report.assigned_organization_id !== state.organization) return false;
       if (state.unassigned && !isUnassignedOrMisallocated(report)) return false;
-      if (state.search && !String(report.tracking_number ?? '').toLocaleLowerCase().includes(state.search)) return false;
+      if (state.search) {
+        const tracking = String(report.tracking_number ?? '').toLocaleLowerCase();
+        const description = String(descriptionOf(report)).toLocaleLowerCase();
+        if (!tracking.includes(state.search) && !description.includes(state.search)) return false;
+      }
       return true;
     });
     const activeCount = candidates.filter((report) => !HISTORICAL_STATUSES.has(report.status)).length;
@@ -173,13 +211,18 @@ function renderReportSheet(target, data) {
         ? HISTORICAL_STATUSES.has(report.status)
         : !HISTORICAL_STATUSES.has(report.status)
     )).sort((left, right) => {
-      const difference = new Date(left.created_at ?? 0) - new Date(right.created_at ?? 0);
+      const difference = state.sortBy === 'priority'
+        ? priorityRank(left.urgency) - priorityRank(right.urgency)
+        : new Date(left.created_at ?? 0) - new Date(right.created_at ?? 0);
       return state.sortAscending ? difference : -difference;
     });
     const pageCount = Math.ceil(rowsToShow.length / PAGE_SIZE);
     state.page = Math.min(state.page, Math.max(0, pageCount - 1));
     const pageRows = rowsToShow.slice(state.page * PAGE_SIZE, (state.page + 1) * PAGE_SIZE);
-    tbody.replaceChildren(...pageRows.map((report) => createReportRow(report, data)));
+    const now = new Date();
+    tbody.replaceChildren(...pageRows.map((report) => createReportRow(report, data, reportsById, now)));
+    sortDate.textContent = `Date reported ${state.sortBy === 'date' ? (state.sortAscending ? '↑' : '↓') : '↕'}`;
+    sortPriority.textContent = `Priority ${state.sortBy === 'priority' ? (state.sortAscending ? '↑' : '↓') : '↕'}`;
     emptyState.replaceChildren();
     if (pageRows.length === 0) {
       emptyState.append(createEmptyState({
@@ -202,7 +245,7 @@ function renderReportSheet(target, data) {
   drawRows();
 }
 
-function createReportRow(report, data) {
+function createReportRow(report, data, reportsById, now) {
   const row = document.createElement('tr');
   const reporter = resolveReporterDisplay({
     report,
@@ -210,13 +253,20 @@ function createReportRow(report, data) {
     guestContact: data.guestContacts.get(report.id)
   });
   const reporterCell = document.createElement('td');
-  const reporterName = document.createElement('div');
+  const reporterLine = document.createElement('div');
+  reporterLine.className = 'sheet-reporter-line';
+  const reporterName = document.createElement('span');
   reporterName.className = 'rep-name';
   reporterName.textContent = reporter.name;
+  const reporterType = createPill(
+    reporter.kind === 'resident' ? 'Resident' : reporter.kind === 'guest' ? 'Guest' : 'Anonymous',
+    `reporter-type reporter-type-${reporter.kind}`
+  );
+  reporterLine.append(reporterName, reporterType);
   const tracking = document.createElement('div');
   tracking.className = 'rep-sub';
   tracking.textContent = report.tracking_number || 'No tracking number';
-  reporterCell.append(reporterName, tracking);
+  reporterCell.append(reporterLine, tracking);
   if (reporter.phone) {
     const phone = document.createElement('div');
     phone.className = 'cell-sub';
@@ -234,25 +284,70 @@ function createReportRow(report, data) {
   }
   const categoryCell = document.createElement('td');
   categoryCell.textContent = categoryOf(report);
+  const priorityCell = document.createElement('td');
+  priorityCell.className = 'sheet-priority-cell';
+  const priority = priorityBadge(report.urgency);
+  priorityCell.append(createPill(priority.label, `priority-badge priority-${priority.level}`));
+  const descriptionCell = document.createElement('td');
+  descriptionCell.className = 'sheet-description-cell';
+  const description = String(descriptionOf(report));
+  const descriptionText = document.createElement('span');
+  descriptionText.className = 'sheet-description';
+  descriptionText.textContent = truncateText(description, 90) || '–';
+  descriptionText.title = description;
+  descriptionCell.append(descriptionText);
   const locationCell = document.createElement('td');
   const locationName = document.createElement('div');
   locationName.className = 'rep-name';
-  locationName.textContent = report.location_name || 'Captured location';
+  locationName.textContent = report.location_name || 'Pinned location';
   locationCell.append(locationName);
   const latitude = coordinate(report.latitude, report.location_lat);
   const longitude = coordinate(report.longitude, report.location_lng);
   if (latitude !== null && longitude !== null) {
     const coordinates = document.createElement('div');
     coordinates.className = 'cell-sub';
-    coordinates.textContent = `${latitude}, ${longitude}`;
+    coordinates.textContent = `${formatCoordinate(latitude)}, ${formatCoordinate(longitude)}`;
     locationCell.append(coordinates);
   }
   const dateCell = document.createElement('td');
-  dateCell.textContent = dateOnly(report.created_at);
+  dateCell.append(document.createTextNode(dateOnly(report.created_at)));
+  const age = document.createElement('div');
+  age.className = 'cell-sub sheet-age';
+  age.textContent = ageLabel(report.created_at, now) || '–';
+  dateCell.append(age);
+  const updatedCell = document.createElement('td');
+  updatedCell.className = 'sheet-updated-cell';
+  updatedCell.textContent = relativeTime(report.updated_at, now) || '–';
+  updatedCell.title = report.updated_at ? String(report.updated_at) : '';
+  const evidenceCell = document.createElement('td');
+  evidenceCell.className = 'sheet-evidence-cell';
+  const evidenceCounts = data.evidenceCounts;
+  if (evidenceCounts instanceof Map) {
+    const count = evidenceCounts.get(report.id) ?? 0;
+    const clipMark = document.createElement('span');
+    clipMark.className = 'sheet-evidence-mark';
+    clipMark.setAttribute('aria-hidden', 'true');
+    const evidenceCount = document.createElement('span');
+    evidenceCount.textContent = String(count);
+    if (count === 0) evidenceCount.className = 'sheet-evidence-zero';
+    evidenceCell.append(clipMark, evidenceCount);
+  } else {
+    evidenceCell.textContent = '–';
+    evidenceCell.className += ' sheet-evidence-unknown';
+  }
   const statusCell = document.createElement('td');
   const statusPill = createPill(getStatusLabel(report.status), statusClass(report.status));
   statusPill.title = String(report.status ?? '');
+  statusCell.className = 'sheet-status-cell';
   statusCell.append(statusPill);
+  if (report.duplicate_of) {
+    const duplicate = reportsById.get(report.duplicate_of);
+    const duplicateTag = createPill(
+      duplicate?.tracking_number ? `Duplicate of ${duplicate.tracking_number}` : 'Duplicate',
+      'sheet-duplicate-tag'
+    );
+    statusCell.append(duplicateTag);
+  }
   const actionCell = document.createElement('td');
   const view = makeButton('View');
   view.className = 'sheet-view-button';
@@ -260,7 +355,19 @@ function createReportRow(report, data) {
     window.location.hash = `/report-detail/${encodeURIComponent(report.id)}`;
   });
   actionCell.append(view);
-  row.append(reporterCell, organizationCell, categoryCell, locationCell, dateCell, statusCell, actionCell);
+  row.append(
+    reporterCell,
+    organizationCell,
+    categoryCell,
+    priorityCell,
+    descriptionCell,
+    locationCell,
+    dateCell,
+    updatedCell,
+    evidenceCell,
+    statusCell,
+    actionCell
+  );
   return row;
 }
 

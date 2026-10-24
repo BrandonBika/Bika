@@ -1,4 +1,5 @@
 import { supabase } from './supabase.client.js';
+import { evidenceCountMap } from './sheet-format.js';
 import { withTimeout } from './with-timeout.js';
 
 function throwQueryError(error) {
@@ -25,6 +26,31 @@ async function optionalLookup(query, label, fallback) {
     });
     return fallback;
   }
+}
+
+export async function listEvidenceCounts(reportIds) {
+  const counts = new Map();
+  const ids = [...new Set(reportIds ?? [])].filter((id) => id !== null && id !== undefined);
+  for (let index = 0; index < ids.length; index += 200) {
+    try {
+      const { data, error } = await withTimeout(
+        supabase.from('report_evidence')
+          .select('report_id')
+          .in('report_id', ids.slice(index, index + 200)),
+        'Report evidence counts query'
+      );
+      if (error) throw error;
+      for (const [reportId, count] of evidenceCountMap(data)) {
+        counts.set(reportId, (counts.get(reportId) ?? 0) + count);
+      }
+    } catch (error) {
+      console.error('Report evidence counts query failed.', {
+        error: error?.message || 'Unknown error'
+      });
+      return null;
+    }
+  }
+  return counts;
 }
 
 export async function listReports() {
@@ -57,7 +83,7 @@ export async function listOrganizations() {
 
 export async function getReportSheetData() {
   const reports = await listReports();
-  const organizations = await listOrganizations();
+  const reportIds = reports.map((report) => report.id);
   const guestReportIds = reports
     .filter((report) => report.reporter_type === 'guest')
     .map((report) => report.id);
@@ -66,7 +92,8 @@ export async function getReportSheetData() {
     .map((report) => report.reporter_id)
     .filter((id) => id !== null && id !== undefined))];
 
-  const [guestResult, residentResult] = await Promise.all([
+  const [organizations, guestResult, residentResult, evidenceCounts] = await Promise.all([
+    listOrganizations(),
     guestReportIds.length
       ? optionalLookup(
         supabase.from('guest_contacts')
@@ -77,18 +104,20 @@ export async function getReportSheetData() {
       )
       : Promise.resolve([]),
     residentIds.length
-      ? optionalLookup(
+    ? optionalLookup(
         supabase.from('resident_profiles')
           .select('id,full_name,phone,email')
           .in('id', residentIds),
         'Resident profiles query',
         []
       )
-      : Promise.resolve([])
+    : Promise.resolve([]),
+    listEvidenceCounts(reportIds)
   ]);
   return {
     reports,
     organizations,
+    evidenceCounts,
     guestContacts: new Map(guestResult.map((contact) => [contact.report_id, contact])),
     residentProfiles: new Map(residentResult.map((profile) => [profile.id, profile]))
   };
