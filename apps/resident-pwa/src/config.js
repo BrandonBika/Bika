@@ -3,11 +3,12 @@
  * Central runtime configuration for Resident PWA.
  */
 import runtimeConfig from '../runtime-config.js';
+import runtimeOptions from '../runtime-options.js';
 
 export const config = {
-  env: runtimeConfig.env || 'development',
-  useMock: runtimeConfig.useMock === true,
-  beaconEnabled: runtimeConfig.beaconEnabled === true,
+  env: runtimeOptions.env || 'development',
+  useMock: runtimeOptions.useMock === true,
+  beaconEnabled: runtimeOptions.beaconEnabled === true,
   supabaseUrl: runtimeConfig.supabaseUrl || '',
   supabaseAnonKey: runtimeConfig.supabaseAnonKey || '',
   tileHost: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',

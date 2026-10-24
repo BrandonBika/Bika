@@ -1,4 +1,4 @@
-import residentRuntimeConfig from '../../resident-pwa/runtime-config.js';
+import runtimeConfig from '../runtime-config.js';
 
 export const PLATFORM_ROLES = Object.freeze({
   ADMIN: 'platform_admin',
@@ -6,8 +6,8 @@ export const PLATFORM_ROLES = Object.freeze({
 });
 
 export const SUPABASE_CONFIG = Object.freeze({
-  url: residentRuntimeConfig.supabaseUrl,
-  anonKey: residentRuntimeConfig.supabaseAnonKey
+  url: runtimeConfig.supabaseUrl,
+  anonKey: runtimeConfig.supabaseAnonKey
 });
 
 export const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000;

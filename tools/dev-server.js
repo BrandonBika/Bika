@@ -25,22 +25,16 @@ const CONTENT_SECURITY_POLICY = [
   "worker-src 'self' blob:",
   "frame-ancestors 'none'"
 ].join('; ');
-const runtimeConfig = demoMode
-  ? {
-    env: 'development',
-    useMock: false,
-    beaconEnabled: true,
-    supabaseUrl: devConfig.supabaseUrl,
-    supabaseAnonKey: devConfig.anonKey
-  }
-  : {
-    env: 'development',
-    useMock: false,
-    beaconEnabled: false,
-    supabaseUrl: process.env.SUPABASE_URL || '',
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ''
-  };
+const runtimeConfig = {
+  supabaseUrl: demoMode ? devConfig.supabaseUrl : process.env.SUPABASE_URL || '',
+  supabaseAnonKey: demoMode ? devConfig.anonKey : process.env.SUPABASE_ANON_KEY || ''
+};
 const runtimeConfigSource = `const runtimeConfig = ${JSON.stringify(runtimeConfig)};\nexport default runtimeConfig;\n`;
+const runtimeOptionsSource = `const runtimeOptions = ${JSON.stringify({
+  env: 'development',
+  useMock: false,
+  beaconEnabled: demoMode
+})};\nexport default runtimeOptions;\n`;
 
 const packageImports = {};
 for (const entry of fs.readdirSync(path.join(ROOT, 'packages'), { withFileTypes: true })) {
@@ -200,7 +194,9 @@ const server = http.createServer((req, res) => {
   if ([
     '/runtime-config.js',
     '/apps/resident-pwa/runtime-config.js',
-    '/resident-pwa/runtime-config.js'
+    '/resident-pwa/runtime-config.js',
+    '/platform-admin/runtime-config.js',
+    '/apps/platform-admin/runtime-config.js'
   ].includes(reqPath)) {
     res.writeHead(200, {
       'Content-Type': 'text/javascript',
@@ -209,6 +205,21 @@ const server = http.createServer((req, res) => {
       'Cache-Control': 'no-store'
     });
     res.end(runtimeConfigSource);
+    return;
+  }
+
+  if ([
+    '/runtime-options.js',
+    '/apps/resident-pwa/runtime-options.js',
+    '/resident-pwa/runtime-options.js'
+  ].includes(reqPath)) {
+    res.writeHead(200, {
+      'Content-Type': 'text/javascript',
+      'Content-Security-Policy': CONTENT_SECURITY_POLICY,
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'no-store'
+    });
+    res.end(runtimeOptionsSource);
     return;
   }
 

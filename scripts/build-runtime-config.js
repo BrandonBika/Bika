@@ -3,9 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const APP_DIR = path.join(ROOT, 'apps', 'resident-pwa');
 const OUTPUT_DIR = path.join(ROOT, 'dist');
 const LOCAL_ENV_PATH = path.join(ROOT, '.env');
+const DEPLOYED_APPS = ['resident-pwa', 'platform-admin'];
+const EXCLUDED_NAMES = new Set(['README.md', 'PROJECT_REPORT.md', 'package.json']);
 
 function loadLocalEnv() {
   if (!fs.existsSync(LOCAL_ENV_PATH)) return;
@@ -40,73 +41,192 @@ function getPublicConfig() {
   };
 }
 
-function copyResidentApp() {
-  fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
-  fs.cpSync(APP_DIR, OUTPUT_DIR, {
+function copyDirectory(sourceDir, targetDir, { excludeIndex = false } = {}) {
+  fs.cpSync(sourceDir, targetDir, {
     recursive: true,
     filter(sourcePath) {
-      const relativePath = path.relative(APP_DIR, sourcePath);
+      const relativePath = path.relative(sourceDir, sourcePath);
       const segments = relativePath.split(path.sep);
       const name = path.basename(sourcePath);
       return !segments.includes('test')
-        && !['README.md', 'PROJECT_REPORT.md', 'package.json'].includes(name);
+        && !EXCLUDED_NAMES.has(name)
+        && !(excludeIndex && relativePath === 'index.html');
     }
   });
 }
 
-function addSharedPackages() {
+function copyLandingPage() {
+  const sourceDir = path.join(ROOT, 'apps', 'landing');
+  fs.copyFileSync(path.join(sourceDir, 'index.html'), path.join(OUTPUT_DIR, 'index.html'));
+  copyDirectory(sourceDir, path.join(OUTPUT_DIR, 'landing'), { excludeIndex: true });
+}
+
+function copySharedPackages() {
   const packagesDir = path.join(ROOT, 'packages');
-  const imports = {};
 
   for (const entry of fs.readdirSync(packagesDir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
 
     const sourceDir = path.join(packagesDir, entry.name, 'src');
-    const entryPath = path.join(sourceDir, 'index.js');
-    if (!fs.existsSync(entryPath)) continue;
+    if (!fs.existsSync(path.join(sourceDir, 'index.js'))) continue;
+    fs.cpSync(sourceDir, path.join(OUTPUT_DIR, 'packages', entry.name, 'src'), { recursive: true });
+  }
+}
 
-    const targetDir = path.join(OUTPUT_DIR, 'packages', entry.name, 'src');
-    fs.cpSync(sourceDir, targetDir, { recursive: true });
+function addSharedImportMap(indexPath) {
+  const html = fs.readFileSync(indexPath, 'utf8');
+  const imports = {};
+  const packageDirs = path.join(OUTPUT_DIR, 'packages');
+
+  for (const entry of fs.readdirSync(packageDirs, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    if (!fs.existsSync(path.join(packageDirs, entry.name, 'src', 'index.js'))) continue;
     imports[`@civicneuro/${entry.name}`] = `/packages/${entry.name}/src/index.js`;
   }
 
-  const indexPath = path.join(OUTPUT_DIR, 'index.html');
-  const html = fs.readFileSync(indexPath, 'utf8');
-  const importMapPattern = /(<script\s+type="importmap"\s+id="cn-importmap">)([\s\S]*?)(<\/script>)/;
+  const importMapPattern = /(<script\s+type="importmap"(?:\s+id="[^"]+")?\s*>)([\s\S]*?)(<\/script>)/i;
   const match = html.match(importMapPattern);
-  if (!match) {
-    throw new Error('Could not find the resident app import map in apps/resident-pwa/index.html.');
+  let output;
+
+  if (match) {
+    const importMap = JSON.parse(match[2]);
+    importMap.imports = { ...imports, ...importMap.imports };
+    output = html.replace(importMapPattern, `${match[1]}${JSON.stringify(importMap)}${match[3]}`);
+  } else {
+    const importMap = `<script type="importmap">${JSON.stringify({ imports })}</script>\n`;
+    output = html.replace(/(<script\s+type="module"(?=\s|>))/i, `${importMap}  $1`);
   }
 
-  const importMap = JSON.parse(match[2]);
-  importMap.imports = { ...imports, ...importMap.imports };
-  fs.writeFileSync(indexPath, html.replace(
-    importMapPattern,
-    `${match[1]}${JSON.stringify(importMap)}${match[3]}`
-  ));
+  if (output === html && !match && Object.keys(imports).length > 0) {
+    throw new Error(`Could not insert an import map into ${indexPath}.`);
+  }
+  fs.writeFileSync(indexPath, output);
 }
 
-function copyLandingAssets() {
-  const sourceDir = path.join(ROOT, 'apps', 'landing', 'assets');
-  const targetDir = path.join(OUTPUT_DIR, 'landing', 'assets');
-  fs.cpSync(sourceDir, targetDir, { recursive: true });
+function writeRuntimeConfigs(publicConfig) {
+  const runtimeConfig = `const runtimeConfig = ${JSON.stringify(publicConfig)};\nexport default runtimeConfig;\n`;
+
+  for (const app of DEPLOYED_APPS) {
+    const appOutputDir = path.join(OUTPUT_DIR, app);
+    fs.writeFileSync(path.join(appOutputDir, 'runtime-config.js'), runtimeConfig);
+  }
+
+  fs.writeFileSync(
+    path.join(OUTPUT_DIR, 'resident-pwa', 'runtime-options.js'),
+    'const runtimeOptions = { env: \'production\', useMock: false, beaconEnabled: false };\n'
+      + 'export default runtimeOptions;\n'
+  );
+}
+
+function resolveLocalTarget(reference, baseDir) {
+  if (!reference || reference.startsWith('#') || /^(?:[a-z]+:|\/\/)/i.test(reference)) return null;
+  const rawPath = reference.split(/[?#]/, 1)[0];
+  const targetPath = reference.startsWith('/')
+    ? path.join(OUTPUT_DIR, decodeURIComponent(rawPath.slice(1)))
+    : path.resolve(baseDir, decodeURIComponent(rawPath));
+  return targetPath;
+}
+
+function assertExists(reference, baseDir, sourceDescription) {
+  const target = resolveLocalTarget(reference, baseDir);
+  if (target && !fs.existsSync(target)) {
+    throw new Error(`${sourceDescription} points to missing build output: ${reference}`);
+  }
+}
+
+function validateHtmlAssets(indexPath) {
+  const html = fs.readFileSync(indexPath, 'utf8');
+  const appDir = path.dirname(indexPath);
+
+  for (const match of html.matchAll(/\b(?:src|href)=["']([^"']+)["']/gi)) {
+    assertExists(match[1], appDir, indexPath);
+  }
+
+  for (const match of html.matchAll(/<script\s+type="importmap"(?:\s+id="[^"]+")?\s*>([\s\S]*?)<\/script>/gi)) {
+    const importMap = JSON.parse(match[1]);
+    for (const target of Object.values(importMap.imports || {})) {
+      assertExists(target, appDir, `${indexPath} import map`);
+    }
+  }
+}
+
+function validateCssAssets(directory) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      validateCssAssets(entryPath);
+    } else if (entry.isFile() && entry.name.endsWith('.css')) {
+      const css = fs.readFileSync(entryPath, 'utf8');
+      for (const match of css.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/gi)) {
+        assertExists(match[1].trim(), path.dirname(entryPath), entryPath);
+      }
+    }
+  }
+}
+
+function validateBuild() {
+  const expectedIndexes = [
+    path.join(OUTPUT_DIR, 'index.html'),
+    ...DEPLOYED_APPS.map((app) => path.join(OUTPUT_DIR, app, 'index.html'))
+  ];
+  for (const indexPath of expectedIndexes) {
+    if (!fs.existsSync(indexPath)) throw new Error(`Build is missing ${indexPath}.`);
+    validateHtmlAssets(indexPath);
+  }
+
+  for (const app of DEPLOYED_APPS) {
+    const runtimeConfig = fs.readFileSync(path.join(OUTPUT_DIR, app, 'runtime-config.js'), 'utf8');
+    const configMatch = runtimeConfig.match(/const runtimeConfig = (\{.*\});/);
+    if (!configMatch) throw new Error(`Could not validate ${app} runtime config.`);
+    const keys = Object.keys(JSON.parse(configMatch[1])).sort();
+    if (keys.join(',') !== 'supabaseAnonKey,supabaseUrl') {
+      throw new Error(`${app} runtime config must contain only Supabase URL and anon key.`);
+    }
+  }
+
+  const [residentRuntimeConfig, platformRuntimeConfig] = DEPLOYED_APPS.map((app) => {
+    const contents = fs.readFileSync(path.join(OUTPUT_DIR, app, 'runtime-config.js'), 'utf8');
+    return JSON.parse(contents.match(/const runtimeConfig = (\{.*\});/)[1]);
+  });
+  if (JSON.stringify(residentRuntimeConfig) !== JSON.stringify(platformRuntimeConfig)) {
+    throw new Error('Resident and platform dashboard Supabase configs do not match.');
+  }
+
+  const residentDir = path.join(OUTPUT_DIR, 'resident-pwa');
+  const manifestPath = path.join(residentDir, 'manifest.webmanifest');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  if (!manifest.start_url.startsWith('./') || manifest.scope !== './') {
+    throw new Error('Resident manifest start_url and scope must remain inside /resident-pwa/.');
+  }
+  assertExists(manifest.start_url, residentDir, manifestPath);
+  for (const icon of manifest.icons || []) assertExists(icon.src, residentDir, manifestPath);
+
+  const serviceWorkerPath = path.join(residentDir, 'service-worker.js');
+  const serviceWorker = fs.readFileSync(serviceWorkerPath, 'utf8');
+  const shellAssets = serviceWorker.match(/const SHELL_ASSETS = \[([\s\S]*?)\];/);
+  if (!shellAssets) throw new Error('Could not find resident service worker shell assets.');
+  for (const match of shellAssets[1].matchAll(/['"]([^'"]+)['"]/g)) {
+    assertExists(match[1], residentDir, serviceWorkerPath);
+  }
+
+  validateCssAssets(OUTPUT_DIR);
 }
 
 loadLocalEnv();
 const publicConfig = getPublicConfig();
-copyResidentApp();
-addSharedPackages();
-copyLandingAssets();
+fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
+fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+copyLandingPage();
+copySharedPackages();
 
-const runtimeConfig = {
-  env: 'production',
-  useMock: false,
-  beaconEnabled: false,
-  ...publicConfig
-};
-fs.writeFileSync(
-  path.join(OUTPUT_DIR, 'runtime-config.js'),
-  `const runtimeConfig = ${JSON.stringify(runtimeConfig)};\nexport default runtimeConfig;\n`
-);
+for (const app of DEPLOYED_APPS) {
+  const sourceDir = path.join(ROOT, 'apps', app);
+  const targetDir = path.join(OUTPUT_DIR, app);
+  copyDirectory(sourceDir, targetDir);
+  addSharedImportMap(path.join(targetDir, 'index.html'));
+}
 
-console.log('Built resident PWA to dist/.');
+writeRuntimeConfigs(publicConfig);
+validateBuild();
+
+console.log('Built landing page, resident PWA, platform dashboard, and shared packages to dist/.');
