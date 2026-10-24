@@ -70,7 +70,7 @@ function renderDashboard(target, reports, staff, onSignOut) {
   );
   boundaryListButton.classList.add('solid-accent');
   const uploadDialog = createBoundaryUploadDialog();
-  const boundariesDialog = createBoundariesDialog(staff.role === 'platform_admin');
+  const boundariesDialog = createBoundariesDialog();
   toolbar.append(
     queryButton,
     clusterControl.control,
@@ -261,19 +261,21 @@ function renderDashboard(target, reports, staff, onSignOut) {
               row.message.hidden = false;
             }
           },
-          onDelete: boundariesDialog.isAdmin ? async (row) => {
-            if (!window.confirm(`Delete boundary "${boundary.name}"?`)) return;
+          onDelete: async (row) => {
             row.deleteButton.disabled = true;
             try {
               await deleteBoundary(boundary.path);
               hideBoundary(boundary.path);
-              await refreshBoundaries();
+              row.row.remove();
+              boundaryToast.textContent = 'Boundary deleted';
+              boundaryToast.hidden = false;
+              setTimeout(() => { boundaryToast.hidden = true; }, 4000);
             } catch (error) {
               row.deleteButton.disabled = false;
               setSafeText(row.message, error.message);
               row.message.hidden = false;
             }
-          } : null
+          }
         }, state.boundaryLayers.has(boundary.path)));
       }
     } catch (error) {
@@ -651,7 +653,7 @@ function createBoundaryUploadDialog() {
   return { dialog, fileInput, nameInput, preview, error, progress, cancelButton, uploadButton };
 }
 
-function createBoundariesDialog(isAdmin) {
+function createBoundariesDialog() {
   const dialog = document.createElement('dialog');
   dialog.className = 'boundary-dialog boundary-list-dialog';
   const heading = document.createElement('h2');
@@ -665,7 +667,7 @@ function createBoundariesDialog(isAdmin) {
   list.className = 'boundary-list';
   list.setAttribute('aria-live', 'polite');
   dialog.append(header, list);
-  return { dialog, list, closeButton, isAdmin };
+  return { dialog, list, closeButton };
 }
 
 function createBoundaryRow(boundary, actions, isShown) {
@@ -676,7 +678,7 @@ function createBoundaryRow(boundary, actions, isShown) {
   const name = document.createElement('strong');
   name.textContent = boundary.name;
   const metadata = document.createElement('span');
-  metadata.textContent = `${formatFileSize(boundary.size)} · ${formatBoundaryDate(boundary.createdAt)}`;
+  metadata.textContent = `${formatFileSize(boundary.size)} · uploaded ${formatBoundaryDate(boundary.createdAt)}`;
   details.append(name, metadata);
   const controls = document.createElement('div');
   controls.className = 'boundary-row-actions';
@@ -687,10 +689,21 @@ function createBoundaryRow(boundary, actions, isShown) {
   message.className = 'boundary-error boundary-row-error';
   message.setAttribute('role', 'alert');
   message.hidden = true;
-  const deleteButton = actions.onDelete ? createDialogButton('Delete', 'danger') : null;
+  const deleteButton = createDialogButton('Delete', 'danger');
+  const confirm = document.createElement('div');
+  confirm.className = 'boundary-delete-confirm';
+  confirm.hidden = true;
+  const prompt = document.createElement('p');
+  prompt.textContent = `Delete ${boundary.name}? This cannot be undone.`;
+  const confirmActions = document.createElement('div');
+  confirmActions.className = 'boundary-row-actions';
+  const cancelDeleteButton = createDialogButton('Cancel', 'secondary');
+  const confirmDeleteButton = createDialogButton('Delete', 'danger');
+  confirmActions.append(cancelDeleteButton, confirmDeleteButton);
+  confirm.append(prompt, confirmActions);
   controls.append(toggleButton, zoomButton);
-  if (deleteButton) controls.append(deleteButton);
-  row.append(details, controls, message);
+  controls.append(deleteButton);
+  row.append(details, controls, confirm, message);
   toggleButton.addEventListener('click', () => {
     message.hidden = true;
     const shown = toggleButton.getAttribute('aria-pressed') === 'true';
@@ -700,12 +713,24 @@ function createBoundaryRow(boundary, actions, isShown) {
     message.hidden = true;
     void actions.onZoom({ message, toggleButton });
   });
-  if (deleteButton) {
-    deleteButton.addEventListener('click', () => {
-      message.hidden = true;
-      void actions.onDelete({ deleteButton, message });
+  deleteButton.addEventListener('click', () => {
+    message.hidden = true;
+    confirm.hidden = false;
+    confirmDeleteButton.focus();
+  });
+  cancelDeleteButton.addEventListener('click', () => {
+    confirm.hidden = true;
+    deleteButton.focus();
+  });
+  confirmDeleteButton.addEventListener('click', () => {
+    message.hidden = true;
+    void actions.onDelete({
+      deleteButton: confirmDeleteButton,
+      message,
+      row,
+      cancelButton: cancelDeleteButton
     });
-  }
+  });
   return row;
 }
 
@@ -745,7 +770,7 @@ function formatBoundaryDate(value) {
   const date = new Date(value);
   return Number.isNaN(date.valueOf())
     ? 'Date unavailable'
-    : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
+    : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
 }
 
 async function loadMarkerClusterGroup() {

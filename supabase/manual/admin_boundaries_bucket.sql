@@ -33,13 +33,14 @@ create policy platform_staff_insert_admin_boundary_objects
     and right(lower(name), length('.geojson')) = '.geojson'
   );
 
--- Replace the delete policy so only active platform admins can remove boundary objects.
+-- Replace the delete policy so active platform staff can remove boundary objects.
 drop policy if exists platform_admin_delete_admin_boundary_objects on storage.objects;
-create policy platform_admin_delete_admin_boundary_objects
+drop policy if exists platform_staff_delete_admin_boundary_objects on storage.objects;
+create policy platform_staff_delete_admin_boundary_objects
   on storage.objects for delete to authenticated
   using (
     bucket_id = 'admin-boundaries'
-    and public.is_platform_admin()
+    and public.is_platform_staff()
   );
 
 -- Rollback manually only when the bucket contains no objects.
@@ -47,6 +48,7 @@ create policy platform_admin_delete_admin_boundary_objects
 -- drop policy if exists platform_admin_insert_admin_boundary_objects on storage.objects;
 -- drop policy if exists platform_staff_insert_admin_boundary_objects on storage.objects;
 -- drop policy if exists platform_admin_delete_admin_boundary_objects on storage.objects;
+-- drop policy if exists platform_staff_delete_admin_boundary_objects on storage.objects;
 -- delete from storage.buckets
 -- where id = 'admin-boundaries'
 --   and not exists (

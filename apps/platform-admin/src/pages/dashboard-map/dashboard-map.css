@@ -575,6 +575,24 @@
   font-size: 11px;
 }
 
+.boundary-delete-confirm {
+  grid-column: 1 / -1;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+}
+
+.boundary-delete-confirm[hidden] {
+  display: none;
+}
+
+.boundary-delete-confirm p {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
 .boundary-row-error {
   grid-column: 1 / -1;
 }

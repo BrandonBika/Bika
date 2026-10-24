@@ -83,21 +83,24 @@ export async function downloadBoundary(path) {
 
 export async function deleteBoundary(path) {
   return withTimeout((async () => {
-    if (getStaffContext()?.role !== 'platform_admin') {
-      throw new Error("You don't have permission to delete boundaries.");
+    const role = getStaffContext()?.role;
+    if (!['platform_admin', 'platform_employee'].includes(role)) {
+      throw new Error("You don't have permission to delete this boundary");
     }
     const { error } = await supabase.storage.from(BUCKET).remove([path]);
-    throwStorageError(error);
+    throwStorageError(error, 'delete');
     boundaryListCache = null;
     parsedBoundaryCache.delete(path);
     return true;
   })(), 'Boundary deletion');
 }
 
-function throwStorageError(error) {
+function throwStorageError(error, action = 'access') {
   if (!error) return;
   if (Number(error.statusCode ?? error.status) === 403) {
-    throw new Error("You don't have permission to access this boundary.");
+    throw new Error(action === 'delete'
+      ? "You don't have permission to delete this boundary"
+      : "You don't have permission to access this boundary.");
   }
   if (Number(error.statusCode ?? error.status) === 404) {
     throw new Error('The boundary was not found.');
