@@ -1,0 +1,26 @@
+-- No authoritative organisation onboarding list was found in the project.
+-- The local migrations define no CHECK constraints for type or jurisdiction_level.
+-- Replace every placeholder only after confirming the intended organisation
+-- and allowed values with the project owner.
+--
+-- INSERT INTO public.organizations (
+--   name,
+--   type,
+--   jurisdiction_level,
+--   province,
+--   municipality
+-- )
+-- SELECT
+--   '<confirmed organisation name>',
+--   '<confirmed type>',
+--   '<confirmed jurisdiction_level>',
+--   '<confirmed province>',
+--   '<confirmed municipality>'
+-- WHERE NOT EXISTS (
+--   SELECT 1
+--   FROM public.organizations
+--   WHERE name = '<confirmed organisation name>'
+--     AND type = '<confirmed type>'
+--     AND jurisdiction_level = '<confirmed jurisdiction_level>'
+-- )
+-- ON CONFLICT DO NOTHING;
