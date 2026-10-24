@@ -422,6 +422,183 @@
   color: var(--red);
 }
 
+.boundary-dialog {
+  width: min(620px, calc(100vw - 32px));
+  max-height: min(80vh, 720px);
+  padding: 22px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  box-shadow: 0 16px 48px rgb(17 18 20 / 24%);
+}
+
+.boundary-dialog::backdrop {
+  background: rgb(17 18 20 / 45%);
+}
+
+.boundary-dialog h2 {
+  margin: 0 0 8px;
+  font: 600 18px/1.3 var(--font-heading);
+}
+
+.boundary-dialog > p {
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.boundary-dialog > label {
+  display: grid;
+  gap: 6px;
+  margin-top: 13px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.boundary-dialog input[type="file"],
+.boundary-dialog input[type="text"] {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.boundary-dialog .boundary-preview,
+.boundary-dialog .boundary-progress {
+  margin: 12px 0 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.boundary-dialog .boundary-error {
+  margin: 10px 0 0;
+  color: var(--red);
+  font-size: 12px;
+}
+
+.boundary-dialog-actions,
+.boundary-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.boundary-dialog-actions {
+  margin-top: 20px;
+}
+
+.boundary-dialog-button {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.boundary-dialog-button.primary {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #FFF;
+}
+
+.boundary-dialog-button.danger {
+  border-color: #F1C3C0;
+  color: var(--red);
+}
+
+.boundary-dialog-button:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
+.boundary-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.boundary-list-heading h2 {
+  margin: 0;
+}
+
+.boundary-list {
+  display: grid;
+  gap: 9px;
+}
+
+.boundary-empty {
+  margin: 0;
+  padding: 24px 12px;
+  color: var(--ink-soft);
+  text-align: center;
+  font-size: 13px;
+}
+
+.boundary-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.boundary-row-details {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.boundary-row-details strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.boundary-row-details span {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.boundary-row-error {
+  grid-column: 1 / -1;
+}
+
+.boundary-toast {
+  position: absolute;
+  z-index: 1000;
+  top: 12px;
+  left: 50%;
+  margin: 0;
+  padding: 8px 12px;
+  transform: translateX(-50%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-size: 12px;
+  box-shadow: 0 3px 12px rgb(17 18 20 / 18%);
+}
+
+.boundary-toast[hidden] {
+  display: none;
+}
+
 .map-export-actions {
   display: flex;
   justify-content: flex-end;
@@ -438,6 +615,14 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #E9EAEC;
+}
+
+.boundary-row {
+  grid-template-columns: 1fr;
+}
+
+.boundary-row-actions {
+  justify-content: flex-start;
 }
 
 .map-canvas {

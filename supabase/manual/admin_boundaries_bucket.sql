@@ -22,13 +22,14 @@ create policy platform_staff_select_admin_boundary_objects
     and public.is_platform_staff()
   );
 
--- Replace the upload policy so only active platform admins can upload GeoJSON files.
+-- Replace the upload policy so active platform staff can upload GeoJSON files.
 drop policy if exists platform_admin_insert_admin_boundary_objects on storage.objects;
-create policy platform_admin_insert_admin_boundary_objects
+drop policy if exists platform_staff_insert_admin_boundary_objects on storage.objects;
+create policy platform_staff_insert_admin_boundary_objects
   on storage.objects for insert to authenticated
   with check (
     bucket_id = 'admin-boundaries'
-    and public.is_platform_admin()
+    and public.is_platform_staff()
     and right(lower(name), length('.geojson')) = '.geojson'
   );
 
@@ -44,6 +45,7 @@ create policy platform_admin_delete_admin_boundary_objects
 -- Rollback manually only when the bucket contains no objects.
 -- drop policy if exists platform_staff_select_admin_boundary_objects on storage.objects;
 -- drop policy if exists platform_admin_insert_admin_boundary_objects on storage.objects;
+-- drop policy if exists platform_staff_insert_admin_boundary_objects on storage.objects;
 -- drop policy if exists platform_admin_delete_admin_boundary_objects on storage.objects;
 -- delete from storage.buckets
 -- where id = 'admin-boundaries'

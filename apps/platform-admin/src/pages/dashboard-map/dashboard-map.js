@@ -2,6 +2,13 @@ import * as L from '../../../vendor/leaflet/leaflet-src.esm.js';
 import { createEmptyState, createRetryState } from '../../components/state-message/state-message.js';
 import { MAP_CONFIG } from '../../config.js';
 import { attachTileErrorNotice } from '../../features/map-tiles.js';
+import {
+  deleteBoundary,
+  downloadBoundary,
+  listBoundaries,
+  uploadBoundary
+} from '../../features/boundaries.client.js';
+import { validateBoundaryFile } from '../../features/boundaries.validation.js';
 import { listReports } from '../../features/reports.client.js';
 import { getCategoryLabel, getStatusLabel } from '../../features/status-labels.js';
 import { setSafeText } from '../../features/safe-dom.js';
@@ -57,15 +64,13 @@ function renderDashboard(target, reports, staff, onSignOut) {
     'M12 15V5 M7 9l5-5 5 5 M5 19h14'
   );
   boundaryUploadButton.classList.add('dashed');
-  boundaryUploadButton.disabled = true;
-  boundaryUploadButton.title = 'Coming soon';
   const boundaryListButton = createToolbarButton(
     'List of uploaded boundaries',
     'M9 6h11 M9 12h11 M9 18h11 M4 6h.01 M4 12h.01 M4 18h.01'
   );
   boundaryListButton.classList.add('solid-accent');
-  boundaryListButton.disabled = true;
-  boundaryListButton.title = 'Coming soon';
+  const uploadDialog = createBoundaryUploadDialog();
+  const boundariesDialog = createBoundariesDialog(staff.role === 'platform_admin');
   toolbar.append(
     queryButton,
     clusterControl.control,
@@ -96,7 +101,22 @@ function renderDashboard(target, reports, staff, onSignOut) {
   setPanelCollapsed(statsPanel, readCollapsedPreference(STATS_COLLAPSED_KEY));
   updateBottomPanelCollapsedState(bottomPanel, chartPanel, statsPanel);
 
-  target.replaceChildren(topbar, toolbar, queryBuilder.panel, mapArea, bottomPanel, exportDialog.dialog);
+  const boundaryToast = document.createElement('p');
+  boundaryToast.className = 'boundary-toast';
+  boundaryToast.setAttribute('role', 'status');
+  boundaryToast.hidden = true;
+  mapArea.append(boundaryToast);
+
+  target.replaceChildren(
+    topbar,
+    toolbar,
+    queryBuilder.panel,
+    mapArea,
+    bottomPanel,
+    exportDialog.dialog,
+    uploadDialog.dialog,
+    boundariesDialog.dialog
+  );
 
   const state = {
     clustered: true,
@@ -106,6 +126,7 @@ function renderDashboard(target, reports, staff, onSignOut) {
     chartReports: [],
     map: null,
     layer: null,
+    boundaryLayers: new Map(),
     reports: [],
     markerRequest: 0,
     queryConditionId: 0
@@ -118,6 +139,189 @@ function renderDashboard(target, reports, staff, onSignOut) {
   target.closest('.dash')?.addEventListener('platform-rail-resized', () => {
     if (state.map) requestAnimationFrame(() => state.map?.invalidateSize({ pan: false }));
   });
+  window.addEventListener('pagehide', () => {
+    for (const layer of state.boundaryLayers.values()) layer.remove();
+    state.boundaryLayers.clear();
+  }, { once: true });
+
+  uploadDialog.dialog.addEventListener('close', () => boundaryUploadButton.focus());
+  boundariesDialog.dialog.addEventListener('close', () => boundaryListButton.focus());
+  boundaryUploadButton.addEventListener('click', () => {
+    uploadDialog.fileInput.value = '';
+    uploadDialog.nameInput.value = '';
+    uploadDialog.preview.textContent = 'Choose a .geojson file to preview.';
+    uploadDialog.error.hidden = true;
+    uploadDialog.dialog.showModal();
+    uploadDialog.fileInput.focus();
+  });
+  uploadDialog.fileInput.addEventListener('change', () => {
+    void previewBoundaryFile(uploadDialog.fileInput.files?.[0], uploadDialog);
+  });
+  uploadDialog.cancelButton.addEventListener('click', () => uploadDialog.dialog.close());
+  uploadDialog.uploadButton.addEventListener('click', () => {
+    void submitBoundaryUpload(uploadDialog);
+  });
+  boundaryListButton.addEventListener('click', () => {
+    boundariesDialog.dialog.showModal();
+    boundariesDialog.closeButton.focus();
+    void refreshBoundaries();
+  });
+  boundariesDialog.closeButton.addEventListener('click', () => boundariesDialog.dialog.close());
+
+  async function previewBoundaryFile(file, dialog) {
+    dialog.error.hidden = true;
+    if (!file) {
+      dialog.preview.textContent = 'Choose a .geojson file to preview.';
+      return;
+    }
+    try {
+      const validated = await validateBoundaryFile(file);
+      dialog.preview.textContent = `${validated.featureCount} features, ${formatFileSize(file.size)}${
+        validated.warnings.length ? ` · ${validated.warnings.join('; ')}` : ''
+      }`;
+    } catch (error) {
+      dialog.preview.textContent = 'File preview unavailable.';
+      setSafeText(dialog.error, error.message);
+      dialog.error.hidden = false;
+    }
+  }
+
+  async function submitBoundaryUpload(dialog) {
+    dialog.error.hidden = true;
+    const file = dialog.fileInput.files?.[0];
+    if (!file) {
+      setSafeText(dialog.error, 'Choose a .geojson file first.');
+      dialog.error.hidden = false;
+      return;
+    }
+    dialog.uploadButton.disabled = true;
+    dialog.progress.hidden = false;
+    dialog.progress.textContent = 'Uploading boundary…';
+    try {
+    const uploaded = await uploadBoundary(file, dialog.nameInput.value);
+    showBoundary(uploaded.path, uploaded.geojson);
+      await refreshBoundaries(false);
+      dialog.dialog.close();
+      boundaryToast.textContent = 'Boundary uploaded';
+      boundaryToast.hidden = false;
+      setTimeout(() => { boundaryToast.hidden = true; }, 4000);
+    } catch (error) {
+      console.error('Could not upload administrative boundary.', error);
+      setSafeText(dialog.error, error.message || 'The boundary could not be uploaded.');
+      dialog.error.hidden = false;
+    } finally {
+      dialog.uploadButton.disabled = false;
+      dialog.progress.hidden = true;
+    }
+  }
+
+  async function refreshBoundaries(showLoading = true) {
+    const host = boundariesDialog.list;
+    if (showLoading) host.replaceChildren(makeBoundaryLoading());
+    try {
+      const boundaries = await listBoundaries();
+      if (!host.isConnected || boundariesDialog.dialog.closed) return;
+      host.replaceChildren();
+      if (!boundaries.length) {
+        const empty = document.createElement('p');
+        empty.className = 'boundary-empty';
+        empty.textContent = 'No boundaries uploaded yet.';
+        host.append(empty);
+        return;
+      }
+      for (const boundary of boundaries) {
+        host.append(createBoundaryRow(boundary, {
+          onToggle: async (row, isShown) => {
+            try {
+              if (isShown) {
+                const parsed = await downloadBoundary(boundary.path);
+                showBoundary(boundary.path, parsed.geojson);
+                row.toggleButton.textContent = 'Hide';
+                row.toggleButton.setAttribute('aria-pressed', 'true');
+              } else {
+                hideBoundary(boundary.path);
+                row.toggleButton.textContent = 'Show on map';
+                row.toggleButton.setAttribute('aria-pressed', 'false');
+              }
+            } catch (error) {
+              setSafeText(row.message, error.message);
+              row.message.hidden = false;
+            }
+          },
+          onZoom: async (row) => {
+            try {
+              const layer = state.boundaryLayers.get(boundary.path)
+                ?? await loadBoundaryLayer(boundary.path);
+              const bounds = layer.getBounds();
+              if (bounds.isValid()) state.map.fitBounds(bounds, { padding: [24, 24] });
+              row.toggleButton.textContent = 'Hide';
+              row.toggleButton.setAttribute('aria-pressed', 'true');
+            } catch (error) {
+              setSafeText(row.message, error.message);
+              row.message.hidden = false;
+            }
+          },
+          onDelete: boundariesDialog.isAdmin ? async (row) => {
+            if (!window.confirm(`Delete boundary "${boundary.name}"?`)) return;
+            row.deleteButton.disabled = true;
+            try {
+              await deleteBoundary(boundary.path);
+              hideBoundary(boundary.path);
+              await refreshBoundaries();
+            } catch (error) {
+              row.deleteButton.disabled = false;
+              setSafeText(row.message, error.message);
+              row.message.hidden = false;
+            }
+          } : null
+        }, state.boundaryLayers.has(boundary.path)));
+      }
+    } catch (error) {
+      console.error('Could not load administrative boundaries.', error);
+      host.replaceChildren(createRetryState({
+        title: 'Boundaries unavailable',
+        message: error.message || 'Could not load uploaded boundaries.',
+        onRetry: () => refreshBoundaries()
+      }));
+    }
+  }
+
+  async function loadBoundaryLayer(path) {
+    if (!state.map) throw new Error('The map is not ready yet. Please try again.');
+    const parsed = await downloadBoundary(path);
+    return showBoundary(path, parsed.geojson);
+  }
+
+  function showBoundary(path, geojson) {
+    if (!state.map) throw new Error('The map is not ready yet. Please try again.');
+    hideBoundary(path);
+    let featureIndex = 0;
+    const layer = L.geoJSON(geojson, {
+      pane: 'boundaryPane',
+      style: {
+        color: '#30363B',
+        weight: 1.5,
+        fillColor: '#7FA99E',
+        fillOpacity: 0.08
+      },
+      onEachFeature(feature, featureLayer) {
+        const popup = document.createElement('span');
+        popup.textContent = boundaryFeatureName(feature, ++featureIndex);
+        featureLayer.bindPopup(popup);
+      }
+    });
+    layer.addTo(state.map);
+    state.boundaryLayers.set(path, layer);
+    const bounds = layer.getBounds();
+    if (bounds.isValid()) state.map.fitBounds(bounds, { padding: [24, 24] });
+    return layer;
+  }
+
+  function hideBoundary(path) {
+    const layer = state.boundaryLayers.get(path);
+    if (layer && state.map) state.map.removeLayer(layer);
+    state.boundaryLayers.delete(path);
+  }
 
   chartPanel.collapseButton.addEventListener('click', () => {
     togglePanel(chartPanel, CHART_COLLAPSED_KEY);
@@ -375,6 +579,8 @@ async function initializeMap(container, state, onReady) {
     if (!container.isConnected) return;
     state.map = L.map(container, { zoomControl: false, scrollWheelZoom: false })
       .setView([MAP_CONFIG.defaultCenter.lat, MAP_CONFIG.defaultCenter.lng], MAP_CONFIG.defaultZoom);
+    state.map.createPane('boundaryPane');
+    state.map.getPane('boundaryPane').style.zIndex = '350';
     const tileLayer = L.tileLayer(MAP_CONFIG.tileUrlTemplate, {
       maxZoom: MAP_CONFIG.maxZoom,
       attribution: MAP_CONFIG.attribution,
@@ -403,6 +609,143 @@ async function initializeMap(container, state, onReady) {
       container.replaceWith(errorState);
     }
   }
+}
+
+function createBoundaryUploadDialog() {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'boundary-dialog';
+  const heading = document.createElement('h2');
+  heading.textContent = 'Upload admin boundary';
+  const help = document.createElement('p');
+  help.textContent = 'Upload a GeoJSON file containing Polygon or MultiPolygon features (maximum 5 MB).';
+  const fileLabel = document.createElement('label');
+  fileLabel.textContent = 'GeoJSON file';
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.geojson,application/geo+json';
+  fileLabel.append(fileInput);
+  const nameLabel = document.createElement('label');
+  nameLabel.textContent = 'Boundary name (optional)';
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.maxLength = 100;
+  nameInput.autocomplete = 'off';
+  nameLabel.append(nameInput);
+  const preview = document.createElement('p');
+  preview.className = 'boundary-preview';
+  preview.textContent = 'Choose a .geojson file to preview.';
+  const error = document.createElement('p');
+  error.className = 'boundary-error';
+  error.setAttribute('role', 'alert');
+  error.hidden = true;
+  const progress = document.createElement('p');
+  progress.className = 'boundary-progress';
+  progress.setAttribute('role', 'status');
+  progress.hidden = true;
+  const actions = document.createElement('div');
+  actions.className = 'boundary-dialog-actions';
+  const cancelButton = createDialogButton('Cancel', 'secondary');
+  const uploadButton = createDialogButton('Upload', 'primary');
+  actions.append(cancelButton, uploadButton);
+  dialog.append(heading, help, fileLabel, nameLabel, preview, error, progress, actions);
+  return { dialog, fileInput, nameInput, preview, error, progress, cancelButton, uploadButton };
+}
+
+function createBoundariesDialog(isAdmin) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'boundary-dialog boundary-list-dialog';
+  const heading = document.createElement('h2');
+  heading.textContent = 'Uploaded boundaries';
+  const closeButton = createDialogButton('Close', 'secondary');
+  closeButton.classList.add('boundary-dialog-close');
+  const header = document.createElement('div');
+  header.className = 'boundary-list-heading';
+  header.append(heading, closeButton);
+  const list = document.createElement('div');
+  list.className = 'boundary-list';
+  list.setAttribute('aria-live', 'polite');
+  dialog.append(header, list);
+  return { dialog, list, closeButton, isAdmin };
+}
+
+function createBoundaryRow(boundary, actions, isShown) {
+  const row = document.createElement('article');
+  row.className = 'boundary-row';
+  const details = document.createElement('div');
+  details.className = 'boundary-row-details';
+  const name = document.createElement('strong');
+  name.textContent = boundary.name;
+  const metadata = document.createElement('span');
+  metadata.textContent = `${formatFileSize(boundary.size)} · ${formatBoundaryDate(boundary.createdAt)}`;
+  details.append(name, metadata);
+  const controls = document.createElement('div');
+  controls.className = 'boundary-row-actions';
+  const toggleButton = createDialogButton(isShown ? 'Hide' : 'Show on map', 'secondary');
+  toggleButton.setAttribute('aria-pressed', String(isShown));
+  const zoomButton = createDialogButton('Zoom to', 'secondary');
+  const message = document.createElement('p');
+  message.className = 'boundary-error boundary-row-error';
+  message.setAttribute('role', 'alert');
+  message.hidden = true;
+  const deleteButton = actions.onDelete ? createDialogButton('Delete', 'danger') : null;
+  controls.append(toggleButton, zoomButton);
+  if (deleteButton) controls.append(deleteButton);
+  row.append(details, controls, message);
+  toggleButton.addEventListener('click', () => {
+    message.hidden = true;
+    const shown = toggleButton.getAttribute('aria-pressed') === 'true';
+    void actions.onToggle({ toggleButton, message }, !shown);
+  });
+  zoomButton.addEventListener('click', () => {
+    message.hidden = true;
+    void actions.onZoom({ message, toggleButton });
+  });
+  if (deleteButton) {
+    deleteButton.addEventListener('click', () => {
+      message.hidden = true;
+      void actions.onDelete({ deleteButton, message });
+    });
+  }
+  return row;
+}
+
+function createDialogButton(label, variant) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `boundary-dialog-button ${variant}`;
+  button.textContent = label;
+  return button;
+}
+
+function makeBoundaryLoading() {
+  const loading = document.createElement('p');
+  loading.className = 'boundary-progress';
+  loading.setAttribute('role', 'status');
+  loading.textContent = 'Loading boundaries…';
+  return loading;
+}
+
+function boundaryFeatureName(feature, index) {
+  const properties = feature?.properties ?? {};
+  for (const key of ['name', 'NAME', 'Ward', 'ward', 'WARD_ID']) {
+    const value = properties[key];
+    if (value !== undefined && value !== null && String(value).trim()) return String(value);
+  }
+  return `Feature ${index}`;
+}
+
+function formatFileSize(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatBoundaryDate(value) {
+  if (!value) return 'Date unavailable';
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf())
+    ? 'Date unavailable'
+    : new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(date);
 }
 
 async function loadMarkerClusterGroup() {
