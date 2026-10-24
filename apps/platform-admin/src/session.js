@@ -50,7 +50,7 @@ export async function loadStaffContext() {
     clearStaffContext();
     await signOut();
     throw new Error(
-      'This account is not an active CivicNeuro platform staff account. Contact a Platform Admin.'
+      'This account is not an active Bika platform staff account. Contact a Platform Admin.'
     );
   }
 

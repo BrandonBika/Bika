@@ -41,7 +41,7 @@ export function createLifelineCallRoom() {
 
 async function createCallKit() {
   const accessToken = getAccessToken();
-  if (!accessToken) throw new Error('Sign in to start a CivicNeuro call.');
+  if (!accessToken) throw new Error('Sign in to start a Bika call.');
 
   const response = await fetch('/api/zego-token', {
     method: 'POST',
@@ -54,7 +54,7 @@ async function createCallKit() {
   const { ZegoUIKitPrebuilt, ZIM } = zegoModule;
   const authUser = sessionStore.get().user;
   const userID = result.userId;
-  const userName = authUser?.fullName || authUser?.user_metadata?.full_name || 'CivicNeuro resident';
+  const userName = authUser?.fullName || authUser?.user_metadata?.full_name || 'Bika resident';
   const kitToken = ZegoUIKitPrebuilt.generateKitTokenForProduction(
     result.appId,
     result.token,

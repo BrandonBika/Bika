@@ -2,7 +2,7 @@ import { requestSupabase } from './client.js';
 
 function requireOwnerId(ownerId) {
   if (typeof ownerId !== 'string' || !ownerId.trim()) {
-    throw new Error('Sign in to save Beacon contacts to your CivicNeuro account.');
+    throw new Error('Sign in to save Beacon contacts to your Bika account.');
   }
   return ownerId;
 }

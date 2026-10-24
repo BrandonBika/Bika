@@ -89,7 +89,7 @@ export class PageContactsPermission extends BaseElement {
     const bcT = createElement('div', { cls: 'u-t', text: 'Beacon' });
     const bcD = createElement('div', {
       cls: 'u-d',
-      text: 'Find friends and family already on CivicNeuro and add them to your circle.'
+      text: 'Find friends and family already on Bika and add them to your circle.'
     });
     bcText.append(bcT, bcD);
     bcCard.append(bcIc, bcText);
@@ -139,7 +139,7 @@ export class PageContactsPermission extends BaseElement {
     const title = createElement('div', { cls: 'perm-dialog-title', text: 'Allow access to contacts?' });
     const body = createElement('div', {
       cls: 'perm-dialog-body',
-      text: 'CivicNeuro uses your contacts for Lifeline and Beacon. Native OS permission prompt — asked once for the whole app.'
+      text: 'Bika uses your contacts for Lifeline and Beacon. Native OS permission prompt — asked once for the whole app.'
     });
 
     const btnRow = createElement('div', { cls: 'btn-row' });

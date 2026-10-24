@@ -13,7 +13,7 @@ export class PageHelpAndSafety extends BaseElement {
 
     const h = createElement('h1', { text: 'Help & FAQs' });
     const faqs = [
-      { q: 'How is my personal info protected under POPIA?', a: 'CivicNeuro redacts PII, never sells data, stores tokens in memory, and allows one-click data exports.' },
+      { q: 'How is my personal info protected under POPIA?', a: 'Bika redacts PII, never sells data, stores tokens in memory, and allows one-click data exports.' },
       { q: 'How do I escalate an unresolved issue?', a: 'Open your report in "My Reports" and click "Manual Escalation".' }
     ];
 

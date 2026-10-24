@@ -6,7 +6,7 @@ import { clearChildren, createElement } from '@civicneuro/security-web';
 import '../../components/back-button/back-button.js';
 
 const sections = [
-  { heading: 'Using CivicNeuro', body: 'CivicNeuro is a resident service for reporting civic issues and receiving municipal updates in a lawful and respectful way.' },
+  { heading: 'Using Bika', body: 'Bika is a resident service for reporting civic issues and receiving municipal updates in a lawful and respectful way.' },
   { heading: 'Acceptable use', body: 'Do not upload harmful or abusive content, impersonate others, or misuse the service for unlawful activity.' },
   { heading: 'Organisation responses', body: 'Municipal teams may acknowledge, resolve, or escalate reports based on their own policies and operational constraints.' },
   { heading: 'Your account', body: 'You remain responsible for the accuracy of the profile information you provide and for keeping your sign-in details secure.' },

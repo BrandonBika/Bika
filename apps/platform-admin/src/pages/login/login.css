@@ -42,11 +42,9 @@
 .brand-mark .mark {
   width: 34px;
   height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius-md);
-  background: var(--teal);
-  color: #fff;
+  display: block;
+  border-radius: 7px;
+  object-fit: cover;
 }
 
 .frontdoor-brand h1 {

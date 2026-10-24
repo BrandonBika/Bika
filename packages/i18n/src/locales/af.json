@@ -1,6 +1,6 @@
 {
   "common": {
-    "app_name": "(TODO-translate) CivicNeuro",
+    "app_name": "(TODO-translate) Bika",
     "loading": "(TODO-translate) Loading…",
     "retry": "(TODO-translate) Try again",
     "cancel": "(TODO-translate) Cancel",
@@ -55,7 +55,7 @@
     "sign_in": "(TODO-translate) Sign in",
     "sign_in_title": "(TODO-translate) Welcome back",
     "register": "(TODO-translate) Create account",
-    "register_title": "(TODO-translate) Join CivicNeuro",
+    "register_title": "(TODO-translate) Join Bika",
     "email": "(TODO-translate) Email address",
     "email_placeholder": "(TODO-translate) you@example.com",
     "password": "(TODO-translate) Password",
@@ -81,7 +81,7 @@
   },
   "welcome": {
     "title": "(TODO-translate) Report. Connect. Stay safe.",
-    "subtitle": "(TODO-translate) CivicNeuro helps you report civic issues, connect with neighbours, and share your location safely.",
+    "subtitle": "(TODO-translate) Bika helps you report civic issues, connect with neighbours, and share your location safely.",
     "cta_sign_in": "(TODO-translate) Sign in",
     "cta_register": "(TODO-translate) Create an account",
     "cta_guest": "(TODO-translate) Continue as guest"
@@ -261,7 +261,7 @@
   },
   "contacts_permission": {
     "title": "(TODO-translate) Allow contact access",
-    "body": "(TODO-translate) CivicNeuro wants to read your contacts so you can quickly add them to Lifeline and Beacon. Your contacts are never stored on our servers.",
+    "body": "(TODO-translate) Bika wants to read your contacts so you can quickly add them to Lifeline and Beacon. Your contacts are never stored on our servers.",
     "allow": "(TODO-translate) Allow access",
     "deny": "(TODO-translate) Not now",
     "denied_info": "(TODO-translate) You can still add contacts by typing their numbers. To enable contact access, go to your device settings.",

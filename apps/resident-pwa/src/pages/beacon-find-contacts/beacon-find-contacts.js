@@ -86,7 +86,7 @@ export class PageBeaconFindContacts extends BaseElement {
       createElement('div', { cls: 'find-title', text: 'Choose or add a contact' }),
       createElement('div', {
         cls: 'find-sub',
-        text: 'Invite people to join CivicNeuro'
+        text: 'Invite people to join Bika'
       })
     );
     header.append(backBtn, headerText);
@@ -160,7 +160,7 @@ export class PageBeaconFindContacts extends BaseElement {
 
     this.appendChild(createElement('p', {
       cls: 'find-contact-privacy',
-      text: 'Only contacts you choose or enter are saved to your CivicNeuro account. Your address book is not copied or changed. An invite does not add someone to your circle; they must join and accept.'
+      text: 'Only contacts you choose or enter are saved to your Bika account. Your address book is not copied or changed. An invite does not add someone to your circle; they must join and accept.'
     }));
     if (this._contactMessage) {
       this.appendChild(createElement('p', {
@@ -266,7 +266,7 @@ export class PageBeaconFindContacts extends BaseElement {
     if (!uniqueCandidates.size) return;
 
     this._contactSaving = true;
-    this._contactMessage = 'Saving contacts to your CivicNeuro account…';
+    this._contactMessage = 'Saving contacts to your Bika account…';
     this.render();
     try {
       const saved = await saveBeaconContactsToAccount([...uniqueCandidates.values()]);
@@ -282,7 +282,7 @@ export class PageBeaconFindContacts extends BaseElement {
       }
       this._contacts = [...contactsById.values()];
       this._contactDraft = null;
-      this._contactMessage = `${saved.length} contact${saved.length === 1 ? '' : 's'} saved to your CivicNeuro account.`;
+      this._contactMessage = `${saved.length} contact${saved.length === 1 ? '' : 's'} saved to your Bika account.`;
     } catch (error) {
       this._contactMessage = getContactErrorMessage('Could not save contacts', error);
     } finally {
@@ -293,7 +293,7 @@ export class PageBeaconFindContacts extends BaseElement {
 
   async inviteContact(contact) {
     const inviteUrl = new URL('#register', window.location.href).href;
-    const body = encodeURIComponent(`Join me on CivicNeuro: ${inviteUrl}`);
+    const body = encodeURIComponent(`Join me on Bika: ${inviteUrl}`);
     const phone = normalizePhone(contact.phone);
     this._contactSaving = true;
     this._contactMessage = 'Preparing your message…';

@@ -138,7 +138,7 @@ export class PageMenu extends BaseElement {
 
     this.appendChild(createElement('p', {
       cls: 'cn-menu-version',
-      text: 'CivicNeuro Resident App · v2.4.1'
+      text: 'Bika Resident App · v2.4.1'
     }));
   }
 }

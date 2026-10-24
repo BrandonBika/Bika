@@ -18,6 +18,7 @@ const zegoEnv = {
   ZEGO_SERVER_SECRET: devConfig.env.get('ZEGO_SERVER_SECRET')
 };
 const CONTENT_SECURITY_POLICY = [
+  "img-src 'self' data:",
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://zego.im wss://zego.im https://*.zego.im wss://*.zego.im https://zegocloud.com wss://zegocloud.com https://*.zegocloud.com wss://*.zegocloud.com",
   "media-src 'self' blob:",
   "worker-src 'self' blob:",

@@ -252,7 +252,7 @@ export function subscribeBeaconCircle(onError = console.error) {
 function getBeaconContactOwnerId() {
   const session = sessionStore.get();
   if (!session?.isAuthenticated || session.isGuest || !session.user?.id) {
-    throw new Error('Sign in to save Beacon contacts to your CivicNeuro account.');
+    throw new Error('Sign in to save Beacon contacts to your Bika account.');
   }
   return session.user.id;
 }

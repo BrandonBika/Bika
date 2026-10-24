@@ -19,7 +19,7 @@ export const LIFELINE_STARTER_CARDS = [
 function getOwnerId() {
   const session = sessionStore.get();
   if (!session?.isAuthenticated || session.isGuest || !session.user?.id) {
-    throw new Error('Sign in to save Lifeline groups to your CivicNeuro account.');
+    throw new Error('Sign in to save Lifeline groups to your Bika account.');
   }
   return session.user.id;
 }

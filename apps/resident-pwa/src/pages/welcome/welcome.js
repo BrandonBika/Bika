@@ -20,18 +20,13 @@ export class PageWelcome extends BaseElement {
 
     const hero = createElement('div', { cls: 'cn-welcome-hero' });
     const logo = createElement('div', { cls: 'cn-welcome-logo' });
-    const pin = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    pin.setAttribute('viewBox', '0 0 24 24');
-    pin.setAttribute('aria-hidden', 'true');
-    const pinOutline = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    pinOutline.setAttribute('d', 'M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11Z');
-    const pinCenter = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    pinCenter.setAttribute('cx', '12');
-    pinCenter.setAttribute('cy', '10');
-    pinCenter.setAttribute('r', '2.5');
-    pin.append(pinOutline, pinCenter);
-    logo.appendChild(pin);
-    const title = createElement('h1', { cls: 'cn-welcome-title', text: 'CivicNeuro' });
+    const logoImage = document.createElement('img');
+    logoImage.src = '/landing/assets/bika-logo.png';
+    logoImage.alt = 'Bika logo';
+    logoImage.width = 52;
+    logoImage.height = 52;
+    logo.appendChild(logoImage);
+    const title = createElement('h1', { cls: 'cn-welcome-title', text: 'Bika' });
     const sub = createElement('p', { cls: 'cn-welcome-sub', text: 'Report civic issues in your community and track them through to resolution.' });
 
     hero.appendChild(logo);

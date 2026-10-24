@@ -214,8 +214,8 @@ export class PageBeaconAddToCircle extends BaseElement {
       noResults.appendChild(createElement('div', {
         cls: 'bc-empty-desc',
         text: this._query.length < 3
-          ? 'Search at least 3 characters for a CivicNeuro resident, or choose/add a contact to invite by SMS.'
-          : 'No CivicNeuro residents were found. You can still invite someone by choosing or adding their contact.'
+          ? 'Search at least 3 characters for a Bika resident, or choose/add a contact to invite by SMS.'
+          : 'No Bika residents were found. You can still invite someone by choosing or adding their contact.'
       }));
       this._resultsContainer.appendChild(noResults);
       return;

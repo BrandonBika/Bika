@@ -12,7 +12,7 @@ function withMigrationGuidance(error) {
 
 function requireOwnerId(ownerId) {
   if (typeof ownerId !== 'string' || !ownerId.trim()) {
-    throw new Error('Sign in to save Lifeline groups to your CivicNeuro account.');
+    throw new Error('Sign in to save Lifeline groups to your Bika account.');
   }
   return ownerId;
 }

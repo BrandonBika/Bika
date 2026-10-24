@@ -46,13 +46,16 @@ export function createSidebar({ role, activeRoute, onNavigate, fullName }) {
   brand.href = NAVIGATION[role]?.some((item) => item.id === 'dashboard' && item.enabled)
     ? '#/dashboard'
     : '#/home';
-  brand.setAttribute('aria-label', 'CivicNeuro Platform dashboard');
-  const mark = document.createElement('span');
+  brand.setAttribute('aria-label', 'Bika Platform dashboard');
+  const mark = document.createElement('img');
   mark.className = 'dash-brand-mark';
-  mark.append(createIcon('brand-shield', 'brand-shield'));
+  mark.src = '/landing/assets/bika-logo.png';
+  mark.alt = 'Bika logo';
+  mark.width = 32;
+  mark.height = 32;
   const brandName = document.createElement('span');
   brandName.className = 'dash-brand-name';
-  setSafeText(brandName, 'CivicNeuro');
+  setSafeText(brandName, 'Bika');
   brand.append(mark, brandName);
 
   const railToggle = document.createElement('button');

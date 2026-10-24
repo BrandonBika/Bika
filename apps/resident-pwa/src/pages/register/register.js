@@ -27,7 +27,7 @@ export class PageRegister extends BaseElement {
     const confirmPwdInput = createElement('cn-input', { attrs: { label: 'Confirm password', type: 'password', autocomplete: 'new-password', required: 'true' } });
 
     const consent = createElement('cn-consent-checkbox', {
-      attrs: { label: 'I agree to the Terms & Conditions and Privacy Policy, and consent to CivicNeuro processing my personal information to submit and track reports.' }
+      attrs: { label: 'I agree to the Terms & Conditions and Privacy Policy, and consent to Bika processing my personal information to submit and track reports.' }
     });
 
     const updates = createElement('input', {

@@ -71,22 +71,9 @@ body[data-role="platform_employee"] .dash-rail {
 .dash-brand-mark {
   width: 32px;
   height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius-md);
-  background: var(--teal);
-  color: #fff;
-  font: 700 14px var(--font-body);
-}
-
-.dash-brand-mark svg {
-  width: 19px;
-  height: 19px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
+  display: block;
+  border-radius: 7px;
+  object-fit: cover;
 }
 
 .dash-nav {

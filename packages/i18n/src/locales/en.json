@@ -1,6 +1,6 @@
 {
   "common": {
-    "app_name": "CivicNeuro",
+    "app_name": "Bika",
     "loading": "Loading…",
     "retry": "Try again",
     "cancel": "Cancel",
@@ -55,7 +55,7 @@
     "sign_in": "Sign in",
     "sign_in_title": "Welcome back",
     "register": "Create account",
-    "register_title": "Join CivicNeuro",
+    "register_title": "Join Bika",
     "email": "Email address",
     "email_placeholder": "you@example.com",
     "password": "Password",
@@ -81,7 +81,7 @@
   },
   "welcome": {
     "title": "Report. Connect. Stay safe.",
-    "subtitle": "CivicNeuro helps you report civic issues, connect with neighbours, and share your location safely.",
+    "subtitle": "Bika helps you report civic issues, connect with neighbours, and share your location safely.",
     "cta_sign_in": "Sign in",
     "cta_register": "Create an account",
     "cta_guest": "Continue as guest"
@@ -261,7 +261,7 @@
   },
   "contacts_permission": {
     "title": "Allow contact access",
-    "body": "CivicNeuro wants to read your contacts so you can quickly add them to Lifeline and Beacon. Your contacts are never stored on our servers.",
+    "body": "Bika wants to read your contacts so you can quickly add them to Lifeline and Beacon. Your contacts are never stored on our servers.",
     "allow": "Allow access",
     "deny": "Not now",
     "denied_info": "You can still add contacts by typing their numbers. To enable contact access, go to your device settings.",

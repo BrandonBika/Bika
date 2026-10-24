@@ -24,17 +24,14 @@
   width: 52px;
   height: 52px;
   border-radius: 14px;
-  background: #0F6E56;
-  color: #FFFFFF;
+  overflow: hidden;
 }
-.cn-welcome-logo svg {
-  width: 24px;
-  height: 24px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.cn-welcome-logo img {
+  display: block;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  object-fit: cover;
 }
 .cn-welcome-title {
   margin: 16px 0 0;
