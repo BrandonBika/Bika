@@ -166,6 +166,12 @@
   opacity: .7;
 }
 
+.tbtn.active {
+  border-color: var(--teal);
+  background: var(--teal-tint);
+  color: var(--teal-deep);
+}
+
 .switch-field {
   display: inline-flex;
   align-items: center;
@@ -212,41 +218,72 @@
 }
 
 .query-builder-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  gap: 12px;
   flex: 0 0 auto;
+  max-height: min(390px, 55vh);
   margin: 0 28px 12px;
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 9px;
   background: var(--paper-raised);
+  overflow-y: auto;
 }
 
 .query-builder-panel[hidden] {
   display: none;
 }
 
-.query-condition {
+.query-panel-heading,
+.query-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.query-condition label {
+.query-panel-heading h3 {
+  margin: 0;
   color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
 }
 
-.query-operator {
+.query-close-button,
+.query-remove-button,
+.query-chip-remove {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper-raised);
   color: var(--ink-soft);
-  font-size: 12px;
+  cursor: pointer;
 }
 
-.query-category-select {
-  min-width: 190px;
+.query-close-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.query-condition-list {
+  display: grid;
+  gap: 8px;
+}
+
+.query-condition {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto minmax(180px, 1fr) 28px;
+  align-items: center;
+  gap: 9px;
+}
+
+.query-field-select,
+.query-value-select {
+  min-width: 0;
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -255,14 +292,59 @@
   font: inherit;
 }
 
-.query-clear-button {
-  padding: 7px 10px;
+.query-operator {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.query-add-button,
+.query-clear-button,
+.query-apply-button {
+  padding: 8px 11px;
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--paper-raised);
-  color: var(--ink-soft);
+  color: var(--ink);
   font: inherit;
   cursor: pointer;
+}
+
+.query-add-button:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+.query-apply-button {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #FFF;
+}
+
+.query-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.query-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 5px 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 10px;
+}
+
+.query-chip-remove {
+  width: 17px;
+  height: 17px;
+  border: 0;
+  border-radius: 50%;
+  font-size: 13px;
+  line-height: 1;
 }
 
 .map-export-dialog {
@@ -289,6 +371,50 @@
   color: var(--ink-soft);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.map-export-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.map-export-fields > label:not(.map-export-checkbox) {
+  margin-top: 5px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.map-export-title,
+.map-export-select {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.map-export-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.map-export-checkbox input {
+  accent-color: var(--teal);
+}
+
+.map-export-fields :disabled {
+  cursor: not-allowed;
+  opacity: .6;
 }
 
 .map-export-dialog .map-export-status {
@@ -529,6 +655,20 @@
 .stats-showing {
   margin-bottom: 7px;
   color: var(--ink-soft);
+  font-size: 10px;
+}
+
+.stats-empty-state {
+  max-width: none;
+  padding: 10px;
+}
+
+.stats-empty-state h2 {
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.stats-empty-state p {
   font-size: 10px;
 }
 
@@ -907,6 +1047,16 @@
   .map-toolbar {
     flex-wrap: wrap;
     padding: 8px 14px;
+  }
+
+  .query-builder-panel {
+    margin-right: 14px;
+    margin-left: 14px;
+  }
+
+  .query-condition {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 28px;
+    gap: 5px;
   }
 
   .map-area {

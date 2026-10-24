@@ -9,6 +9,20 @@ import { withTimeout } from '../../features/with-timeout.js';
 
 const ATTENDED_STATUSES = new Set(['Resolved', 'Rejected', 'Duplicate']);
 const CATEGORY_COLOURS = ['#A32D2D', '#2A7F78', '#BA7517', '#185FA5', '#A3A6AC'];
+const QUERY_FIELDS = ['status', 'category', 'assignment', 'dateRange', 'priority'];
+const QUERY_FIELD_LABELS = Object.freeze({
+  status: 'Status',
+  category: 'Category',
+  assignment: 'Assigned / unassigned',
+  dateRange: 'Date range',
+  priority: 'Priority / severity'
+});
+const DATE_RANGE_OPTIONS = Object.freeze([
+  { value: '7', label: 'Last 7 days' },
+  { value: '30', label: 'Last 30 days' },
+  { value: '90', label: 'Last 90 days' },
+  { value: 'all', label: 'All time' }
+]);
 const CHART_COLLAPSED_KEY = 'civicneuro-platform-dashboard-chart-collapsed';
 const STATS_COLLAPSED_KEY = 'civicneuro-platform-dashboard-stats-collapsed';
 
@@ -85,14 +99,16 @@ function renderDashboard(target, reports, staff, onSignOut) {
   target.replaceChildren(topbar, toolbar, queryBuilder.panel, mapArea, bottomPanel, exportDialog.dialog);
 
   const state = {
-    category: '',
     clustered: true,
     chartType: 'bar',
+    draftConditions: [],
+    appliedConditions: [],
     chartReports: [],
     map: null,
     layer: null,
     reports: [],
-    markerRequest: 0
+    markerRequest: 0,
+    queryConditionId: 0
   };
   let chartRequest = 0;
   const mapResizeObserver = new ResizeObserver(() => {
@@ -124,20 +140,69 @@ function renderDashboard(target, reports, staff, onSignOut) {
     const open = queryBuilder.panel.hidden;
     queryBuilder.panel.hidden = !open;
     queryButton.setAttribute('aria-expanded', String(open));
-    if (open) queryBuilder.categorySelect.focus();
+    if (open) {
+      state.draftConditions = state.appliedConditions.map((condition) => ({ ...condition }));
+      queryBuilder.render(state.draftConditions, updateDraftConditions);
+      queryBuilder.closeButton.focus();
+    } else {
+      state.draftConditions = state.appliedConditions.map((condition) => ({ ...condition }));
+    }
   });
-  queryBuilder.categorySelect.addEventListener('change', () => {
-    state.category = queryBuilder.categorySelect.value;
-    updateDashboardData();
+  queryBuilder.closeButton.addEventListener('click', () => {
+    state.draftConditions = state.appliedConditions.map((condition) => ({ ...condition }));
+    queryBuilder.panel.hidden = true;
+    queryButton.setAttribute('aria-expanded', 'false');
+    queryButton.focus();
+  });
+  queryBuilder.addButton.addEventListener('click', () => {
+    const usedFields = new Set(state.draftConditions.map((condition) => condition.field));
+    const nextField = QUERY_FIELDS.find((field) => !usedFields.has(field));
+    if (!nextField) return;
+    state.draftConditions.push({
+      id: ++state.queryConditionId,
+      field: nextField,
+      value: queryValues(nextField, reports)[0]?.value ?? ''
+    });
+    queryBuilder.render(state.draftConditions, updateDraftConditions);
   });
   queryBuilder.clearButton.addEventListener('click', () => {
-    queryBuilder.categorySelect.value = '';
-    state.category = '';
+    state.draftConditions = [];
+    state.appliedConditions = [];
+    queryBuilder.render(state.draftConditions, updateDraftConditions);
     updateDashboardData();
   });
-  exportButton.addEventListener('click', () => exportDialog.dialog.showModal());
+  queryBuilder.applyButton.addEventListener('click', () => {
+    state.appliedConditions = state.draftConditions.map((condition) => ({ ...condition }));
+    queryBuilder.panel.hidden = true;
+    queryButton.setAttribute('aria-expanded', 'false');
+    queryButton.focus();
+    updateDashboardData();
+  });
+  queryBuilder.render(state.draftConditions, updateDraftConditions);
+
+  function updateDraftConditions() {
+    queryBuilder.render(state.draftConditions, updateDraftConditions);
+  }
+
+  exportButton.addEventListener('click', () => {
+    exportDialog.dialog.showModal();
+    exportDialog.titleInput.focus();
+  });
   exportDialog.downloadButton.addEventListener('click', () => {
-    void exportMapImage(state.map, mapArea, exportDialog.status);
+    void generateMapExport({
+      format: exportDialog.formatSelect.value,
+      title: exportDialog.titleInput.value,
+      orientation: exportDialog.orientationSelect.value,
+      includeExtras: exportDialog.includeExtras.checked,
+      reports: state.chartReports,
+      map: state.map,
+      mapArea,
+      chartCanvas: chartPanel.canvas,
+      statsCard: statsPanel.card,
+      status: exportDialog.status
+    }).then((success) => {
+      if (success) exportDialog.dialog.close();
+    });
   });
   clusterControl.button.addEventListener('click', () => {
     state.clustered = !state.clustered;
@@ -156,15 +221,24 @@ function renderDashboard(target, reports, staff, onSignOut) {
   });
 
   function filteredReports() {
-    return state.category
-      ? reports.filter((report) => categoryOf(report) === state.category)
-      : reports;
+    return reports.filter((report) => state.appliedConditions.every(
+      (condition) => reportMatchesCondition(report, condition)
+    ));
   }
 
   function updateDashboardData() {
     const selected = filteredReports();
     state.chartReports = selected;
-    statsPanel.update(selected, state.category);
+    queryButton.classList.toggle('active', state.appliedConditions.length > 0);
+    queryButton.setAttribute('aria-pressed', String(state.appliedConditions.length > 0));
+    statsPanel.update(selected, reports.length, state.appliedConditions, (conditionId) => {
+      state.appliedConditions = state.appliedConditions.filter(
+        (condition) => condition.id !== conditionId
+      );
+      state.draftConditions = state.appliedConditions.map((condition) => ({ ...condition }));
+      queryBuilder.render(state.draftConditions, updateDraftConditions);
+      updateDashboardData();
+    }, reports);
     state.reports = selected.filter(isMapVisible).map((report) => ({
       report,
       latitude: coordinate(report.latitude, report.location_lat),
@@ -506,36 +580,187 @@ function createQueryBuilder(reports) {
   panel.className = 'query-builder-panel';
   panel.hidden = true;
   panel.setAttribute('aria-label', 'Report query builder');
-  const condition = document.createElement('div');
-  condition.className = 'query-condition';
-  const label = document.createElement('label');
-  label.htmlFor = 'dashboard-category-condition';
-  label.textContent = 'Category';
-  const operator = document.createElement('span');
-  operator.className = 'query-operator';
-  operator.textContent = 'is';
-  const categorySelect = document.createElement('select');
-  categorySelect.id = 'dashboard-category-condition';
-  categorySelect.className = 'query-category-select';
-  addOption(categorySelect, '', 'All categories');
-  for (const category of uniqueCategories(reports)) addOption(categorySelect, category, category);
-  condition.append(label, operator, categorySelect);
-
+  const heading = document.createElement('div');
+  heading.className = 'query-panel-heading';
+  const title = document.createElement('h3');
+  title.textContent = 'Query builder';
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'query-close-button';
+  closeButton.setAttribute('aria-label', 'Close query builder');
+  closeButton.append(icon('M18 6 6 18M6 6l12 12'));
+  heading.append(title, closeButton);
+  const rows = document.createElement('div');
+  rows.className = 'query-condition-list';
+  const addButton = document.createElement('button');
+  addButton.type = 'button';
+  addButton.className = 'query-add-button';
+  addButton.textContent = '+ Add condition';
+  const actions = document.createElement('div');
+  actions.className = 'query-actions';
   const clearButton = document.createElement('button');
   clearButton.type = 'button';
   clearButton.className = 'query-clear-button';
-  clearButton.textContent = 'Clear';
-  panel.append(condition, clearButton);
-  return { panel, categorySelect, clearButton };
+  clearButton.textContent = 'Clear all';
+  const applyButton = document.createElement('button');
+  applyButton.type = 'button';
+  applyButton.className = 'query-apply-button';
+  applyButton.textContent = 'Apply';
+  actions.append(clearButton, applyButton);
+  panel.append(heading, rows, addButton, actions);
+
+  function render(conditions, onChange) {
+    rows.replaceChildren();
+    const usedFields = new Set(conditions.map((condition) => condition.field));
+    for (const condition of conditions) {
+      const row = document.createElement('div');
+      row.className = 'query-condition';
+      const fieldSelect = document.createElement('select');
+      fieldSelect.className = 'query-field-select';
+      fieldSelect.setAttribute('aria-label', 'Condition field');
+      for (const field of QUERY_FIELDS) {
+        if (field !== condition.field && usedFields.has(field)) continue;
+        addOption(fieldSelect, field, QUERY_FIELD_LABELS[field]);
+      }
+      fieldSelect.value = condition.field;
+      fieldSelect.addEventListener('change', () => {
+        condition.field = fieldSelect.value;
+        condition.value = queryValues(condition.field, reports)[0]?.value ?? '';
+        onChange();
+      });
+
+      const operator = document.createElement('span');
+      operator.className = 'query-operator';
+      operator.textContent = 'is';
+      const valueSelect = document.createElement('select');
+      valueSelect.className = 'query-value-select';
+      valueSelect.setAttribute('aria-label', `${QUERY_FIELD_LABELS[condition.field]} value`);
+      const values = queryValues(condition.field, reports);
+      if (!values.some((option) => option.value === condition.value)) {
+        condition.value = values[0]?.value ?? '';
+      }
+      if (!values.length) addOption(valueSelect, '', 'No values available');
+      for (const option of values) addOption(valueSelect, option.value, option.label);
+      valueSelect.value = condition.value;
+      valueSelect.addEventListener('change', () => {
+        condition.value = valueSelect.value;
+        onChange();
+      });
+
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.className = 'query-remove-button';
+      removeButton.textContent = '×';
+      removeButton.setAttribute('aria-label', `Remove ${QUERY_FIELD_LABELS[condition.field]} condition`);
+      removeButton.addEventListener('click', () => {
+        const index = conditions.findIndex((item) => item.id === condition.id);
+        if (index !== -1) conditions.splice(index, 1);
+        onChange();
+      });
+      row.append(fieldSelect, operator, valueSelect, removeButton);
+      rows.append(row);
+    }
+    addButton.disabled = conditions.length >= QUERY_FIELDS.length;
+  }
+
+  return { panel, rows, closeButton, addButton, clearButton, applyButton, render };
+}
+
+function queryValues(field, reports) {
+  if (field === 'status') {
+    return [...new Set(reports.map((report) => report.status).filter((value) => value !== null && value !== undefined && value !== ''))]
+      .sort((a, b) => String(a).localeCompare(String(b)))
+      .map((value) => ({ value: String(value), label: String(getStatusLabel(value)) }));
+  }
+  if (field === 'category') {
+    return uniqueCategories(reports).map((value) => ({ value, label: value }));
+  }
+  if (field === 'assignment') {
+    return [
+      { value: 'assigned', label: 'Assigned' },
+      { value: 'unassigned', label: 'Unassigned' }
+    ];
+  }
+  if (field === 'dateRange') return [...DATE_RANGE_OPTIONS];
+  if (field === 'priority') {
+    return [...new Set(reports.map((report) => report.urgency).filter((value) => value !== null && value !== undefined && value !== ''))]
+      .map((value) => String(value))
+      .sort((a, b) => a.localeCompare(b))
+      .map((value) => ({ value, label: value }));
+  }
+  return [];
+}
+
+function reportMatchesCondition(report, condition) {
+  if (condition.field === 'status') return String(report.status ?? '') === condition.value;
+  if (condition.field === 'category') return categoryOf(report) === condition.value;
+  if (condition.field === 'assignment') {
+    const assigned = report.assigned_organization_id !== null
+      && report.assigned_organization_id !== undefined
+      && String(report.assigned_organization_id).trim() !== '';
+    return condition.value === 'assigned' ? assigned : !assigned;
+  }
+  if (condition.field === 'priority') return String(report.urgency ?? '') === condition.value;
+  if (condition.field === 'dateRange') {
+    if (condition.value === 'all') return true;
+    const createdAt = Date.parse(report.created_at);
+    if (!Number.isFinite(createdAt)) return false;
+    const cutoff = Date.now() - Number(condition.value) * 24 * 60 * 60 * 1000;
+    return createdAt >= cutoff && createdAt <= Date.now();
+  }
+  return true;
+}
+
+function queryConditionValue(condition, reports) {
+  const option = queryValues(condition.field, reports)
+    .find((candidate) => candidate.value === condition.value);
+  return option?.label ?? condition.value;
 }
 
 function createExportDialog() {
   const dialog = document.createElement('dialog');
   dialog.className = 'map-export-dialog';
   const heading = document.createElement('h2');
-  heading.textContent = 'Export map';
-  const description = document.createElement('p');
-  description.textContent = 'Download the current map view, including visible report markers, as a PNG image.';
+  heading.textContent = 'Export options';
+  const titleLabel = document.createElement('label');
+  titleLabel.htmlFor = 'map-export-title';
+  titleLabel.textContent = 'Map title';
+  const titleInput = document.createElement('input');
+  titleInput.id = 'map-export-title';
+  titleInput.type = 'text';
+  titleInput.className = 'map-export-title';
+  titleInput.placeholder = 'e.g., Incident distribution — Durban Central';
+  titleInput.value = 'Map export';
+  const formatLabel = document.createElement('label');
+  formatLabel.htmlFor = 'map-export-format';
+  formatLabel.textContent = 'Export format';
+  const formatSelect = document.createElement('select');
+  formatSelect.id = 'map-export-format';
+  formatSelect.className = 'map-export-select';
+  addOption(formatSelect, 'image', 'Image');
+  addOption(formatSelect, 'csv', 'CSV');
+  const pdfOption = document.createElement('option');
+  pdfOption.value = 'pdf';
+  pdfOption.textContent = 'PDF (Coming soon)';
+  pdfOption.disabled = true;
+  formatSelect.append(pdfOption);
+  addOption(formatSelect, 'geojson', 'GeoJSON');
+  const orientationLabel = document.createElement('label');
+  orientationLabel.htmlFor = 'map-export-orientation';
+  orientationLabel.textContent = 'Page orientation';
+  const orientationSelect = document.createElement('select');
+  orientationSelect.id = 'map-export-orientation';
+  orientationSelect.className = 'map-export-select';
+  addOption(orientationSelect, 'portrait', 'Portrait A4');
+  addOption(orientationSelect, 'landscape', 'Landscape A4');
+  const includeLabel = document.createElement('label');
+  includeLabel.className = 'map-export-checkbox';
+  const includeExtras = document.createElement('input');
+  includeExtras.type = 'checkbox';
+  includeExtras.checked = true;
+  const includeText = document.createElement('span');
+  includeText.textContent = 'Include graphs & stats';
+  includeLabel.append(includeExtras, includeText);
   const status = document.createElement('p');
   status.className = 'map-export-status';
   status.setAttribute('role', 'status');
@@ -550,83 +775,242 @@ function createExportDialog() {
   const downloadButton = document.createElement('button');
   downloadButton.type = 'button';
   downloadButton.className = 'tbtn solid-accent';
-  downloadButton.textContent = 'Download PNG';
+  downloadButton.textContent = 'Generate export';
   actions.append(closeButton, downloadButton);
-  dialog.append(heading, description, status, actions);
-  return { dialog, downloadButton, status };
+  const fields = document.createElement('div');
+  fields.className = 'map-export-fields';
+  fields.append(
+    titleLabel, titleInput,
+    formatLabel, formatSelect,
+    orientationLabel, orientationSelect,
+    includeLabel
+  );
+  dialog.append(heading, fields, status, actions);
+  formatSelect.addEventListener('change', () => {
+    const imageOptionsEnabled = formatSelect.value === 'image';
+    orientationSelect.disabled = !imageOptionsEnabled;
+    includeExtras.disabled = !imageOptionsEnabled;
+  });
+  return {
+    dialog,
+    titleInput,
+    formatSelect,
+    orientationSelect,
+    includeExtras,
+    downloadButton,
+    status
+  };
 }
 
-async function exportMapImage(map, mapArea, status) {
+async function generateMapExport({
+  format,
+  title,
+  orientation,
+  includeExtras,
+  reports,
+  map,
+  mapArea,
+  chartCanvas,
+  statsCard,
+  status
+}) {
   status.hidden = true;
   status.textContent = '';
-  if (!map) {
-    setSafeText(status, 'The map is not ready yet. Please try again.');
+  try {
+    const filename = exportFilename(title, format);
+    if (format === 'csv') {
+      downloadBlob(createCsvBlob(reports), filename);
+      return true;
+    }
+    if (format === 'geojson') {
+      downloadBlob(createGeoJsonBlob(title, reports), filename);
+      return true;
+    }
+    if (format === 'image') {
+      return await exportMapImage(map, mapArea, chartCanvas, statsCard, {
+        title: title.trim() || 'Map export',
+        orientation,
+        includeExtras,
+        filename
+      });
+    }
+    return false;
+  } catch (error) {
+    console.error('Could not generate the map export.', error);
+    setSafeText(status, format === 'image'
+      ? 'Map image could not be exported. Try CSV or GeoJSON.'
+      : 'The export could not be generated. Please try again.');
     status.hidden = false;
-    return;
+    return false;
   }
+}
 
+function createCsvBlob(reports) {
+  const columns = [
+    ['id', (report) => report.id],
+    ['tracking_number', (report) => report.tracking_number],
+    ['status', (report) => report.status],
+    ['status_label', (report) => getStatusLabel(report.status)],
+    ['category', categoryOf],
+    ['urgency', (report) => report.urgency],
+    ['assigned_organization_id', (report) => report.assigned_organization_id],
+    ['latitude', (report) => coordinate(report.latitude, report.location_lat)],
+    ['longitude', (report) => coordinate(report.longitude, report.location_lng)],
+    ['location_name', (report) => report.location_name],
+    ['created_at', (report) => report.created_at]
+  ];
+  const rows = [
+    columns.map(([name]) => csvCell(name)).join(','),
+    ...reports.map((report) => columns.map(([, value]) => csvCell(value(report))).join(','))
+  ];
+  return new Blob([rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+}
+
+function csvCell(value) {
+  let text = String(value ?? '');
+  if (/^[=+\-@\t]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function createGeoJsonBlob(title, reports) {
+  const features = reports.flatMap((report) => {
+    const latitude = coordinate(report.latitude, report.location_lat);
+    const longitude = coordinate(report.longitude, report.location_lng);
+    if (latitude === null || longitude === null) return [];
+    return [{
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [longitude, latitude] },
+      properties: exportReportProperties(report)
+    }];
+  });
+  return new Blob([JSON.stringify({
+    type: 'FeatureCollection',
+    name: title.trim() || 'Map export',
+    features
+  }, null, 2)], { type: 'application/geo+json;charset=utf-8' });
+}
+
+function exportReportProperties(report) {
+  return {
+    id: report.id ?? null,
+    tracking_number: report.tracking_number ?? null,
+    status: report.status ?? null,
+    status_label: getStatusLabel(report.status) ?? null,
+    category: categoryOf(report),
+    urgency: report.urgency ?? null,
+    assigned_organization_id: report.assigned_organization_id ?? null,
+    latitude: coordinate(report.latitude, report.location_lat),
+    longitude: coordinate(report.longitude, report.location_lng),
+    location_name: report.location_name ?? null,
+    created_at: report.created_at ?? null
+  };
+}
+
+function exportFilename(title, format) {
+  const slug = String(title ?? '').trim().toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'map-export';
+  const date = new Date().toISOString().slice(0, 10);
+  const extension = format === 'geojson' ? 'geojson' : format === 'image' ? 'png' : format;
+  return `${slug}-${date}.${extension}`;
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function exportMapImage(map, mapArea, chartCanvas, statsCard, options) {
+  if (!map) throw new Error('The map is not ready yet.');
   const bounds = mapArea.getBoundingClientRect();
   const scale = Math.min(window.devicePixelRatio || 1, 2);
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bounds.width * scale);
-  canvas.height = Math.round(bounds.height * scale);
-  const context = canvas.getContext('2d');
-  if (!context) {
-    setSafeText(status, 'Your browser could not prepare the map image.');
-    status.hidden = false;
-    return;
-  }
-  context.scale(scale, scale);
-  context.fillStyle = '#E9EAEC';
-  context.fillRect(0, 0, bounds.width, bounds.height);
-
   const tiles = [...mapArea.querySelectorAll('.leaflet-tile')].filter(
     (tile) => tile.complete && tile.naturalWidth > 0
   );
-  if (!tiles.length) {
-    setSafeText(status, 'Map tiles are not ready yet. Please wait and try again.');
-    status.hidden = false;
-    return;
+  if (!tiles.length) throw new Error('Map tiles are not ready yet.');
+
+  const mapCanvas = document.createElement('canvas');
+  mapCanvas.width = Math.round(bounds.width * scale);
+  mapCanvas.height = Math.round(bounds.height * scale);
+  const mapContext = mapCanvas.getContext('2d');
+  if (!mapContext) throw new Error('The browser could not prepare the map image.');
+  mapContext.scale(scale, scale);
+  mapContext.fillStyle = '#E9EAEC';
+  mapContext.fillRect(0, 0, bounds.width, bounds.height);
+  for (const tile of tiles) {
+    const rect = tile.getBoundingClientRect();
+    mapContext.drawImage(tile, rect.left - bounds.left, rect.top - bounds.top, rect.width, rect.height);
+  }
+  drawExportMarkers(mapContext, mapArea, bounds);
+  const attribution = mapArea.querySelector('.leaflet-control-attribution')?.textContent?.trim();
+  if (attribution) {
+    mapContext.font = '10px sans-serif';
+    const width = mapContext.measureText(attribution).width + 12;
+    mapContext.fillStyle = 'rgba(255, 255, 255, .85)';
+    mapContext.fillRect(bounds.width - width, bounds.height - 18, width, 18);
+    mapContext.fillStyle = '#333';
+    mapContext.fillText(attribution, bounds.width - width + 6, bounds.height - 6);
   }
 
-  try {
-    for (const tile of tiles) {
-      const rect = tile.getBoundingClientRect();
-      context.drawImage(
-        tile,
-        rect.left - bounds.left,
-        rect.top - bounds.top,
-        rect.width,
-        rect.height
-      );
-    }
-    drawExportMarkers(context, mapArea, bounds);
-    const attribution = mapArea.querySelector('.leaflet-control-attribution')?.textContent?.trim();
-    if (attribution) {
-      context.font = '10px sans-serif';
-      const width = context.measureText(attribution).width + 12;
-      context.fillStyle = 'rgba(255, 255, 255, .85)';
-      context.fillRect(bounds.width - width, bounds.height - 18, width, 18);
-      context.fillStyle = '#333';
-      context.fillText(attribution, bounds.width - width + 6, bounds.height - 6);
-    }
-    const blob = await new Promise((resolve, reject) => {
-      canvas.toBlob((result) => {
-        if (result) resolve(result);
-        else reject(new Error('The browser did not produce an image.'));
-      }, 'image/png');
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'civicneuro-map.png';
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  } catch (error) {
-    console.error('Could not export the report map image.', error);
-    setSafeText(status, 'The map image could not be exported. Check the tile connection and try again.');
-    status.hidden = false;
+  const pageRatio = options.orientation === 'landscape' ? 1.414 : 1 / 1.414;
+  const outputWidth = 1200;
+  const outputHeight = Math.round(outputWidth / pageRatio);
+  const output = document.createElement('canvas');
+  output.width = outputWidth;
+  output.height = outputHeight;
+  const context = output.getContext('2d');
+  if (!context) throw new Error('The browser could not prepare the export image.');
+  context.fillStyle = '#FFF';
+  context.fillRect(0, 0, outputWidth, outputHeight);
+  context.fillStyle = '#202124';
+  context.font = '600 26px sans-serif';
+  context.fillText(options.title, 48, 54, outputWidth - 96);
+  const extrasHeight = options.includeExtras ? Math.round(outputHeight * 0.24) : 0;
+  const mapLeft = 48;
+  const mapTop = 82;
+  const mapWidth = outputWidth - 96;
+  const mapHeight = outputHeight - mapTop - extrasHeight - 36;
+  context.drawImage(mapCanvas, mapLeft, mapTop, mapWidth, mapHeight);
+  if (options.includeExtras) drawExportSummary(context, chartCanvas, statsCard, {
+    left: mapLeft,
+    top: mapTop + mapHeight + 18,
+    width: mapWidth,
+    height: extrasHeight - 18
+  });
+  const blob = await canvasBlob(output);
+  downloadBlob(blob, options.filename);
+  return true;
+}
+
+function canvasBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) resolve(blob);
+      else reject(new Error('The browser did not produce an image.'));
+    }, 'image/png');
+  });
+}
+
+function drawExportSummary(context, chartCanvas, statsCard, bounds) {
+  const chartWidth = Math.round(bounds.width * 0.58);
+  const chartHeight = bounds.height;
+  const title = statsCard.querySelector('.panel-head h3')?.textContent || 'Report stats';
+  context.fillStyle = '#202124';
+  context.font = '600 15px sans-serif';
+  context.fillText('Report distribution', bounds.left, bounds.top + 14);
+  if (chartCanvas.width && chartCanvas.height) {
+    context.drawImage(chartCanvas, bounds.left, bounds.top + 20, chartWidth, chartHeight - 20);
   }
+  context.fillText(title, bounds.left + chartWidth + 24, bounds.top + 14);
+  const stats = [...statsCard.querySelectorAll('.stat-box')].map((box) => box.textContent.trim());
+  context.font = '12px sans-serif';
+  stats.forEach((text, index) => {
+    context.fillText(text, bounds.left + chartWidth + 24, bounds.top + 38 + index * 20, bounds.width - chartWidth - 24);
+  });
 }
 
 function drawExportMarkers(context, mapArea, bounds) {
@@ -693,6 +1077,8 @@ function createStatsPanel() {
   body.className = 'panel-body';
   const showing = document.createElement('div');
   showing.className = 'stats-showing';
+  const chips = document.createElement('div');
+  chips.className = 'query-chips';
   const grid = document.createElement('div');
   grid.className = 'stat-grid';
   const statBoxes = [
@@ -714,14 +1100,20 @@ function createStatsPanel() {
   const footnote = document.createElement('p');
   footnote.className = 'stats-footnote';
   footnote.textContent = '"Attended" reports (Resolved, Rejected or Duplicate) remain included in Total but are hidden from the map. See the Report sheet’s Historical tab.';
-  body.append(showing, grid, meta, footnote);
+  const emptyState = createEmptyState({
+    title: 'No reports match this query',
+    message: 'Adjust or clear the query conditions to see reports.'
+  });
+  emptyState.classList.add('stats-empty-state');
+  body.append(showing, chips, emptyState, grid, meta, footnote);
   card.append(head.element, body);
   return {
     card,
     body,
     collapseButton: head.collapseButton,
     title: 'Report stats',
-    update(reports, selectedCategory) {
+    update(reports, totalCount, conditions, onRemoveCondition, allReports) {
+      const hasQuery = conditions.length > 0;
       const attended = reports.filter((report) => ATTENDED_STATUSES.has(report.status)).length;
       const pending = reports.length - attended;
       const highPriority = reports.filter((report) => String(report.urgency ?? '').toLocaleLowerCase() === 'high').length;
@@ -729,9 +1121,34 @@ function createStatsPanel() {
       statBoxes[1].value.textContent = String(pending);
       statBoxes[2].value.textContent = String(highPriority);
       statBoxes[3].value.textContent = String(attended);
-      showing.textContent = `Showing: all reports (${reports.length})`;
+      showing.textContent = hasQuery
+        ? `Showing: filtered reports (${reports.length} of ${totalCount})`
+        : `Showing: all reports (${reports.length})`;
+      chips.replaceChildren();
+      for (const condition of conditions) {
+        const chip = document.createElement('span');
+        chip.className = 'query-chip';
+        const label = document.createElement('span');
+        label.textContent = `${QUERY_FIELD_LABELS[condition.field]}: ${queryConditionValue(condition, allReports)}`;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'query-chip-remove';
+        remove.textContent = '×';
+        remove.setAttribute('aria-label', `Remove ${QUERY_FIELD_LABELS[condition.field]} filter`);
+        remove.addEventListener('click', () => onRemoveCondition(condition.id));
+        chip.append(label, remove);
+        chips.append(chip);
+      }
+      const isEmpty = reports.length === 0;
+      emptyState.hidden = !isEmpty;
+      grid.hidden = isEmpty;
+      meta.hidden = isEmpty;
+      footnote.hidden = isEmpty;
       locationValue.textContent = mostCommonLocation(reports);
-      categoryValue.textContent = selectedCategory || 'All';
+      const categoryCondition = conditions.find((condition) => condition.field === 'category');
+      categoryValue.textContent = categoryCondition
+        ? queryConditionValue(categoryCondition, allReports)
+        : 'All';
     }
   };
 }
