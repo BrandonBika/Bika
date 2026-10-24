@@ -5,6 +5,7 @@ import pg from 'pg';
 
 const { Client } = pg;
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const projectEnvPath = path.join(repoRoot, '.env');
 const envPath = path.join(repoRoot, '.env.test');
 
 function parseEnvFile(contents) {
@@ -16,6 +17,19 @@ function parseEnvFile(contents) {
     values.set(match[1], raw.replace(/^(['"])(.*)\1$/, '$2'));
   }
   return values;
+}
+
+export function loadProjectEnv() {
+  if (!fs.existsSync(projectEnvPath)) return;
+
+  if (typeof process.loadEnvFile === 'function') {
+    process.loadEnvFile(projectEnvPath);
+    return;
+  }
+
+  for (const [key, value] of parseEnvFile(fs.readFileSync(projectEnvPath, 'utf8'))) {
+    if (process.env[key] === undefined) process.env[key] = value;
+  }
 }
 
 function collectProjectRefs() {

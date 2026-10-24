@@ -7,6 +7,7 @@
     "apps/*"
   ],
   "scripts": {
+    "build": "node scripts/build-runtime-config.js",
     "build:vendor:supabase": "esbuild node_modules/@supabase/supabase-js/dist/index.mjs --bundle --format=esm --platform=browser --target=es2022 --outfile=apps/resident-pwa/vendor/supabase-js.js",
     "build:vendor:zego": "esbuild scripts/zego-browser-entry.js --bundle --format=esm --platform=browser --target=es2022 --outfile=apps/resident-pwa/vendor/zego-uikit.js",
     "build:vendor": "npm run build:vendor:supabase && npm run build:vendor:zego",

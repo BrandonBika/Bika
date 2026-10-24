@@ -179,11 +179,11 @@ Observed strengths:
 - The Edge Function authorizes the Beacon route using the bearer token and validates geocoding/routing config and coordinate ranges (`supabase/functions/beacon-route/handler.js`).
 
 Observed concerns / issues ranked by severity:
-1. High: live production has a backend connectivity / CORS problem. Evidence: browser page events show CORS errors for `https://gnwaaedtofazlkjkurea.supabase.co/functions/v1/news-list` and `surveys-list`, and the runtime fetch to live functions fails with `ERR_FAILED` / `Failed to fetch`.
+1. High: live production has a backend connectivity / CORS problem. Evidence: browser page events show CORS errors for `${SUPABASE_URL}/functions/v1/news-list` and `surveys-list`, and the runtime fetch to live functions fails with `ERR_FAILED` / `Failed to fetch`.
 2. Medium: client-side route guards are not a complete authorization model; they are only client-side checks. The app does include server-side RLS, but not every feature is covered by strong server-side enforcement in the reviewed code.
 3. Medium: offline queue is in-memory only. `packages/offline-queue/src/queue.js` uses `let memoryQueue = []`; there is no durable queue, so reports or data can be lost across reloads.
 4. Medium: some user flows are still mock/demo-driven: `reset-password.js` defaults to `mock-reset-token`, `captcha-widget.js` returns a mock captcha token, `beacon-add-to-circle.js` declares resident directory search is not connected yet, and `auth.client.js` warns that `resident_profiles` is not available until migration is applied.
-5. Low: environment values are stored in the checked-in runtime config file; the app docs warn against putting service-role keys in browser code, but the repo still contains a checked-in app runtime config with a live project URL and a key placeholder that needs to be managed correctly.
+5. Low: browser-safe Supabase settings are loaded from the ignored local `.env` by the development server; service-role keys and database connection strings must remain server-side.
 
 ## Part E: Data model and associations
 

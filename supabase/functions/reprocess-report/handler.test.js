@@ -9,7 +9,7 @@ const envValues = {
   GEMINI_API_KEY: 'test-gemini-key',
   GEMINI_MODEL: 'configured-flash-model',
   SUPABASE_SERVICE_ROLE_KEY: 'test-service-role',
-  SUPABASE_URL: 'https://gnwaaedtofazlkjkurea.supabase.co'
+  SUPABASE_URL: 'https://test-project.supabase.co'
 };
 const result = {
   original_transcription: 'A street light is broken.',
@@ -44,7 +44,7 @@ function request({
   secret = 'test-admin-secret'
 } = {}) {
   const token = `header.${Buffer.from(JSON.stringify({ role })).toString('base64url')}.signature`;
-  return new Request('https://gnwaaedtofazlkjkurea.supabase.co/functions/v1/reprocess-report', {
+  return new Request('https://test-project.supabase.co/functions/v1/reprocess-report', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${role === 'service_role' ? serviceToken : token}`,
@@ -56,7 +56,7 @@ function request({
 }
 
 function requestWithoutJwt({ reports = ['CN-2026-000014'], secret = 'test-admin-secret' } = {}) {
-  return new Request('https://gnwaaedtofazlkjkurea.supabase.co/functions/v1/reprocess-report', {
+  return new Request('https://test-project.supabase.co/functions/v1/reprocess-report', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

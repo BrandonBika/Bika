@@ -12,6 +12,12 @@ Multi-tenant civic-issue reporting platform.
 
 See docs/architecture/
 
+## Local runtime configuration
+
+Copy `.env.example` to `.env` and set `SUPABASE_URL` and `SUPABASE_ANON_KEY` for the browser apps. The local development server exposes only those public settings in its runtime configuration; keep service-role keys and other credentials server-side. `.env.test` is a separate, ignored file for isolated test-project credentials.
+
+For Vercel, set the Framework Preset to **Other**, the Build Command to `npm run build`, and the Output Directory to `dist`. Add `SUPABASE_URL` and `SUPABASE_ANON_KEY` as project environment variables for each deployment environment. The build writes the generated runtime config only into the ignored `dist` output; app routes use URL fragments and need no rewrite rules.
+
 ## Database migration notes
 
 ### Core reporting relationships

@@ -6,7 +6,7 @@ export const PLATFORM_ROLES = Object.freeze({
 });
 
 export const SUPABASE_CONFIG = Object.freeze({
-  url: 'https://gnwaaedtofazlkjkurea.supabase.co',
+  url: residentRuntimeConfig.supabaseUrl,
   anonKey: residentRuntimeConfig.supabaseAnonKey
 });
 

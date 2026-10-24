@@ -38,7 +38,7 @@ $headers = @{
 }
 $body = @{ reports = @("CN-2026-000014", "CN-2026-000018") } | ConvertTo-Json
 try {
-  Invoke-RestMethod -Method Post -Uri "https://gnwaaedtofazlkjkurea.supabase.co/functions/v1/reprocess-report" -Headers $headers -ContentType "application/json" -Body $body
+  Invoke-RestMethod -Method Post -Uri "${env:SUPABASE_URL}/functions/v1/reprocess-report" -Headers $headers -ContentType "application/json" -Body $body
 } finally {
   $headers['x-admin-task-secret'] = $null
   $adminSecret = $null

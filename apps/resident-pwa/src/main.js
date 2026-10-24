@@ -68,7 +68,7 @@ async function bootstrap() {
     });
   }
   if (!config.useMock && !hasSupabaseConfig) {
-    showToast('Preview is available, but Supabase auth needs a project URL and public anon key in apps/resident-pwa/runtime-config.js.', {
+    showToast('Preview is available, but Supabase auth needs SUPABASE_URL and SUPABASE_ANON_KEY in the local .env file.', {
       type: 'warning',
       duration: 12000
     });

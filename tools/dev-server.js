@@ -7,11 +7,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { loadDevConfig, loadProjectEnv } from '../scripts/dev-supabase-test-helpers.js';
 
-const PORT = Number(process.env.PORT || 3000);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+loadProjectEnv();
+const PORT = Number(process.env.PORT || 3000);
 const demoMode = process.argv.includes('--demo');
-const { loadDevConfig } = await import('../scripts/dev-supabase-test-helpers.js');
 const devConfig = loadDevConfig();
 const zegoEnv = {
   ZEGO_APP_ID: devConfig.env.get('ZEGO_APP_ID'),
@@ -24,17 +25,22 @@ const CONTENT_SECURITY_POLICY = [
   "worker-src 'self' blob:",
   "frame-ancestors 'none'"
 ].join('; ');
-let demoRuntimeConfig = null;
-
-if (demoMode) {
-  demoRuntimeConfig = `const runtimeConfig = ${JSON.stringify({
+const runtimeConfig = demoMode
+  ? {
     env: 'development',
     useMock: false,
     beaconEnabled: true,
     supabaseUrl: devConfig.supabaseUrl,
     supabaseAnonKey: devConfig.anonKey
-  })};\nexport default runtimeConfig;\n`;
-}
+  }
+  : {
+    env: 'development',
+    useMock: false,
+    beaconEnabled: false,
+    supabaseUrl: process.env.SUPABASE_URL || '',
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ''
+  };
+const runtimeConfigSource = `const runtimeConfig = ${JSON.stringify(runtimeConfig)};\nexport default runtimeConfig;\n`;
 
 const packageImports = {};
 for (const entry of fs.readdirSync(path.join(ROOT, 'packages'), { withFileTypes: true })) {
@@ -191,7 +197,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (demoMode && [
+  if ([
     '/runtime-config.js',
     '/apps/resident-pwa/runtime-config.js',
     '/resident-pwa/runtime-config.js'
@@ -202,7 +208,7 @@ const server = http.createServer((req, res) => {
       'X-Content-Type-Options': 'nosniff',
       'Cache-Control': 'no-store'
     });
-    res.end(demoRuntimeConfig);
+    res.end(runtimeConfigSource);
     return;
   }
 
