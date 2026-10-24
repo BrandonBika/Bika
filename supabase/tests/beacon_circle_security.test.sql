@@ -16,8 +16,15 @@ create temp table cn_circle_request (
 create temp table cn_circle_conversation (
   id uuid not null
 );
+create temp table cn_circle_unaffected_request (
+  id uuid not null
+);
+create temp table cn_circle_unaffected_conversation (
+  id uuid not null
+);
 grant all on cn_circle_users, cn_circle_results, cn_circle_request,
-  cn_circle_conversation to anon, authenticated, service_role;
+  cn_circle_conversation, cn_circle_unaffected_request,
+  cn_circle_unaffected_conversation to anon, authenticated, service_role;
 
 insert into cn_circle_users (label, id, email, phone)
 values
@@ -278,6 +285,22 @@ select 'Direct conversation is allowed after acceptance', count(*) = 1
 from public.conversations
 where id = (select id from pg_temp.cn_circle_conversation);
 
+select pg_temp.set_circle_claims('C');
+insert into pg_temp.cn_circle_unaffected_request
+select public.send_circle_request((select id from pg_temp.cn_circle_users where label = 'D'));
+select pg_temp.set_circle_claims('D');
+select public.respond_circle_request(
+  (select id from pg_temp.cn_circle_unaffected_request),
+  true
+);
+select pg_temp.set_circle_claims('C');
+insert into pg_temp.cn_circle_unaffected_conversation
+select public.create_direct_conversation(
+  (select id from pg_temp.cn_circle_users where label = 'D')
+);
+insert into public.messages (conversation_id, type, body)
+values ((select id from pg_temp.cn_circle_unaffected_conversation), 'text', 'Unaffected pair history');
+
 select pg_temp.set_circle_claims('A');
 select public.remove_connection((select id from pg_temp.cn_circle_users where label = 'B'));
 do $$
@@ -312,7 +335,46 @@ begin
     ('remove_connection rejects direct message with 42501', removed_pair_message_denied);
 end;
 $$;
+
+select pg_temp.set_circle_claims('B');
+insert into pg_temp.cn_circle_results
+select 'Former member cannot read past messages after remove',
+  count(*) = 0
+from public.messages
+where conversation_id = (select id from pg_temp.cn_circle_conversation);
+
+select pg_temp.set_circle_claims('C');
+insert into pg_temp.cn_circle_results
+select 'Unrelated accepted pair retains message access after remove',
+  count(*) = 1
+from public.messages
+where conversation_id = (select id from pg_temp.cn_circle_unaffected_conversation);
+
 reset role;
+insert into pg_temp.cn_circle_results
+select 'remove_connection physically removes direct conversation memberships',
+  count(*) = 0
+from public.conversation_members
+where conversation_id = (select id from pg_temp.cn_circle_conversation);
+
+insert into public.conversation_members (conversation_id, user_id, role)
+values (
+  (select id from pg_temp.cn_circle_conversation),
+  (select id from pg_temp.cn_circle_users where label = 'B'),
+  'member'
+);
+set local role authenticated;
+select pg_temp.set_circle_claims('B');
+insert into pg_temp.cn_circle_results
+select 'Stale membership cannot restore message reads after remove',
+  count(*) = 0
+from public.messages
+where conversation_id = (select id from pg_temp.cn_circle_conversation);
+reset role;
+delete from public.conversation_members
+where conversation_id = (select id from pg_temp.cn_circle_conversation)
+  and user_id = (select id from pg_temp.cn_circle_users where label = 'B');
+
 update public.beacon_rate_limit_config
 set requests_per_hour = 10
 where singleton;
@@ -326,6 +388,11 @@ select public.respond_circle_request(
   true
 );
 select pg_temp.set_circle_claims('A');
+select public.create_direct_conversation(
+  (select id from pg_temp.cn_circle_users where label = 'B')
+);
+insert into public.messages (conversation_id, type, body)
+values ((select id from pg_temp.cn_circle_conversation), 'text', 'Before block');
 
 select pg_temp.set_circle_claims('C');
 do $$
@@ -390,6 +457,7 @@ do $$
 declare
   blocked_request boolean := false;
   blocked_message boolean := false;
+  blocked_past_message_hidden boolean := false;
   blocked_search_hidden boolean := false;
 begin
   begin
@@ -405,17 +473,51 @@ begin
   exception when insufficient_privilege then
     blocked_message := true;
   end;
+  select count(*) = 0 into blocked_past_message_hidden
+  from public.messages
+  where conversation_id = (select id from pg_temp.cn_circle_conversation);
   select count(*) = 0 into blocked_search_hidden
   from public.search_residents('Circle Test B');
   insert into pg_temp.cn_circle_results
   values
     ('Blocked pair cannot create another request', blocked_request),
     ('Direct messages stop after block', blocked_message),
+    ('Former member cannot read past messages after block', blocked_past_message_hidden),
     ('Search hides a blocked resident', blocked_search_hidden);
 end;
 $$;
 
+select pg_temp.set_circle_claims('C');
+insert into pg_temp.cn_circle_results
+select 'Unrelated accepted pair retains message access after block',
+  count(*) = 1
+from public.messages
+where conversation_id = (select id from pg_temp.cn_circle_unaffected_conversation);
+
 reset role;
+insert into pg_temp.cn_circle_results
+select 'block_user physically removes direct conversation memberships',
+  count(*) = 0
+from public.conversation_members
+where conversation_id = (select id from pg_temp.cn_circle_conversation);
+
+insert into public.conversation_members (conversation_id, user_id, role)
+values (
+  (select id from pg_temp.cn_circle_conversation),
+  (select id from pg_temp.cn_circle_users where label = 'A'),
+  'member'
+);
+set local role authenticated;
+select pg_temp.set_circle_claims('A');
+insert into pg_temp.cn_circle_results
+select 'Stale membership cannot restore message reads after block',
+  count(*) = 0
+from public.messages
+where conversation_id = (select id from pg_temp.cn_circle_conversation);
+reset role;
+delete from public.conversation_members
+where conversation_id = (select id from pg_temp.cn_circle_conversation)
+  and user_id = (select id from pg_temp.cn_circle_users where label = 'A');
 
 insert into pg_temp.cn_circle_results
 select 'Circle RPCs use fixed search paths and are not executable by anon',
