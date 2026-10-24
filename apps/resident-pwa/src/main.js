@@ -76,7 +76,9 @@ async function bootstrap() {
 
   // Register Service Worker (production / PWA)
   if ('serviceWorker' in navigator && config.env === 'production') {
-    navigator.serviceWorker.register('./service-worker.js').catch((error) => {
+    navigator.serviceWorker.register('/resident-pwa/service-worker.js', {
+      scope: '/resident-pwa/'
+    }).catch((error) => {
       console.error('Could not register the service worker.', error);
     });
   }

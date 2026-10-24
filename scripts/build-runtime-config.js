@@ -61,6 +61,13 @@ function copyLandingPage() {
   copyDirectory(sourceDir, path.join(OUTPUT_DIR, 'landing'), { excludeIndex: true });
 }
 
+function copyLegacyRootServiceWorker() {
+  fs.copyFileSync(
+    path.join(ROOT, 'scripts', 'legacy-root-service-worker.js'),
+    path.join(OUTPUT_DIR, 'service-worker.js')
+  );
+}
+
 function copySharedPackages() {
   const packagesDir = path.join(ROOT, 'packages');
 
@@ -174,6 +181,10 @@ function validateBuild() {
     validateHtmlAssets(indexPath);
   }
 
+  if (!fs.existsSync(path.join(OUTPUT_DIR, 'service-worker.js'))) {
+    throw new Error('Build is missing the legacy root service worker.');
+  }
+
   for (const app of DEPLOYED_APPS) {
     const runtimeConfig = fs.readFileSync(path.join(OUTPUT_DIR, app, 'runtime-config.js'), 'utf8');
     const configMatch = runtimeConfig.match(/const runtimeConfig = (\{.*\});/);
@@ -217,6 +228,7 @@ const publicConfig = getPublicConfig();
 fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
 fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 copyLandingPage();
+copyLegacyRootServiceWorker();
 copySharedPackages();
 
 for (const app of DEPLOYED_APPS) {
