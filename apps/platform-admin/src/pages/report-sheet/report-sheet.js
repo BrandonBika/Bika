@@ -1,5 +1,6 @@
 import { createEmptyState, createRetryState } from '../../components/state-message/state-message.js';
 import { getReportSheetData } from '../../features/reports.client.js';
+import { resolveReporterDisplay } from '../../features/reporter-display.js';
 import { getCategoryLabel, getStatusLabel } from '../../features/status-labels.js';
 
 const HISTORICAL_STATUSES = new Set(['Resolved', 'Rejected', 'Duplicate']);
@@ -203,23 +204,23 @@ function renderReportSheet(target, data) {
 
 function createReportRow(report, data) {
   const row = document.createElement('tr');
-  const contact = data.guestContacts.get(report.id)
-    ?? data.residentProfiles.get(report.reporter_id)
-    ?? null;
+  const reporter = resolveReporterDisplay({
+    report,
+    profile: data.residentProfiles.get(report.reporter_id),
+    guestContact: data.guestContacts.get(report.id)
+  });
   const reporterCell = document.createElement('td');
   const reporterName = document.createElement('div');
   reporterName.className = 'rep-name';
-  reporterName.textContent = report.reporter_name || contact?.full_name || (
-    report.reporter_type === 'guest' ? 'Guest' : 'Anonymous'
-  );
+  reporterName.textContent = reporter.name;
   const tracking = document.createElement('div');
   tracking.className = 'rep-sub';
   tracking.textContent = report.tracking_number || 'No tracking number';
   reporterCell.append(reporterName, tracking);
-  if (contact?.phone) {
+  if (reporter.phone) {
     const phone = document.createElement('div');
     phone.className = 'cell-sub';
-    phone.textContent = contact.phone;
+    phone.textContent = reporter.phone;
     reporterCell.append(phone);
   }
 

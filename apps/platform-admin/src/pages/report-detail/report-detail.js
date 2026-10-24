@@ -3,6 +3,7 @@ import { createEmptyState, createRetryState } from '../../components/state-messa
 import { MAP_CONFIG } from '../../config.js';
 import { attachTileErrorNotice } from '../../features/map-tiles.js';
 import { getReportDetailData, reassignReport } from '../../features/reports.client.js';
+import { resolveReporterDisplay } from '../../features/reporter-display.js';
 import { getCategoryLabel, getEventLabel, getStatusLabel } from '../../features/status-labels.js';
 
 export async function mountReportDetail(target, reportId) {
@@ -29,6 +30,11 @@ export async function mountReportDetail(target, reportId) {
 
 function renderDetail(target, data, notice = '') {
   const { report } = data;
+  const reporter = resolveReporterDisplay({
+    report,
+    profile: data.residentProfile,
+    guestContact: data.guestContact
+  });
   const page = document.createElement('div');
   page.className = 'report-detail-page';
   const back = document.createElement('a');
@@ -58,7 +64,7 @@ function renderDetail(target, data, notice = '') {
   const grid = document.createElement('div');
   grid.className = 'detail-grid';
   const summary = makeCard('Report');
-  addField(summary, 'Reporter', report.reporter_name || (report.reporter_type === 'guest' ? 'Guest' : 'Anonymous'));
+  addField(summary, 'Reporter', reporter.name);
   addField(summary, 'Urgency', report.urgency);
   addField(summary, 'Source', report.source);
   addField(summary, 'Reported', formatDate(report.created_at));
@@ -82,17 +88,12 @@ function renderDetail(target, data, notice = '') {
   grid.append(summary, categories, organizations);
   page.append(grid);
 
-  const contact = makeCard('Reporter contact');
-  const contactData = data.guestContact ?? data.residentProfile;
-  if (!contactData) {
-    contact.append(createEmptyState({ title: 'No contact details', message: 'No linked reporter contact is available.' }));
-  } else {
-    addField(contact, 'Name', contactData.full_name || [contactData.first_name, contactData.last_name].filter(Boolean).join(' '));
-    addField(contact, 'Phone', contactData.phone);
-    addField(contact, 'Email', contactData.email);
-    addField(contact, 'Contact preference', contactData.contact_preference);
+  if (reporter.phone || reporter.email) {
+    const contact = makeCard('Reporter contact');
+    addField(contact, 'Phone', reporter.phone);
+    addField(contact, 'Email', reporter.email);
+    page.append(contact);
   }
-  page.append(contact);
   page.append(createLocationCard(report));
   page.append(createEvidenceCard(report, data.evidence));
   page.append(createReassignCard(data, report, (updated) => {

@@ -7,6 +7,26 @@ function throwQueryError(error) {
   throw new Error('No access: check your staff account');
 }
 
+async function optionalLookup(query, label, fallback) {
+  try {
+    const { data, error } = await withTimeout(query, label);
+    if (error) {
+      console.error('Optional reporter lookup failed.', {
+        lookup: label,
+        error: error?.message || 'Unknown error'
+      });
+      return fallback;
+    }
+    return data ?? fallback;
+  } catch (error) {
+    console.error('Optional reporter lookup failed.', {
+      lookup: label,
+      error: error?.message || 'Unknown error'
+    });
+    return fallback;
+  }
+}
+
 export async function listReports() {
   const { data, error } = await withTimeout(
     supabase.from('reports').select('*').order('created_at', { ascending: false }),
@@ -38,30 +58,39 @@ export async function listOrganizations() {
 export async function getReportSheetData() {
   const reports = await listReports();
   const organizations = await listOrganizations();
-  const reportIds = reports.map((report) => report.id);
-  const reporterIds = [...new Set(reports
+  const guestReportIds = reports
+    .filter((report) => report.reporter_type === 'guest')
+    .map((report) => report.id);
+  const residentIds = [...new Set(reports
+    .filter((report) => report.reporter_type === 'resident')
     .map((report) => report.reporter_id)
     .filter((id) => id !== null && id !== undefined))];
 
   const [guestResult, residentResult] = await Promise.all([
-    withTimeout(
-      supabase.from('guest_contacts').select('*').in('report_id', reportIds),
-      'Guest contacts query'
-    ),
-    reporterIds.length
-      ? withTimeout(
-        supabase.from('resident_profiles').select('*').in('id', reporterIds),
-        'Resident profiles query'
+    guestReportIds.length
+      ? optionalLookup(
+        supabase.from('guest_contacts')
+          .select('report_id,phone,email,contact_preference,consent_to_updates,consent_revoked_at')
+          .in('report_id', guestReportIds),
+        'Guest contacts query',
+        []
       )
-      : Promise.resolve({ data: [], error: null })
+      : Promise.resolve([]),
+    residentIds.length
+      ? optionalLookup(
+        supabase.from('resident_profiles')
+          .select('id,full_name,phone,email')
+          .in('id', residentIds),
+        'Resident profiles query',
+        []
+      )
+      : Promise.resolve([])
   ]);
-  throwQueryError(guestResult.error);
-  throwQueryError(residentResult.error);
   return {
     reports,
     organizations,
-    guestContacts: new Map((guestResult.data ?? []).map((contact) => [contact.report_id, contact])),
-    residentProfiles: new Map((residentResult.data ?? []).map((profile) => [profile.id, profile]))
+    guestContacts: new Map(guestResult.map((contact) => [contact.report_id, contact])),
+    residentProfiles: new Map(residentResult.map((profile) => [profile.id, profile]))
   };
 }
 
@@ -85,18 +114,28 @@ export async function getReportDetailData(reportId) {
   const report = await getReport(reportId);
   if (!report) throw new Error('No access: check your staff account');
 
-  const [organizations, guestResult, residentResult, evidenceResult, eventsResult] = await Promise.all([
+  const [organizations, guestContact, residentProfile, evidenceResult, eventsResult] = await Promise.all([
     listOrganizations(),
-    withTimeout(
-      supabase.from('guest_contacts').select('*').eq('report_id', reportId).maybeSingle(),
-      'Guest contact query'
-    ),
-    report.reporter_id
-      ? withTimeout(
-        supabase.from('resident_profiles').select('*').eq('id', report.reporter_id).maybeSingle(),
-        'Resident profile query'
+    report.reporter_type === 'guest'
+      ? optionalLookup(
+        supabase.from('guest_contacts')
+          .select('report_id,phone,email,contact_preference,consent_to_updates,consent_revoked_at')
+          .eq('report_id', reportId)
+          .maybeSingle(),
+        'Guest contact query',
+        null
       )
-      : Promise.resolve({ data: null, error: null }),
+      : Promise.resolve(null),
+    report.reporter_type === 'resident' && report.reporter_id
+      ? optionalLookup(
+        supabase.from('resident_profiles')
+          .select('id,full_name,phone,email')
+          .eq('id', report.reporter_id)
+          .maybeSingle(),
+        'Resident profile query',
+        null
+      )
+      : Promise.resolve(null),
     withTimeout(
       supabase.from('report_evidence').select('*').eq('report_id', reportId).order('created_at'),
       'Report evidence query'
@@ -107,8 +146,6 @@ export async function getReportDetailData(reportId) {
     )
   ]);
 
-  throwQueryError(guestResult.error);
-  throwQueryError(residentResult.error);
   throwQueryError(evidenceResult.error);
   throwQueryError(eventsResult.error);
 
@@ -127,8 +164,8 @@ export async function getReportDetailData(reportId) {
     organizations,
     assignedOrganization: organizationById.get(report.assigned_organization_id) ?? null,
     recommendedOrganization: organizationById.get(report.recommended_organization_id) ?? null,
-    guestContact: guestResult.data,
-    residentProfile: residentResult.data,
+    guestContact,
+    residentProfile,
     evidence,
     events: eventsResult.data ?? []
   };
