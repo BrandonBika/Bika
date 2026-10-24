@@ -40,7 +40,8 @@ function jsonResponse(value, status = 200) {
 function createBackend({
   blockRateLimit = false,
   reportInsertFailure = null,
-  storageDeleteStatus = 204
+  storageDeleteStatus = 204,
+  organizationApproved = true
 } = {}) {
   const calls = [];
   let savedReport = null;
@@ -51,6 +52,9 @@ function createBackend({
 
     if (url.includes('/rest/v1/reports?')) {
       return jsonResponse(savedReport ? [savedReport] : []);
+    }
+    if (url.endsWith('/rest/v1/rpc/organization_name_is_approved')) {
+      return jsonResponse(organizationApproved);
     }
     if (url.endsWith('/rest/v1/rpc/consume_report_rate_limit')) {
       return jsonResponse({ allowed: !blockRateLimit });
@@ -154,6 +158,19 @@ test('accepts the resident form multipart payload with a pinned location and PNG
     env: createEnv(),
     fetchImpl: backend.fetchImpl,
     user: resident
+  });
+
+  test('does not create a report for an unapproved selected organization', async () => {
+    const backend = createBackend({ organizationApproved: false });
+    const response = await handleReportSubmit(createRequest(basePayload()), {
+      env: createEnv(),
+      fetchImpl: backend.fetchImpl,
+      user: resident
+    });
+
+    assert.equal(response.status, 422);
+    assert.equal((await response.json()).code, 'ORGANIZATION_NOT_APPROVED');
+    assert.equal(backend.getSavedReport(), null);
   });
 
   assert.equal(response.status, 200);

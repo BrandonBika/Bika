@@ -33,7 +33,7 @@ function jsonResponse(value, status = 200) {
   });
 }
 
-function createBackend({ limitedScope = null } = {}) {
+function createBackend({ limitedScope = null, organizationApproved = true } = {}) {
   const calls = [];
   let savedReport = null;
   const fetchImpl = async (input, options = {}) => {
@@ -43,6 +43,9 @@ function createBackend({ limitedScope = null } = {}) {
 
     if (url.includes('/rest/v1/reports?')) {
       return jsonResponse(savedReport ? [savedReport] : []);
+    }
+    if (url.endsWith('/rest/v1/rpc/organization_name_is_approved')) {
+      return jsonResponse(organizationApproved);
     }
     if (url.endsWith('/rest/v1/rpc/consume_report_rate_limit')) {
       const { p_scope } = JSON.parse(options.body);
@@ -145,6 +148,19 @@ test('stores optional guest contact only with explicit consent', async () => {
     env: createEnv(),
     fetchImpl: backend.fetchImpl,
     user: guest
+  });
+
+  test('does not create a guest report for an unapproved selected organization', async () => {
+    const backend = createBackend({ organizationApproved: false });
+    const response = await handleReportGuestSubmit(createRequest(basePayload()), {
+      env: createEnv(),
+      fetchImpl: backend.fetchImpl,
+      user: guest
+    });
+
+    assert.equal(response.status, 422);
+    assert.equal((await response.json()).code, 'ORGANIZATION_NOT_APPROVED');
+    assert.equal(backend.getSavedReport(), null);
   });
 
   assert.equal(response.status, 200);

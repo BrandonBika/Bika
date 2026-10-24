@@ -264,6 +264,22 @@ async function getExistingReport(idempotencyKey, reporterId, config, fetchImpl) 
   return rows[0] || null;
 }
 
+async function requireApprovedOrganization(report, config, fetchImpl) {
+  if (!report.organization) return;
+
+  const response = await adminRequest('rpc/organization_name_is_approved', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_name: report.organization })
+  }, config.projectUrl, config.serviceRole, fetchImpl);
+  if (!response.ok) {
+    throw httpError(503, 'ORGANIZATION_LOOKUP_FAILED', 'The selected organization could not be verified.');
+  }
+  if (await response.json() !== true) {
+    throw httpError(422, 'ORGANIZATION_NOT_APPROVED', 'Select an approved, active organization.');
+  }
+}
+
 async function enforceRateLimits({ user, isGuest, request, secret, config, fetchImpl }) {
   const ip = request.headers.get('cf-connecting-ip')
     || request.headers.get('x-real-ip')
@@ -480,6 +496,7 @@ async function processSubmission(request, context, expectedGuest) {
     return { receipt: publicReceipt(existing, code), idempotent_replay: true };
   }
 
+  await requireApprovedOrganization(report, config, fetchImpl);
   await enforceRateLimits({ user, isGuest, request, secret: lookupHmacKey || env.get('RATE_LIMIT_HMAC_KEY'), config, fetchImpl });
 
   const reportId = crypto.randomUUID();
