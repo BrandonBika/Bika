@@ -1,0 +1,93 @@
+:root {
+  color-scheme: light;
+  --ink: #111214;
+  --ink-soft: #4A4D53;
+  --paper: #E9EAEC;
+  --paper-raised: #F4F4F5;
+  --line: #CBCDD1;
+  --teal: #2A2C30;
+  --teal-deep: #111214;
+  --teal-tint: #E3E4E7;
+  --blue: #185FA5;
+  --blue-tint: #E6F1FB;
+  --amber: #BA7517;
+  --amber-tint: #FAEEDA;
+  --sage: #EDEEF0;
+  --sage-line: #D4D6DA;
+  --red: #A32D2D;
+  --red-tint: #FCEBEB;
+  --purple: #6B4FA0;
+  --purple-tint: #EEE9F7;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 28px;
+  --space-7: 30px;
+  --radius-sm: 9px;
+  --radius-md: 9px;
+  --radius-lg: 16px;
+  --font-body: "Public Sans", sans-serif;
+  --font-heading: "Source Serif 4", serif;
+  --shadow-card: 0 18px 35px -24px rgb(17 18 20 / 28%);
+}
+
+body[data-role="platform_employee"] {
+  --ink: #2B1B12;
+  --ink-soft: #5A4A3E;
+  --paper: #F6F4EE;
+  --paper-raised: #FFFFFF;
+  --line: #DAD5C6;
+  --teal: #E8590C;
+  --teal-deep: #B8430A;
+  --teal-tint: #FFEDE0;
+  --sage: #FFF1E6;
+  --sage-line: #FFA45C;
+  --font-body: "Public Sans", sans-serif;
+  --font-heading: "Source Serif 4", serif;
+  --shadow-card: 0 18px 35px -24px rgb(43 27 18 / 28%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--teal) 32%, transparent);
+  outline-offset: 2px;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.shell-notice {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--amber);
+  border-radius: var(--radius-sm);
+  background: var(--amber-tint);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}

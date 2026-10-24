@@ -2,5 +2,8 @@
   "name": "@civicneuro/platform-admin",
   "version": "0.1.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes serve@14.2.4 .. --listen 4173"
+  }
 }
