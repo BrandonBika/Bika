@@ -1,16 +1,26 @@
 /**
  * @file apps/resident-pwa/src/pages/lifeline-home/lifeline-home.js
  */
-import { BaseElement } from '@civicneuro/ui';
+import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { getLifelineCards, LIFELINE_STARTER_CARDS } from '../../features/lifeline/lifeline.client.js';
+import { createLifelineCallRoom, initializeLifelineCallKit } from '../../features/lifeline/lifeline-calls.js';
 import { navigate } from '../../router.js';
+import { sessionStore } from '../../session.js';
 import '../../components/lifeline-card/lifeline-card.js';
 
 export class PageLifelineHome extends BaseElement {
   async connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-lifeline-page');
+    const session = sessionStore.get();
+    if (session.isAuthenticated && !session.isGuest) {
+      initializeLifelineCallKit().catch((error) => {
+        console.error('Lifeline call service could not be initialized.', error);
+        showToast(error.message || 'Call service could not be initialized.', { type: 'error' });
+      });
+    }
+    this.appendChild(createLifelineCallRoom());
 
     const header = createElement('div', { cls: 'cn-lifeline-page-heading' });
 

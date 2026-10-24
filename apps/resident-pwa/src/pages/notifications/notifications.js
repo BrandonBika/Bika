@@ -7,7 +7,12 @@ import { createEmptyState } from '../../components/empty-state/empty-state.js';
 import {
   getNotifications,
   markAllNotificationsRead,
+  markAllMessagingAlertsRead,
   markNotificationRead,
+  markMessagingAlertRead,
+  prepareNotificationsForSession,
+  refreshMessagingAlerts,
+  subscribeToMessagingAlerts,
   notificationsStore
 } from '../../features/notifications/notifications.store.js';
 import { navigate } from '../../router.js';
@@ -136,11 +141,34 @@ export class PageNotifications extends BaseElement {
 
   connectedCallback() {
     this._unsubscribe = notificationsStore.subscribe(() => this._render());
+    this._alertsActive = true;
+    prepareNotificationsForSession();
+    this._render();
+    this._loadMessagingAlerts().catch((error) => {
+      console.error('Could not load Beacon alerts:', error);
+      this._announce('Beacon alerts could not be refreshed.');
+    });
   }
 
   disconnectedCallback() {
+    this._alertsActive = false;
     if (this._unsubscribe) this._unsubscribe();
+    if (this._messageAlertSubscription) this._messageAlertSubscription.unsubscribe();
     super.disconnectedCallback();
+  }
+
+  async _loadMessagingAlerts() {
+    const subscription = await subscribeToMessagingAlerts((error) => {
+      console.error('Beacon alerts Realtime error:', error);
+      this._announce('Live Beacon alerts are unavailable. Reopen Notifications to refresh.');
+    });
+    if (!this._alertsActive || !this.isConnected) {
+      subscription.unsubscribe();
+      return;
+    }
+    this._messageAlertSubscription = subscription;
+    await subscription.ready;
+    if (this._alertsActive && this.isConnected) await refreshMessagingAlerts();
   }
 
   _render() {
@@ -166,6 +194,10 @@ export class PageNotifications extends BaseElement {
       markAll.onclick = () => {
         markAllNotificationsRead();
         this._announce('All alerts marked as read');
+        markAllMessagingAlertsRead().catch((error) => {
+          console.error('Could not mark Beacon alerts as read:', error);
+          this._announce('Beacon alerts could not be marked as read.');
+        });
       };
       header.appendChild(markAll);
     }
@@ -245,6 +277,12 @@ export class PageNotifications extends BaseElement {
       const expanded = this._expandedIds.has(notification.id);
       const card = createNotificationCard(notification, expanded, () => {
         markNotificationRead(notification.id);
+        if (notification.isMessagingAlert) {
+          markMessagingAlertRead(notification.id).catch((error) => {
+            console.error('Could not mark Beacon alert as read:', error);
+            this._announce('Beacon alert could not be marked as read.');
+          });
+        }
         if (COMMUNITY_KINDS.has(notification.kind)) {
           // TODO: Link community notices to their destination when those screens are designed.
           this._expandedIds.add(notification.id);

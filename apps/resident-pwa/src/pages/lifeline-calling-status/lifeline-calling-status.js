@@ -5,6 +5,7 @@ import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { navigate } from '../../router.js';
 import { getLastLifelineGroupCall, getLifelineCards } from '../../features/lifeline/lifeline.client.js';
+import { createLifelineCallRoom } from '../../features/lifeline/lifeline-calls.js';
 
 export class PageLifelineCallingStatus extends BaseElement {
   init(params) {
@@ -43,6 +44,7 @@ export class PageLifelineCallingStatus extends BaseElement {
       row.append(avatar, details, status);
       memberList.appendChild(row);
     }
+    const callRoom = createLifelineCallRoom();
 
     const note = createElement('p', { cls: 'cn-lifeline-status-note', text: 'Each person in the group is included in the call request.' });
     const edit = createElement('button', { cls: 'cn-lifeline-status-secondary', text: 'Edit group', attrs: { type: 'button' } });
@@ -50,7 +52,7 @@ export class PageLifelineCallingStatus extends BaseElement {
     const back = createElement('button', { cls: 'cn-lifeline-status-primary', text: 'Back to Lifeline', attrs: { type: 'button' } });
     back.onclick = () => navigate('lifeline-home');
 
-    this.append(header, sectionTitle, memberList, note, edit, back);
+    this.append(header, sectionTitle, memberList, note, callRoom, edit, back);
   }
 }
 customElements.define('page-lifeline-calling-status', PageLifelineCallingStatus);

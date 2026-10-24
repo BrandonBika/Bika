@@ -5,14 +5,17 @@
  * live-location system cards, bubbles, and quick share location action.
  */
 
-import { BaseElement } from '@civicneuro/ui';
+import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { BeaconIcons } from '../../features/beacon/beacon-icons.js';
 import {
   getMemberById,
   getChatMessages,
+  refreshBeaconCircle,
+  refreshChatMessages,
   sendChatMessage,
-  subscribeBeacon
+  subscribeBeacon,
+  subscribeToBeaconChat
 } from '../../features/beacon/beacon.client.js';
 import { navigate } from '../../router.js';
 
@@ -34,28 +37,83 @@ export class PageBeaconChat extends BaseElement {
   connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-beacon-chat-page');
+    this._opening = true;
+    this._messages = getChatMessages(this._memberId);
 
     this._unsubscribe = subscribeBeacon(() => {
+      if (this.isConnected) {
+        this._messages = getChatMessages(this._memberId);
+        this.render();
+      }
+    });
+    this._onOnline = () => {
+      this.reloadConversation().catch((error) => {
+        console.error('Could not refresh Beacon chat after reconnect:', error);
+      });
+    };
+    window.addEventListener('online', this._onOnline);
+
+    this.openConversation().catch((error) => {
+      console.error('Could not open Beacon chat:', error);
+      this._opening = false;
+      showToast(error.message || 'Could not load this conversation.', { type: 'error' });
       if (this.isConnected) this.render();
     });
-
-    this.render();
   }
 
   disconnectedCallback() {
     if (this._unsubscribe) this._unsubscribe();
+    if (this._unsubscribeChat) this._unsubscribeChat();
+    window.removeEventListener('online', this._onOnline);
     super.disconnectedCallback();
+  }
+
+  async openConversation() {
+    await refreshBeaconCircle();
+    if (!this.isConnected) return;
+    const member = getMemberById(this._memberId);
+    if (!member) {
+      this._opening = false;
+      navigate('beacon-add-to-circle');
+      return;
+    }
+
+    const subscription = await subscribeToBeaconChat(this._memberId, (error) => {
+      console.error('Beacon chat Realtime error:', error);
+      this._opening = false;
+      if (this.isConnected) {
+        showToast(error.message || 'Could not open this conversation.', { type: 'error' });
+        this.render();
+      }
+    });
+    if (!subscription) return;
+    this._unsubscribeChat = () => subscription.unsubscribe();
+    await subscription.ready;
+    if (!this.isConnected) return;
+    await refreshChatMessages(this._memberId);
+    this._messages = getChatMessages(this._memberId);
+    await refreshBeaconCircle();
+    this._opening = false;
+    if (this.isConnected) this.render();
+  }
+
+  async reloadConversation() {
+    if (!this._memberId || !this.isConnected) return;
+    await refreshBeaconCircle();
+    if (!getMemberById(this._memberId)) return;
+    this._messages = await refreshChatMessages(this._memberId);
   }
 
   render() {
     clearChildren(this);
+    if (this._opening) return;
     const member = getMemberById(this._memberId);
     if (!member) {
       navigate('beacon-add-to-circle');
       return;
     }
 
-    const messages = getChatMessages(this._memberId);
+    const messages = this._messages || getChatMessages(this._memberId);
 
     // 1. Header
     const header = createElement('div', { cls: 'chat-header' });
@@ -165,9 +223,13 @@ export class PageBeaconChat extends BaseElement {
         type: 'text',
         placeholder: 'Write a message…',
         id: 'chat-text-input',
-        'aria-label': 'Write a message'
+        'aria-label': 'Write a message',
+        value: this._draftText || ''
       }
     });
+    textInput.oninput = () => {
+      this._draftText = textInput.value;
+    };
 
     const sendBtn = createElement('button', {
       cls: 'chat-send-btn',
@@ -179,12 +241,20 @@ export class PageBeaconChat extends BaseElement {
     });
     sendBtn.appendChild(BeaconIcons.send(14, '#FFFFFF'));
 
-    const doSend = () => {
+    const doSend = async () => {
       const val = textInput.value.trim();
       if (!val) return;
-      sendChatMessage(this._memberId, val);
-      textInput.value = '';
-      this.render();
+      sendBtn.disabled = true;
+      try {
+        await sendChatMessage(this._memberId, val);
+        this._draftText = '';
+        this._messages = getChatMessages(this._memberId);
+        if (this.isConnected) this.render();
+      } catch (error) {
+        console.error('Could not send Beacon message:', error);
+        showToast(error.message || 'Could not send message.', { type: 'error' });
+        sendBtn.disabled = false;
+      }
     };
 
     sendBtn.onclick = doSend;

@@ -27,6 +27,11 @@ export function configureSupabaseClient({ url, anonKey }) {
 
   supabaseUrl = parsedUrl.origin;
   supabaseAnonKey = anonKey;
+  realtime.configureRealtimeClient({
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
+    getAccessToken
+  });
 }
 
 export async function requestSupabase(path, { method = 'GET', body, headers = {}, auth: useAuth = true, retryAuth = true } = {}) {

@@ -14,7 +14,9 @@ import {
   sendCircleRequest,
   acceptCircleRequest,
   declineCircleRequest,
-  subscribeBeacon
+  subscribeBeacon,
+  refreshBeaconCircle,
+  subscribeBeaconCircle
 } from '../../features/beacon/beacon.client.js';
 import { navigate } from '../../router.js';
 
@@ -25,8 +27,21 @@ export class PageBeaconAddToCircle extends BaseElement {
 
     this._query = '';
     this._sentRequests = new Set();
+    this._renderGeneration = 0;
     this._unsubscribe = subscribeBeacon(() => {
       if (this.isConnected) this.render();
+    });
+    this._unsubscribeCircle = subscribeBeaconCircle((error) => {
+      console.error('Beacon circle refresh failed:', error);
+    });
+    this._onOnline = () => {
+      refreshBeaconCircle().catch((error) => {
+        console.error('Beacon circle reconnect refresh failed:', error);
+      });
+    };
+    window.addEventListener('online', this._onOnline);
+    refreshBeaconCircle().catch((error) => {
+      console.error('Beacon circle load failed:', error);
     });
 
     this.render();
@@ -34,6 +49,9 @@ export class PageBeaconAddToCircle extends BaseElement {
 
   disconnectedCallback() {
     if (this._unsubscribe) this._unsubscribe();
+    if (this._unsubscribeCircle) this._unsubscribeCircle();
+    window.removeEventListener('online', this._onOnline);
+    this._renderGeneration += 1;
     super.disconnectedCallback();
   }
 
@@ -166,13 +184,21 @@ export class PageBeaconAddToCircle extends BaseElement {
 
   async renderResults() {
     if (!this._resultsContainer) return;
+    const generation = ++this._renderGeneration;
     clearChildren(this._resultsContainer);
 
     const state = getBeaconState();
     let results = [];
-    if (this._query.length >= 2) {
-      results = await searchResidents(this._query);
+    if (this._query.length >= 3) {
+      try {
+        results = await searchResidents(this._query);
+      } catch (error) {
+        if (generation !== this._renderGeneration) return;
+        console.error('Resident search failed:', error);
+        showToast(error.message || 'Resident search failed.', { type: 'error' });
+      }
     }
+    if (generation !== this._renderGeneration || !this.isConnected) return;
 
     const title = createElement('div', {
       cls: ['add-section-title', 'first'],
@@ -187,8 +213,8 @@ export class PageBeaconAddToCircle extends BaseElement {
       });
       noResults.appendChild(createElement('div', {
         cls: 'bc-empty-desc',
-        text: this._query.length < 2
-          ? 'Search at least 2 characters for a CivicNeuro resident, or choose/add a contact to invite by SMS.'
+        text: this._query.length < 3
+          ? 'Search at least 3 characters for a CivicNeuro resident, or choose/add a contact to invite by SMS.'
           : 'No CivicNeuro residents were found. You can still invite someone by choosing or adding their contact.'
       }));
       this._resultsContainer.appendChild(noResults);
@@ -200,14 +226,12 @@ export class PageBeaconAddToCircle extends BaseElement {
       const avatar = createElement('div', { cls: 'bc-avatar', text: person.initial });
       const textCol = createElement('div', { cls: 'bc-text' });
       const name = createElement('div', { cls: 'bc-name', text: person.name });
-      const meta = createElement('div', { cls: 'bc-meta', text: person.ward || 'Ward 12' });
+      const meta = createElement('div', { cls: 'bc-meta', text: person.ward || '' });
       textCol.append(name, meta);
 
-      const isMember = (state.members || []).some(
-        (member) => member.name.toLowerCase() === person.name.toLowerCase()
-      );
+      const isMember = (state.members || []).some((member) => member.id === person.id);
       const pendingRequest = (state.pendingRequests || []).find(
-        (request) => request.name.toLowerCase() === person.name.toLowerCase()
+        (request) => request.userId === person.id
       );
       const isSent = this._sentRequests.has(person.id) ||
         pendingRequest?.direction === 'outgoing';
@@ -227,19 +251,15 @@ export class PageBeaconAddToCircle extends BaseElement {
 
       reqBtn.onclick = async () => {
         reqBtn.disabled = true;
-        const result = await sendCircleRequest(person);
-        if (result.duplicate) {
-          showToast(
-            result.reason === 'already-member'
-              ? `${person.name} is already in your circle`
-              : `A request for ${person.name} is already pending`,
-            { type: 'info' }
-          );
-          await this.renderResults();
-          return;
+        try {
+          await sendCircleRequest(person);
+          this._sentRequests.add(person.id);
+          showToast(`Request sent to ${person.name}`, { type: 'success' });
+        } catch (error) {
+          console.error('Beacon request failed:', error);
+          showToast(error.message || 'Could not send circle request.', { type: 'error' });
+          reqBtn.disabled = false;
         }
-        this._sentRequests.add(person.id);
-        showToast(`Request sent to ${person.name}`, { type: 'success' });
       };
 
       row.append(avatar, textCol, reqBtn);

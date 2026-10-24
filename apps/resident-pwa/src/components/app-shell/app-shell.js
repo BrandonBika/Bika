@@ -25,7 +25,12 @@ export class CnAppShell extends BaseElement {
     this.classList.toggle('cn-app-shell--welcome', routeName === 'welcome');
     this.classList.toggle('cn-app-shell--notifications', routeName === 'notifications');
 
-    const fullScreenBeaconRoutes = ['beacon-draw-path', 'beacon-start-confirm', 'beacon-share-session'];
+    const fullScreenBeaconRoutes = [
+      'beacon-draw-path',
+      'beacon-start-confirm',
+      'beacon-share-session',
+      'beacon-chat'
+    ];
     this.classList.toggle('cn-app-shell--fullscreen-beacon', fullScreenBeaconRoutes.includes(routeName));
     this.classList.toggle('cn-app-shell--beacon-home', routeName === 'beacon-home');
 

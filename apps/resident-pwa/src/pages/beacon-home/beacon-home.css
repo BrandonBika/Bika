@@ -339,14 +339,14 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: var(--cn-bottom-nav-height);
   background: var(--paper-raised, #FFFFFF);
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -10px 26px rgba(22, 36, 31, 0.18);
   padding: 10px 14px 14px;
   z-index: 5;
   transition: max-height 0.25s ease-out;
-  max-height: calc(100% - 70px);
+  max-height: calc(100% - 70px - var(--cn-bottom-nav-height));
   display: flex;
   flex-direction: column;
   box-sizing: border-box;

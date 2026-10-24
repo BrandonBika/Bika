@@ -3,6 +3,10 @@ import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
 const sourceRoot = path.join(root, 'apps', 'resident-pwa', 'src');
+const residentRoot = path.join(root, 'apps', 'resident-pwa');
+const indexHtml = fs.readFileSync(path.join(residentRoot, 'index.html'), 'utf8');
+const importMapMatch = indexHtml.match(/<script type="importmap" id="cn-importmap">([\s\S]*?)<\/script>/);
+const runtimeImportMap = importMapMatch ? JSON.parse(importMapMatch[1]).imports || {} : {};
 const fileInfo = new Map();
 const errors = [];
 const visited = new Set();
@@ -211,6 +215,12 @@ function visit(filePath) {
 
     const target = resolveImport(filePath, entry.specifier);
     if (!target) {
+      const runtimeTarget = runtimeImportMap[entry.specifier];
+      if (typeof runtimeTarget === 'string'
+          && fs.existsSync(path.resolve(residentRoot, runtimeTarget))
+          && fs.statSync(path.resolve(residentRoot, runtimeTarget)).isFile()) {
+        continue;
+      }
       addError(filePath, entry.line, `cannot resolve "${entry.specifier}" to a real file`);
       continue;
     }

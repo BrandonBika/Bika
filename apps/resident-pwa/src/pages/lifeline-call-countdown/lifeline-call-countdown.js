@@ -6,6 +6,7 @@ import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { navigate } from '../../router.js';
 import { getLifelineCards, startLifelineGroupCall } from '../../features/lifeline/lifeline.client.js';
+import { createLifelineCallRoom } from '../../features/lifeline/lifeline-calls.js';
 
 export class PageLifelineCallCountdown extends BaseElement {
   init(params) {
@@ -30,6 +31,7 @@ export class PageLifelineCallCountdown extends BaseElement {
     const title = createElement('h1', { cls: 'cn-lifeline-countdown-title', text: `Calling your ${this._group.name} group` });
     const subtitle = createElement('p', { cls: 'cn-lifeline-countdown-copy', text: `Calling ${this._group.members.length} ${this._group.members.length === 1 ? 'person' : 'people'} in this group.` });
     const people = createElement('div', { cls: 'cn-lifeline-countdown-members' });
+    const callRoom = createLifelineCallRoom();
     for (const member of this._group.members) {
       const row = createElement('div', { cls: 'cn-lifeline-countdown-member' });
       row.append(
@@ -76,7 +78,7 @@ export class PageLifelineCallCountdown extends BaseElement {
       navigate('lifeline-home');
     };
 
-    this.append(header, title, subtitle, people, timer, cancelBtn);
+    this.append(header, title, subtitle, people, timer, cancelBtn, callRoom);
   }
 
   disconnectedCallback() {

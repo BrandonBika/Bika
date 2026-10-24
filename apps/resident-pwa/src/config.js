@@ -7,6 +7,7 @@ import runtimeConfig from '../runtime-config.js';
 export const config = {
   env: runtimeConfig.env || 'development',
   useMock: runtimeConfig.useMock === true,
+  beaconEnabled: runtimeConfig.beaconEnabled === true,
   supabaseUrl: runtimeConfig.supabaseUrl || '',
   supabaseAnonKey: runtimeConfig.supabaseAnonKey || '',
   tileHost: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',

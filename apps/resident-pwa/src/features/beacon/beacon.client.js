@@ -9,13 +9,36 @@ import { Endpoints, invokeFunction } from '@civicneuro/functions-client';
 import {
   listBeaconContacts,
   markBeaconContactMessagePrepared,
-  saveBeaconContacts
+  saveBeaconContacts,
+  getCurrentUser
 } from '@civicneuro/supabase-client';
+import {
+  cancelRequest as cancelRemoteCircleRequest,
+  listCircle as listRemoteCircle,
+  listRequests as listRemoteCircleRequests,
+  respondToRequest as respondToRemoteCircleRequest,
+  searchResidents as searchRemoteResidents,
+  sendRequest as sendRemoteCircleRequest,
+  subscribeToRequests
+} from './beacon-circle.client.js';
+import {
+  createDirect,
+  fetchMessages,
+  markRead,
+  sendLocation as sendRemoteLocation,
+  sendPath as sendRemotePath,
+  sendText as sendRemoteText,
+  subscribeToConversation
+} from '../messaging/messaging.client.js';
 
 const STORAGE_KEY = 'civicneuro_beacon_state_v1';
 const PENDING_PATH_KEY = 'civicneuro_beacon_pending_path_v1';
 const PENDING_PATH_MAX_AGE = 30 * 60 * 1000;
 let pendingPathCoordinates = loadPendingBeaconPath();
+let circleRefreshPromise = null;
+let circleRefreshPending = false;
+const conversationIdsByMember = new Map();
+const chatRefreshVersions = new Map();
 
 function loadPendingBeaconPath() {
   if (typeof sessionStorage === 'undefined') return null;
@@ -161,6 +184,71 @@ export function getBeaconState() {
   return state;
 }
 
+function isAuthenticatedResident() {
+  const session = sessionStore.get();
+  return Boolean(
+    session?.isAuthenticated
+    && !session.isGuest
+    && session.user?.id
+    && getCurrentUser()?.id === session.user.id
+  );
+}
+
+function toBeaconMember(member) {
+  return {
+    id: member.id,
+    name: member.name,
+    initial: member.initial,
+    isSharing: false,
+    statusText: 'Not sharing',
+    destination: null,
+    eta: null,
+    isOffPath: false
+  };
+}
+
+export async function refreshBeaconCircle() {
+  if (!isAuthenticatedResident()) {
+    return { members: [...state.members], requests: [...state.pendingRequests] };
+  }
+  if (circleRefreshPromise) {
+    circleRefreshPending = true;
+    return circleRefreshPromise;
+  }
+
+  circleRefreshPromise = (async () => {
+    let result;
+    do {
+      circleRefreshPending = false;
+      const [members, requests] = await Promise.all([
+        listRemoteCircle(),
+        listRemoteCircleRequests()
+      ]);
+      state.members = members.map(toBeaconMember);
+      state.pendingRequests = requests;
+      saveState();
+      result = { members: [...state.members], requests: [...state.pendingRequests] };
+    } while (circleRefreshPending);
+    return result;
+  })();
+  try {
+    return await circleRefreshPromise;
+  } finally {
+    circleRefreshPromise = null;
+    circleRefreshPending = false;
+  }
+}
+
+export function subscribeBeaconCircle(onError = console.error) {
+  if (!isAuthenticatedResident()) return () => {};
+  const refresh = () => {
+    refreshBeaconCircle().catch(onError);
+  };
+  const subscription = subscribeToRequests(refresh, onError, refresh);
+  subscription.ready.catch(onError);
+  return () => subscription.unsubscribe();
+}
+
 function getBeaconContactOwnerId() {
   const session = sessionStore.get();
   if (!session?.isAuthenticated || session.isGuest || !session.user?.id) {
@@ -269,6 +357,7 @@ export async function getBeaconWalkingRoute(origin, destination) {
 
 // Circle members
 export async function getCircleMembers() {
+  await refreshBeaconCircle();
   return { members: [...state.members] };
 }
 
@@ -278,80 +367,40 @@ export function getMemberById(id) {
 
 // Circle Requests
 export async function getCircleRequests() {
+  await refreshBeaconCircle();
   return { requests: [...state.pendingRequests] };
 }
 
 export async function sendCircleRequest(target) {
-  const targetName = target.name.trim().toLowerCase();
-  const existing = state.pendingRequests.find(
-    (r) => r.name.toLowerCase() === targetName
-  );
-  if (existing) {
-    return { duplicate: true, request: existing, reason: 'pending' };
-  }
-  const memberExists = state.members.some(
-    (member) => member.name.toLowerCase() === targetName
-  );
-  if (memberExists) {
-    return { duplicate: true, request: null, reason: 'already-member' };
-  }
-  const newReq = {
-    id: `req-${Date.now()}`,
-    name: target.name,
-    initial: target.name.slice(0, 1).toUpperCase(),
-    ward: target.ward || 'Ward 12',
-    meta: 'Request sent · awaiting accept',
-    direction: 'outgoing',
-    status: 'pending'
-  };
-  state.pendingRequests.push(newReq);
-  saveState();
-  return { duplicate: false, request: newReq, reason: null };
+  const residentId = typeof target === 'string' ? target : target?.id;
+  if (!residentId) throw new TypeError('A resident ID is required to send a circle request.');
+  const requestId = await sendRemoteCircleRequest(residentId);
+  await refreshBeaconCircle();
+  const request = state.pendingRequests.find((item) => item.id === requestId) || null;
+  return { duplicate: false, request, reason: null };
 }
 
 export async function acceptCircleRequest(requestId) {
-  const idx = state.pendingRequests.findIndex((r) => r.id === requestId);
-  if (idx === -1) return false;
-  const req = state.pendingRequests[idx];
-  state.pendingRequests.splice(idx, 1);
-
-  // Add to members if not already there
-  const memberExists = state.members.some(
-    (m) => m.name.toLowerCase() === req.name.toLowerCase()
-  );
-  if (!memberExists) {
-    state.members.push({
-      id: `member-${Date.now()}`,
-      name: req.name,
-      initial: req.initial,
-      ward: req.ward || 'Ward 12',
-      isSharing: false,
-      statusText: 'Not sharing',
-      destination: null,
-      eta: null,
-      lat: 50,
-      lng: 50,
-      isOffPath: false
-    });
-  }
-  saveState();
+  await respondToRemoteCircleRequest(requestId, true);
+  await refreshBeaconCircle();
   return true;
 }
 
 export async function declineCircleRequest(requestId) {
-  const idx = state.pendingRequests.findIndex((r) => r.id === requestId);
-  if (idx !== -1) {
-    state.pendingRequests.splice(idx, 1);
-    saveState();
-  }
+  await respondToRemoteCircleRequest(requestId, false);
+  await refreshBeaconCircle();
+  return true;
+}
+
+export async function cancelCircleRequest(requestId) {
+  await cancelRemoteCircleRequest(requestId);
+  await refreshBeaconCircle();
   return true;
 }
 
 // Search
 export async function searchResidents(query) {
-  const q = (query || '').trim().toLowerCase();
-  if (q.length < 2) return [];
-  return [];
+  return searchRemoteResidents(query);
 }
 
 // Active Sharing Session (Screen D, D2)
@@ -537,18 +586,99 @@ export function getChatMessages(memberId) {
   return state.chats[memberId] || [];
 }
 
-export function sendChatMessage(memberId, text) {
-  if (!text || !text.trim()) return null;
-  const msg = {
-    id: `m-${Date.now()}`,
-    sender: 'me',
-    kind: 'text',
-    text: text.trim(),
-    time: formatCurrentTime()
+function toBeaconChatMessage(message) {
+  const senderId = getCurrentUser()?.id;
+  const type = message.type;
+  let text = message.body || '';
+  if (type === 'location' && message.payload) {
+    text = `Location shared: ${message.payload.lat}, ${message.payload.lng}`;
+  } else if (type === 'path' && Array.isArray(message.payload?.points)) {
+    text = `Route shared (${message.payload.points.length} points)`;
+  }
+  return {
+    id: message.id,
+    sender: type === 'system' ? 'system' : message.sender_id === senderId ? 'me' : 'them',
+    kind: type,
+    text,
+    time: formatMessageTime(message.created_at),
+    payload: message.payload,
+    label: type === 'system' ? message.body : undefined
   };
-  postChatMessage(memberId, msg);
+}
+
+function formatMessageTime(timestamp) {
+  const date = new Date(timestamp);
+  if (!Number.isFinite(date.getTime())) return '';
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit'
+  }).format(date);
+}
+
+export async function refreshChatMessages(memberId) {
+  const version = (chatRefreshVersions.get(memberId) || 0) + 1;
+  chatRefreshVersions.set(memberId, version);
+  const conversationId = conversationIdsByMember.get(memberId) || await createDirect(memberId);
+  conversationIdsByMember.set(memberId, conversationId);
+  const rows = await fetchMessages(conversationId, null, 100);
+  if (version !== chatRefreshVersions.get(memberId)) {
+    return state.chats[memberId] || [];
+  }
+  const messages = rows.reverse().map(toBeaconChatMessage);
+  state.chats[memberId] = messages;
+  saveState();
+  await markRead(conversationId);
+  return messages;
+}
+
+export async function subscribeToBeaconChat(memberId, onError = console.error) {
+  let conversationId = conversationIdsByMember.get(memberId);
+  try {
+    conversationId ||= await createDirect(memberId);
+  } catch (error) {
+    onError(error);
+    return null;
+  }
+  conversationIdsByMember.set(memberId, conversationId);
+  const subscription = subscribeToConversation(
+    conversationId,
+    () => {
+      refreshChatMessages(memberId).catch(onError);
+    },
+    onError,
+    () => {
+      refreshChatMessages(memberId).catch(onError);
+    }
+  );
+  subscription.ready.catch(onError);
+  return subscription;
+}
+
+export async function sendChatMessage(memberId, text) {
+  if (!text || !text.trim()) return null;
+  const conversationId = conversationIdsByMember.get(memberId) || await createDirect(memberId);
+  conversationIdsByMember.set(memberId, conversationId);
+  const saved = await sendRemoteText(conversationId, text.trim());
+  await refreshChatMessages(memberId);
+  const msg = toBeaconChatMessage(saved);
   saveState();
   return msg;
+}
+
+export async function sendChatLocation(memberId, location) {
+  const conversationId = conversationIdsByMember.get(memberId) || await createDirect(memberId);
+  conversationIdsByMember.set(memberId, conversationId);
+  const saved = await sendRemoteLocation(conversationId, location);
+  await refreshChatMessages(memberId);
+  return toBeaconChatMessage(saved);
+}
+
+export async function sendChatPath(memberId, points) {
+  const conversationId = conversationIdsByMember.get(memberId) || await createDirect(memberId);
+  conversationIdsByMember.set(memberId, conversationId);
+  const saved = await sendRemotePath(conversationId, points);
+  await refreshChatMessages(memberId);
+  return toBeaconChatMessage(saved);
 }
 
 function postChatMessage(memberId, message) {

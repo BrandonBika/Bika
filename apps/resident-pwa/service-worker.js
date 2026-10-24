@@ -3,13 +3,14 @@
  * Service worker strictly caching shell files only.
  * NEVER caches API responses, signed URLs, or personal data.
  */
-const CACHE_NAME = 'cn-shell-v12';
+const CACHE_NAME = 'cn-shell-v13';
 const SHELL_ASSETS = [
   './index.html',
   './offline.html',
   './manifest.webmanifest',
   './src/main.js',
-  './src/styles/main.css'
+  './src/styles/main.css',
+  './vendor/supabase-js.js'
 ];
 
 self.addEventListener('install', (e) => {

@@ -10,5 +10,8 @@
     "./client": "./src/client.js",
     "./realtime": "./src/realtime.js",
     "./storage": "./src/storage.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0"
   }
 }

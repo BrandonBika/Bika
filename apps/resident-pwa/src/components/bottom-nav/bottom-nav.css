@@ -1,3 +1,7 @@
+:root {
+  --cn-bottom-nav-height: calc(44px + 9px + 14px + 1px + env(safe-area-inset-bottom, 0px));
+}
+
 .cn-bottom-nav,
 .phone-bottomnav {
   position: fixed;
@@ -6,6 +10,7 @@
   transform: translateX(-50%);
   width: 100%;
   max-width: var(--cn-app-max-width, 480px);
+  height: var(--cn-bottom-nav-height);
   padding: 9px 6px calc(14px + env(safe-area-inset-bottom, 0px));
   background: var(--paper-raised, #FFFFFF);
   border-top: 1px solid var(--line, #DAD5C6);

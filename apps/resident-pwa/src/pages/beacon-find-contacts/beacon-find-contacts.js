@@ -40,12 +40,19 @@ export class PageBeaconFindContacts extends BaseElement {
     this._contactLoading = true;
     this._contactSaving = false;
     this._loadGeneration = (this._loadGeneration || 0) + 1;
+    this._onOnline = () => {
+      this._loadGeneration += 1;
+      this._contactLoading = true;
+      this.loadContacts(this._loadGeneration);
+    };
+    window.addEventListener('online', this._onOnline);
     this.render();
     this.loadContacts(this._loadGeneration);
   }
 
   disconnectedCallback() {
     this._loadGeneration += 1;
+    window.removeEventListener('online', this._onOnline);
   }
 
   async loadContacts(generation) {

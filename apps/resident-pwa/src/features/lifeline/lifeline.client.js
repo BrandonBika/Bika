@@ -5,6 +5,7 @@ import { invokeFunction, Endpoints } from '@civicneuro/functions-client';
 import { listLifelineCards, saveLifelineCard as saveLifelineCardRecord } from '@civicneuro/supabase-client';
 import { sessionStore } from '../../session.js';
 import { mergeLifelineCards } from './lifeline-groups.js';
+import { sendLifelineInvitations } from './lifeline-calls.js';
 
 let lastGroupCall = null;
 
@@ -33,7 +34,22 @@ export async function saveLifelineCard(card) {
 }
 
 export async function startLifelineGroupCall(groupId) {
-  lastGroupCall = await invokeFunction(Endpoints.LIFELINE_GROUP_CALL, { groupId });
+  const { cards } = await getLifelineCards();
+  const group = cards.find((card) => card.id === groupId);
+  if (!group) throw new Error('This Lifeline group could not be found.');
+
+  const invitations = await sendLifelineInvitations(group.members || []);
+  const invitedIds = new Set(invitations.invited.map((member) => member.userID));
+  const members = invitations.members.map((member) => ({
+    ...member,
+    status: member.userId && invitedIds.has(member.userId.replaceAll('-', '')) ? 'ringing' : 'queued'
+  }));
+  const remainingMembers = members.filter((member) => !member.userId);
+  let fallback = null;
+  if (remainingMembers.length) {
+    fallback = await invokeFunction(Endpoints.LIFELINE_GROUP_CALL, { groupId });
+  }
+  lastGroupCall = { groupId, members, invited: invitations.invited, fallback };
   return lastGroupCall;
 }
 

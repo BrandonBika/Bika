@@ -6,14 +6,14 @@
 import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { BeaconIcons } from '../../features/beacon/beacon-icons.js';
+import { config } from '../../config.js';
 import { navigate } from '../../router.js';
 
-const SAFETY_POINTS = [
-  {
-    title: 'What this means today',
-    body: 'Circle requests, chat, and live location are not delivered to other people or stored on a server. Beacon controls are temporarily unavailable.'
-  }
-];
+const LIVE_LOCATION_ROUTES = new Set([
+  'beacon-start-confirm',
+  'beacon-share-session',
+  'beacon-draw-path'
+]);
 
 export class PageBeaconSafetyNotice extends BaseElement {
   init(params) {
@@ -38,9 +38,18 @@ export class PageBeaconSafetyNotice extends BaseElement {
     const title = createElement('h1', { cls: 'safety-title', text: 'Beacon sharing is coming soon' });
     this.appendChild(title);
 
+    const liveLocationNotice = config.beaconEnabled
+      && LIVE_LOCATION_ROUTES.has(this._params.requestedRoute);
+    const safetyPoints = [{
+      title: 'What this means today',
+      body: liveLocationNotice
+        ? 'Circle requests and chat are available. Live location sharing is coming soon and is not delivered to others.'
+        : 'Circle requests, chat, and live location are not delivered to other people or stored on a server. Beacon controls are temporarily unavailable.'
+    }];
+
     // Safety items
-    for (let i = 0; i < SAFETY_POINTS.length; i++) {
-      const pt = SAFETY_POINTS[i];
+    for (let i = 0; i < safetyPoints.length; i++) {
+      const pt = safetyPoints[i];
       const item = createElement('div', { cls: 'safety-item' });
 
       const num = createElement('div', {

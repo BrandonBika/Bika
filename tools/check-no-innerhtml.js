@@ -18,6 +18,7 @@ const IGNORED_PATHS = [
   'check-no-innerhtml.js',
   'node_modules',
   path.join('public', 'vendor'),
+  path.join('apps', 'resident-pwa', 'vendor'),
   '.git'
 ];
 

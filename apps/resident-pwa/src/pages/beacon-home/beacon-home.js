@@ -8,7 +8,9 @@ import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import {
   getBeaconState,
-  subscribeBeacon
+  subscribeBeacon,
+  refreshBeaconCircle,
+  subscribeBeaconCircle
 } from '../../features/beacon/beacon.client.js';
 import { BeaconIcons } from '../../features/beacon/beacon-icons.js';
 import { navigate } from '../../router.js';
@@ -62,6 +64,18 @@ export class PageBeaconHome extends BaseElement {
     this._unsubscribe = subscribeBeacon(() => {
       if (this.isConnected) this.render();
     });
+    this._unsubscribeCircle = subscribeBeaconCircle((error) => {
+      console.error('Beacon circle refresh failed:', error);
+    });
+    this._onCircleOnline = () => {
+      refreshBeaconCircle().catch((error) => {
+        console.error('Beacon circle reconnect refresh failed:', error);
+      });
+    };
+    window.addEventListener('online', this._onCircleOnline);
+    refreshBeaconCircle().catch((error) => {
+      console.error('Beacon circle load failed:', error);
+    });
     this._unsubscribeLocation = subscribeCurrentLocation((location) => {
       this.applyCurrentLocation(location);
     });
@@ -84,6 +98,8 @@ export class PageBeaconHome extends BaseElement {
 
   disconnectedCallback() {
     if (this._unsubscribe) this._unsubscribe();
+    if (this._unsubscribeCircle) this._unsubscribeCircle();
+    window.removeEventListener('online', this._onCircleOnline);
     if (this._unsubscribeLocation) this._unsubscribeLocation();
     this._map?.remove();
     this._map = null;

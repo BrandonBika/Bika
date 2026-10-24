@@ -3,8 +3,10 @@
  * Hash-based router. Safe DOM parsing only. Lazy page mounting.
  */
 import { sessionStore } from './session.js';
+import { config } from './config.js';
 import { clearChildren, createElement, setText } from '@civicneuro/security-web';
 import { createRouteHistory } from './route-history.js';
+import { isBeaconRouteGated } from './route-target.js';
 
 const routes = {
   'welcome': { auth: false, guest: true },
@@ -107,9 +109,7 @@ export async function handleRouteChange() {
   const session = sessionStore.get();
 
   const routeDef = routes[routeName] || routes['welcome'];
-  const isBeaconRoute = routeName.startsWith('beacon-')
-    || (routeName === 'contacts-permission' && params.source === 'beacon');
-  const targetRoute = isBeaconRoute
+  const targetRoute = isBeaconRouteGated(routeName, params, config.beaconEnabled)
     ? 'beacon-safety-notice'
     : routeName === 'alerts'
     ? 'notifications'
@@ -130,7 +130,9 @@ export async function handleRouteChange() {
 
   const appShell = document.querySelector('cn-app-shell');
   if (appShell) {
-    await appShell.loadRoute(targetRoute, params);
+    await appShell.loadRoute(targetRoute, targetRoute === 'beacon-safety-notice'
+      ? { ...params, requestedRoute: routeName }
+      : params);
   }
 }
 
