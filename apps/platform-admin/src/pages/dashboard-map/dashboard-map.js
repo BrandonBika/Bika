@@ -9,27 +9,22 @@ import {
   uploadBoundary
 } from '../../features/boundaries.client.js';
 import { validateBoundaryFile } from '../../features/boundaries.validation.js';
-import { listReports } from '../../features/reports.client.js';
+import { listOrganizations, listReports } from '../../features/reports.client.js';
+import {
+  cloneTree,
+  compileTree,
+  countCompleteConditions,
+  describeNode,
+  isCompleteCondition
+} from '../../features/filter-engine.js';
+import * as filterStore from '../../features/filter-store.js';
+import { createQueryBuilderDialog } from '../../features/query-builder-dialog.js';
 import { getCategoryLabel, getStatusLabel } from '../../features/status-labels.js';
 import { setSafeText } from '../../features/safe-dom.js';
 import { withTimeout } from '../../features/with-timeout.js';
 
 const ATTENDED_STATUSES = new Set(['Resolved', 'Rejected', 'Duplicate']);
 const CATEGORY_COLOURS = ['#A32D2D', '#2A7F78', '#BA7517', '#185FA5', '#A3A6AC'];
-const QUERY_FIELDS = ['status', 'category', 'assignment', 'dateRange', 'priority'];
-const QUERY_FIELD_LABELS = Object.freeze({
-  status: 'Status',
-  category: 'Category',
-  assignment: 'Assigned / unassigned',
-  dateRange: 'Date range',
-  priority: 'Priority / severity'
-});
-const DATE_RANGE_OPTIONS = Object.freeze([
-  { value: '7', label: 'Last 7 days' },
-  { value: '30', label: 'Last 30 days' },
-  { value: '90', label: 'Last 90 days' },
-  { value: 'all', label: 'All time' }
-]);
 const CHART_COLLAPSED_KEY = 'civicneuro-platform-dashboard-chart-collapsed';
 const STATS_COLLAPSED_KEY = 'civicneuro-platform-dashboard-stats-collapsed';
 
@@ -52,10 +47,14 @@ function renderDashboard(target, reports, staff, onSignOut) {
   const topbar = createDashboardTopbar(staff, onSignOut);
   const toolbar = document.createElement('div');
   toolbar.className = 'map-toolbar';
-  const queryBuilder = createQueryBuilder(reports);
   const queryButton = createToolbarButton('Query builder', 'M22 3H2l8 9.5V19l4 2v-8.5L22 3Z');
-  queryButton.setAttribute('aria-expanded', 'false');
-  queryButton.setAttribute('aria-controls', 'dashboard-query-panel');
+  queryButton.setAttribute('aria-haspopup', 'dialog');
+  const queryBuilder = createQueryBuilderDialog({
+    reports,
+    getCategory: categoryOf,
+    loadOrganisations: listOrganizations,
+    onOrganisationsLoaded: () => updateDashboardData()
+  });
   const clusterControl = createClusterControl();
   const exportButton = createToolbarButton('Export map', 'M12 3v12 M7 10l5 5 5-5 M5 21h14');
   const exportDialog = createExportDialog();
@@ -110,7 +109,7 @@ function renderDashboard(target, reports, staff, onSignOut) {
   target.replaceChildren(
     topbar,
     toolbar,
-    queryBuilder.panel,
+    queryBuilder.dialog,
     mapArea,
     bottomPanel,
     exportDialog.dialog,
@@ -121,15 +120,14 @@ function renderDashboard(target, reports, staff, onSignOut) {
   const state = {
     clustered: true,
     chartType: 'bar',
-    draftConditions: [],
-    appliedConditions: [],
     chartReports: [],
     map: null,
     layer: null,
     boundaryLayers: new Map(),
     reports: [],
     markerRequest: 0,
-    queryConditionId: 0
+    filterTree: null,
+    filterPredicate: null
   };
   let chartRequest = 0;
   const mapResizeObserver = new ResizeObserver(() => {
@@ -143,9 +141,9 @@ function renderDashboard(target, reports, staff, onSignOut) {
     for (const layer of state.boundaryLayers.values()) layer.remove();
     state.boundaryLayers.clear();
   }, { once: true });
-
   uploadDialog.dialog.addEventListener('close', () => boundaryUploadButton.focus());
   boundariesDialog.dialog.addEventListener('close', () => boundaryListButton.focus());
+  queryBuilder.dialog.addEventListener('close', () => queryButton.focus());
   boundaryUploadButton.addEventListener('click', () => {
     uploadDialog.fileInput.value = '';
     uploadDialog.nameInput.value = '';
@@ -342,53 +340,7 @@ function renderDashboard(target, reports, staff, onSignOut) {
       if (!closed && panel === chartPanel) void updateChart();
     });
   }
-  queryButton.addEventListener('click', () => {
-    const open = queryBuilder.panel.hidden;
-    queryBuilder.panel.hidden = !open;
-    queryButton.setAttribute('aria-expanded', String(open));
-    if (open) {
-      state.draftConditions = state.appliedConditions.map((condition) => ({ ...condition }));
-      queryBuilder.render(state.draftConditions, updateDraftConditions);
-      queryBuilder.closeButton.focus();
-    } else {
-      state.draftConditions = state.appliedConditions.map((condition) => ({ ...condition }));
-    }
-  });
-  queryBuilder.closeButton.addEventListener('click', () => {
-    state.draftConditions = state.appliedConditions.map((condition) => ({ ...condition }));
-    queryBuilder.panel.hidden = true;
-    queryButton.setAttribute('aria-expanded', 'false');
-    queryButton.focus();
-  });
-  queryBuilder.addButton.addEventListener('click', () => {
-    const usedFields = new Set(state.draftConditions.map((condition) => condition.field));
-    const nextField = QUERY_FIELDS.find((field) => !usedFields.has(field));
-    if (!nextField) return;
-    state.draftConditions.push({
-      id: ++state.queryConditionId,
-      field: nextField,
-      value: queryValues(nextField, reports)[0]?.value ?? ''
-    });
-    queryBuilder.render(state.draftConditions, updateDraftConditions);
-  });
-  queryBuilder.clearButton.addEventListener('click', () => {
-    state.draftConditions = [];
-    state.appliedConditions = [];
-    queryBuilder.render(state.draftConditions, updateDraftConditions);
-    updateDashboardData();
-  });
-  queryBuilder.applyButton.addEventListener('click', () => {
-    state.appliedConditions = state.draftConditions.map((condition) => ({ ...condition }));
-    queryBuilder.panel.hidden = true;
-    queryButton.setAttribute('aria-expanded', 'false');
-    queryButton.focus();
-    updateDashboardData();
-  });
-  queryBuilder.render(state.draftConditions, updateDraftConditions);
-
-  function updateDraftConditions() {
-    queryBuilder.render(state.draftConditions, updateDraftConditions);
-  }
+  queryButton.addEventListener('click', () => queryBuilder.open());
 
   exportButton.addEventListener('click', () => {
     exportDialog.dialog.showModal();
@@ -427,24 +379,39 @@ function renderDashboard(target, reports, staff, onSignOut) {
   });
 
   function filteredReports() {
-    return reports.filter((report) => state.appliedConditions.every(
-      (condition) => reportMatchesCondition(report, condition)
-    ));
+    const tree = filterStore.get().attribute.tree;
+    if (state.filterTree !== tree) {
+      state.filterTree = tree;
+      state.filterPredicate = compileTree(tree, {
+        now: new Date(),
+        getCategory: categoryOf,
+        organisations: queryBuilder.getOrganisations()
+      });
+    }
+    return reports.filter(state.filterPredicate);
   }
 
   function updateDashboardData() {
     const selected = filteredReports();
+    const tree = filterStore.get().attribute.tree;
+    const filterContext = {
+      now: new Date(),
+      getCategory: categoryOf,
+      organisations: queryBuilder.getOrganisations(),
+      reports
+    };
+    const activeConditions = countCompleteConditions(tree);
     state.chartReports = selected;
-    queryButton.classList.toggle('active', state.appliedConditions.length > 0);
-    queryButton.setAttribute('aria-pressed', String(state.appliedConditions.length > 0));
-    statsPanel.update(selected, reports.length, state.appliedConditions, (conditionId) => {
-      state.appliedConditions = state.appliedConditions.filter(
-        (condition) => condition.id !== conditionId
-      );
-      state.draftConditions = state.appliedConditions.map((condition) => ({ ...condition }));
-      queryBuilder.render(state.draftConditions, updateDraftConditions);
-      updateDashboardData();
-    }, reports);
+    queryButton.classList.toggle('active', activeConditions > 0);
+    queryButton.setAttribute('aria-pressed', String(activeConditions > 0));
+    statsPanel.update(selected, reports.length, tree, filterContext, (index) => {
+      const nextTree = cloneTree(tree);
+      nextTree.children.splice(index, 1);
+      filterStore.set({
+        ...filterStore.get(),
+        attribute: { tree: nextTree }
+      });
+    });
     state.reports = selected.filter(isMapVisible).map((report) => ({
       report,
       latitude: coordinate(report.latitude, report.location_lat),
@@ -571,8 +538,9 @@ function renderDashboard(target, reports, staff, onSignOut) {
     }
   }
 
+  const unsubscribeFilters = filterStore.subscribe(updateDashboardData);
+  window.addEventListener('pagehide', unsubscribeFilters, { once: true });
   void initializeMap(mapCanvas, state, updateMapMarkers);
-  updateDashboardData();
 }
 
 async function initializeMap(container, state, onReady) {
@@ -940,149 +908,6 @@ function createToolbarButton(label, pathData) {
   button.append(text);
   button.setAttribute('aria-label', label);
   return button;
-}
-
-function createQueryBuilder(reports) {
-  const panel = document.createElement('section');
-  panel.id = 'dashboard-query-panel';
-  panel.className = 'query-builder-panel';
-  panel.hidden = true;
-  panel.setAttribute('aria-label', 'Report query builder');
-  const heading = document.createElement('div');
-  heading.className = 'query-panel-heading';
-  const title = document.createElement('h3');
-  title.textContent = 'Query builder';
-  const closeButton = document.createElement('button');
-  closeButton.type = 'button';
-  closeButton.className = 'query-close-button';
-  closeButton.setAttribute('aria-label', 'Close query builder');
-  closeButton.append(icon('M18 6 6 18M6 6l12 12'));
-  heading.append(title, closeButton);
-  const rows = document.createElement('div');
-  rows.className = 'query-condition-list';
-  const addButton = document.createElement('button');
-  addButton.type = 'button';
-  addButton.className = 'query-add-button';
-  addButton.textContent = '+ Add condition';
-  const actions = document.createElement('div');
-  actions.className = 'query-actions';
-  const clearButton = document.createElement('button');
-  clearButton.type = 'button';
-  clearButton.className = 'query-clear-button';
-  clearButton.textContent = 'Clear all';
-  const applyButton = document.createElement('button');
-  applyButton.type = 'button';
-  applyButton.className = 'query-apply-button';
-  applyButton.textContent = 'Apply';
-  actions.append(clearButton, applyButton);
-  panel.append(heading, rows, addButton, actions);
-
-  function render(conditions, onChange) {
-    rows.replaceChildren();
-    const usedFields = new Set(conditions.map((condition) => condition.field));
-    for (const condition of conditions) {
-      const row = document.createElement('div');
-      row.className = 'query-condition';
-      const fieldSelect = document.createElement('select');
-      fieldSelect.className = 'query-field-select';
-      fieldSelect.setAttribute('aria-label', 'Condition field');
-      for (const field of QUERY_FIELDS) {
-        if (field !== condition.field && usedFields.has(field)) continue;
-        addOption(fieldSelect, field, QUERY_FIELD_LABELS[field]);
-      }
-      fieldSelect.value = condition.field;
-      fieldSelect.addEventListener('change', () => {
-        condition.field = fieldSelect.value;
-        condition.value = queryValues(condition.field, reports)[0]?.value ?? '';
-        onChange();
-      });
-
-      const operator = document.createElement('span');
-      operator.className = 'query-operator';
-      operator.textContent = 'is';
-      const valueSelect = document.createElement('select');
-      valueSelect.className = 'query-value-select';
-      valueSelect.setAttribute('aria-label', `${QUERY_FIELD_LABELS[condition.field]} value`);
-      const values = queryValues(condition.field, reports);
-      if (!values.some((option) => option.value === condition.value)) {
-        condition.value = values[0]?.value ?? '';
-      }
-      if (!values.length) addOption(valueSelect, '', 'No values available');
-      for (const option of values) addOption(valueSelect, option.value, option.label);
-      valueSelect.value = condition.value;
-      valueSelect.addEventListener('change', () => {
-        condition.value = valueSelect.value;
-        onChange();
-      });
-
-      const removeButton = document.createElement('button');
-      removeButton.type = 'button';
-      removeButton.className = 'query-remove-button';
-      removeButton.textContent = '×';
-      removeButton.setAttribute('aria-label', `Remove ${QUERY_FIELD_LABELS[condition.field]} condition`);
-      removeButton.addEventListener('click', () => {
-        const index = conditions.findIndex((item) => item.id === condition.id);
-        if (index !== -1) conditions.splice(index, 1);
-        onChange();
-      });
-      row.append(fieldSelect, operator, valueSelect, removeButton);
-      rows.append(row);
-    }
-    addButton.disabled = conditions.length >= QUERY_FIELDS.length;
-  }
-
-  return { panel, rows, closeButton, addButton, clearButton, applyButton, render };
-}
-
-function queryValues(field, reports) {
-  if (field === 'status') {
-    return [...new Set(reports.map((report) => report.status).filter((value) => value !== null && value !== undefined && value !== ''))]
-      .sort((a, b) => String(a).localeCompare(String(b)))
-      .map((value) => ({ value: String(value), label: String(getStatusLabel(value)) }));
-  }
-  if (field === 'category') {
-    return uniqueCategories(reports).map((value) => ({ value, label: value }));
-  }
-  if (field === 'assignment') {
-    return [
-      { value: 'assigned', label: 'Assigned' },
-      { value: 'unassigned', label: 'Unassigned' }
-    ];
-  }
-  if (field === 'dateRange') return [...DATE_RANGE_OPTIONS];
-  if (field === 'priority') {
-    return [...new Set(reports.map((report) => report.urgency).filter((value) => value !== null && value !== undefined && value !== ''))]
-      .map((value) => String(value))
-      .sort((a, b) => a.localeCompare(b))
-      .map((value) => ({ value, label: value }));
-  }
-  return [];
-}
-
-function reportMatchesCondition(report, condition) {
-  if (condition.field === 'status') return String(report.status ?? '') === condition.value;
-  if (condition.field === 'category') return categoryOf(report) === condition.value;
-  if (condition.field === 'assignment') {
-    const assigned = report.assigned_organization_id !== null
-      && report.assigned_organization_id !== undefined
-      && String(report.assigned_organization_id).trim() !== '';
-    return condition.value === 'assigned' ? assigned : !assigned;
-  }
-  if (condition.field === 'priority') return String(report.urgency ?? '') === condition.value;
-  if (condition.field === 'dateRange') {
-    if (condition.value === 'all') return true;
-    const createdAt = Date.parse(report.created_at);
-    if (!Number.isFinite(createdAt)) return false;
-    const cutoff = Date.now() - Number(condition.value) * 24 * 60 * 60 * 1000;
-    return createdAt >= cutoff && createdAt <= Date.now();
-  }
-  return true;
-}
-
-function queryConditionValue(condition, reports) {
-  const option = queryValues(condition.field, reports)
-    .find((candidate) => candidate.value === condition.value);
-  return option?.label ?? condition.value;
 }
 
 function createExportDialog() {
@@ -1480,8 +1305,8 @@ function createStatsPanel() {
     body,
     collapseButton: head.collapseButton,
     title: 'Report stats',
-    update(reports, totalCount, conditions, onRemoveCondition, allReports) {
-      const hasQuery = conditions.length > 0;
+    update(reports, totalCount, tree, context, onRemoveCondition) {
+      const hasQuery = countCompleteConditions(tree) > 0;
       const attended = reports.filter((report) => ATTENDED_STATUSES.has(report.status)).length;
       const pending = reports.length - attended;
       const highPriority = reports.filter((report) => String(report.urgency ?? '').toLocaleLowerCase() === 'high').length;
@@ -1493,17 +1318,17 @@ function createStatsPanel() {
         ? `Showing: filtered reports (${reports.length} of ${totalCount})`
         : `Showing: all reports (${reports.length})`;
       chips.replaceChildren();
-      for (const condition of conditions) {
+      for (const [index, condition] of tree.children.entries()) {
         const chip = document.createElement('span');
         chip.className = 'query-chip';
         const label = document.createElement('span');
-        label.textContent = `${QUERY_FIELD_LABELS[condition.field]}: ${queryConditionValue(condition, allReports)}`;
+        label.textContent = describeNode(condition, context);
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'query-chip-remove';
         remove.textContent = '×';
-        remove.setAttribute('aria-label', `Remove ${QUERY_FIELD_LABELS[condition.field]} filter`);
-        remove.addEventListener('click', () => onRemoveCondition(condition.id));
+        remove.setAttribute('aria-label', `Remove filter: ${label.textContent}`);
+        remove.addEventListener('click', () => onRemoveCondition(index));
         chip.append(label, remove);
         chips.append(chip);
       }
@@ -1513,9 +1338,9 @@ function createStatsPanel() {
       meta.hidden = isEmpty;
       footnote.hidden = isEmpty;
       locationValue.textContent = mostCommonLocation(reports);
-      const categoryCondition = conditions.find((condition) => condition.field === 'category');
+      const categoryCondition = findFilterCondition(tree, 'category');
       categoryValue.textContent = categoryCondition
-        ? queryConditionValue(categoryCondition, allReports)
+        ? describeNode(categoryCondition, context).replace(/^(NOT )?Category (is|is not) /, '$1')
         : 'All';
     }
   };
@@ -1653,8 +1478,16 @@ function categoryCounts(reports) {
   return counts;
 }
 
-function uniqueCategories(reports) {
-  return [...new Set(reports.map(categoryOf))].sort((a, b) => a.localeCompare(b));
+function findFilterCondition(node, field) {
+  if (node?.type === 'condition') {
+    return node.field === field && isCompleteCondition(node) ? node : null;
+  }
+  if (node?.type !== 'group') return null;
+  for (const child of node.children ?? []) {
+    const match = findFilterCondition(child, field);
+    if (match) return match;
+  }
+  return null;
 }
 
 function categoryOf(report) {
