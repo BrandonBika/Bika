@@ -43,6 +43,9 @@
   },
   "dependencies": {
     "@zegocloud/zego-uikit-prebuilt": "2.18.4",
-    "zego-zim-web": "2.16.0"
+    "zego-zim-web": "3.2.0"
+  },
+  "overrides": {
+    "protobufjs": "7.6.6"
   }
 }
