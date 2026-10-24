@@ -1,7 +1,11 @@
 import { NAVIGATION, PLATFORM_ROLES } from '../../config.js';
+import { setSafeText } from '../../features/safe-dom.js';
+
+const RAIL_COLLAPSED_KEY = 'civicneuro-platform-rail-collapsed';
 
 const iconPaths = {
   'brand-shield': ['M12 2 20 5v6c0 5.3-3.4 9-8 11-4.6-2-8-5.7-8-11V5z', 'm8.5 12 2.2 2.2 4.8-5'],
+  'rail-chevron': ['M15 18l-6-6 6-6'],
   dashboard: ['M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z', 'M9 3v15', 'M15 6v15'],
   'report-sheet': ['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z', 'M14 2v6h6', 'M8 13h8', 'M8 17h8'],
   posts: ['M22 2 11 13', 'M22 2 15 22 11 13 2 9z'],
@@ -36,6 +40,7 @@ function createIcon(name, extraClass = '') {
 export function createSidebar({ role, activeRoute, onNavigate, fullName }) {
   const rail = document.createElement('aside');
   rail.className = 'dash-rail';
+  rail.dataset.collapsed = String(readCollapsedState());
   const brand = document.createElement('a');
   brand.className = 'dash-brand';
   brand.href = NAVIGATION[role]?.some((item) => item.id === 'dashboard' && item.enabled)
@@ -46,11 +51,37 @@ export function createSidebar({ role, activeRoute, onNavigate, fullName }) {
   mark.className = 'dash-brand-mark';
   mark.append(createIcon('brand-shield', 'brand-shield'));
   const brandName = document.createElement('span');
-  brandName.textContent = 'CivicNeuro';
+  brandName.className = 'dash-brand-name';
+  setSafeText(brandName, 'CivicNeuro');
   brand.append(mark, brandName);
+
+  const railToggle = document.createElement('button');
+  railToggle.type = 'button';
+  railToggle.className = 'rail-toggle';
+  railToggle.setAttribute('aria-controls', 'platform-navigation');
+  railToggle.append(createIcon('rail-chevron', 'rail-toggle-icon'));
+  updateToggleLabel(railToggle, readCollapsedState());
+  railToggle.addEventListener('click', () => {
+    const layout = rail.closest('.dash');
+    if (!layout) return;
+    const collapsed = rail.dataset.collapsed !== 'true';
+    layout.classList.toggle('collapsed', collapsed);
+    rail.dataset.collapsed = String(collapsed);
+    updateToggleLabel(railToggle, collapsed);
+    try {
+      window.localStorage.setItem(RAIL_COLLAPSED_KEY, String(collapsed));
+    } catch {
+      // Keep the current in-memory state when storage is unavailable.
+    }
+  });
+  rail.addEventListener('transitionend', (event) => {
+    if (event.target !== rail || event.propertyName !== 'width') return;
+    rail.closest('.dash')?.dispatchEvent(new Event('platform-rail-resized'));
+  });
 
   const nav = document.createElement('nav');
   nav.className = 'dash-nav';
+  nav.id = 'platform-navigation';
   nav.setAttribute('aria-label', 'Platform navigation');
   for (const item of NAVIGATION[role] ?? []) {
     if (!item.enabled) continue;
@@ -58,10 +89,11 @@ export function createSidebar({ role, activeRoute, onNavigate, fullName }) {
     link.className = 'n-item';
     link.href = `#${item.path}`;
     link.dataset.route = item.id;
+    link.title = item.label;
     link.append(createIcon(item.id));
     const label = document.createElement('span');
     label.className = 'label';
-    label.textContent = item.label;
+    setSafeText(label, item.label);
     link.append(label);
     if (item.id === activeRoute) {
       link.classList.add('active');
@@ -90,8 +122,26 @@ export function createSidebar({ role, activeRoute, onNavigate, fullName }) {
   roleName.textContent = role === PLATFORM_ROLES.ADMIN ? 'Platform Admin' : 'Platform Employee';
   identity.append(name, roleName);
   footer.append(avatar, identity);
-  rail.append(brand, nav, footer);
+  rail.append(brand, railToggle, nav, footer);
+  queueMicrotask(() => {
+    rail.closest('.dash')?.classList.toggle('collapsed', rail.dataset.collapsed === 'true');
+  });
   return rail;
+}
+
+function readCollapsedState() {
+  try {
+    return window.localStorage.getItem(RAIL_COLLAPSED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function updateToggleLabel(button, collapsed) {
+  const label = collapsed ? 'Expand side navigation' : 'Collapse side navigation';
+  button.setAttribute('aria-label', label);
+  button.title = label;
+  button.setAttribute('aria-expanded', String(!collapsed));
 }
 
 function initials(fullName, role) {

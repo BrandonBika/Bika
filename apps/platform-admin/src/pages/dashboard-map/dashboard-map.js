@@ -4,10 +4,13 @@ import { MAP_CONFIG } from '../../config.js';
 import { attachTileErrorNotice } from '../../features/map-tiles.js';
 import { listReports } from '../../features/reports.client.js';
 import { getCategoryLabel, getStatusLabel } from '../../features/status-labels.js';
+import { setSafeText } from '../../features/safe-dom.js';
 import { withTimeout } from '../../features/with-timeout.js';
 
 const ATTENDED_STATUSES = new Set(['Resolved', 'Rejected', 'Duplicate']);
 const CATEGORY_COLOURS = ['#A32D2D', '#2A7F78', '#BA7517', '#185FA5', '#A3A6AC'];
+const CHART_COLLAPSED_KEY = 'civicneuro-platform-dashboard-chart-collapsed';
+const STATS_COLLAPSED_KEY = 'civicneuro-platform-dashboard-stats-collapsed';
 
 let chartInstance = null;
 
@@ -28,13 +31,34 @@ function renderDashboard(target, reports, staff, onSignOut) {
   const topbar = createDashboardTopbar(staff, onSignOut);
   const toolbar = document.createElement('div');
   toolbar.className = 'map-toolbar';
+  const queryBuilder = createQueryBuilder(reports);
+  const queryButton = createToolbarButton('Query builder', 'M22 3H2l8 9.5V19l4 2v-8.5L22 3Z');
+  queryButton.setAttribute('aria-expanded', 'false');
+  queryButton.setAttribute('aria-controls', 'dashboard-query-panel');
   const clusterControl = createClusterControl();
-  const categorySelect = document.createElement('select');
-  categorySelect.className = 'tbtn category-select';
-  categorySelect.setAttribute('aria-label', 'Filter by category');
-  addOption(categorySelect, '', 'All categories');
-  for (const category of uniqueCategories(reports)) addOption(categorySelect, category, category);
-  toolbar.append(clusterControl.control, categorySelect);
+  const exportButton = createToolbarButton('Export map', 'M12 3v12 M7 10l5 5 5-5 M5 21h14');
+  const exportDialog = createExportDialog();
+  const boundaryUploadButton = createToolbarButton(
+    'Upload / add admin boundary',
+    'M12 15V5 M7 9l5-5 5 5 M5 19h14'
+  );
+  boundaryUploadButton.classList.add('dashed');
+  boundaryUploadButton.disabled = true;
+  boundaryUploadButton.title = 'Coming soon';
+  const boundaryListButton = createToolbarButton(
+    'List of uploaded boundaries',
+    'M9 6h11 M9 12h11 M9 18h11 M4 6h.01 M4 12h.01 M4 18h.01'
+  );
+  boundaryListButton.classList.add('solid-accent');
+  boundaryListButton.disabled = true;
+  boundaryListButton.title = 'Coming soon';
+  toolbar.append(
+    queryButton,
+    clusterControl.control,
+    exportButton,
+    boundaryUploadButton,
+    boundaryListButton
+  );
 
   const mapArea = document.createElement('section');
   mapArea.className = 'map-area';
@@ -54,21 +78,66 @@ function renderDashboard(target, reports, staff, onSignOut) {
   const chartPanel = createChartPanel();
   const statsPanel = createStatsPanel();
   bottomPanel.append(chartPanel.card, statsPanel.card);
+  setPanelCollapsed(chartPanel, readCollapsedPreference(CHART_COLLAPSED_KEY));
+  setPanelCollapsed(statsPanel, readCollapsedPreference(STATS_COLLAPSED_KEY));
+  updateBottomPanelCollapsedState(bottomPanel, chartPanel, statsPanel);
 
-  target.replaceChildren(topbar, toolbar, mapArea, bottomPanel);
+  target.replaceChildren(topbar, toolbar, queryBuilder.panel, mapArea, bottomPanel, exportDialog.dialog);
 
   const state = {
     category: '',
     clustered: true,
     chartType: 'bar',
+    chartReports: [],
     map: null,
     layer: null,
     reports: [],
     markerRequest: 0
   };
-  categorySelect.addEventListener('change', () => {
-    state.category = categorySelect.value;
+  let chartRequest = 0;
+  const mapResizeObserver = new ResizeObserver(() => {
+    if (state.map) requestAnimationFrame(() => state.map?.invalidateSize({ pan: false }));
+  });
+  mapResizeObserver.observe(mapArea);
+  target.closest('.dash')?.addEventListener('platform-rail-resized', () => {
+    if (state.map) requestAnimationFrame(() => state.map?.invalidateSize({ pan: false }));
+  });
+
+  chartPanel.collapseButton.addEventListener('click', () => {
+    togglePanel(chartPanel, CHART_COLLAPSED_KEY);
+  });
+  statsPanel.collapseButton.addEventListener('click', () => {
+    togglePanel(statsPanel, STATS_COLLAPSED_KEY);
+  });
+
+  function togglePanel(panel, preferenceKey) {
+    const closed = !panel.card.classList.contains('closed');
+    setPanelCollapsed(panel, closed);
+    updateBottomPanelCollapsedState(bottomPanel, chartPanel, statsPanel);
+    writeCollapsedPreference(preferenceKey, closed);
+    requestAnimationFrame(() => {
+      state.map?.invalidateSize({ pan: false });
+      if (!closed && panel === chartPanel) void updateChart();
+    });
+  }
+  queryButton.addEventListener('click', () => {
+    const open = queryBuilder.panel.hidden;
+    queryBuilder.panel.hidden = !open;
+    queryButton.setAttribute('aria-expanded', String(open));
+    if (open) queryBuilder.categorySelect.focus();
+  });
+  queryBuilder.categorySelect.addEventListener('change', () => {
+    state.category = queryBuilder.categorySelect.value;
     updateDashboardData();
+  });
+  queryBuilder.clearButton.addEventListener('click', () => {
+    queryBuilder.categorySelect.value = '';
+    state.category = '';
+    updateDashboardData();
+  });
+  exportButton.addEventListener('click', () => exportDialog.dialog.showModal());
+  exportDialog.downloadButton.addEventListener('click', () => {
+    void exportMapImage(state.map, mapArea, exportDialog.status);
   });
   clusterControl.button.addEventListener('click', () => {
     state.clustered = !state.clustered;
@@ -94,6 +163,7 @@ function renderDashboard(target, reports, staff, onSignOut) {
 
   function updateDashboardData() {
     const selected = filteredReports();
+    state.chartReports = selected;
     statsPanel.update(selected, state.category);
     state.reports = selected.filter(isMapVisible).map((report) => ({
       report,
@@ -155,17 +225,33 @@ function renderDashboard(target, reports, staff, onSignOut) {
   }
 
   async function updateChart() {
-    chartPanel.chartHost.replaceChildren();
+    const request = ++chartRequest;
+    if (chartPanel.card.classList.contains('closed')) return;
+
     try {
       const { Chart } = await withTimeout(
         import('https://cdn.jsdelivr.net/npm/chart.js@4.4.7/auto/+esm'),
         'Chart library load'
       );
-      if (!chartPanel.chartHost.isConnected) return;
-      if (chartInstance) chartInstance.destroy();
-      const counts = categoryCounts(filteredReports());
+      if (request !== chartRequest || !chartPanel.chartHost.isConnected) return;
+      if (chartPanel.card.classList.contains('closed')) return;
+
+      const counts = categoryCounts(state.chartReports);
       const labels = [...counts.keys()];
       const values = [...counts.values()];
+      if (!values.length) {
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = null;
+        chartPanel.chartHost.replaceChildren(createEmptyState({
+          title: 'No reports to chart',
+          message: 'Reports will appear here when they match the selected category.'
+        }));
+        return;
+      }
+
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = null;
+      chartPanel.chartHost.replaceChildren(chartPanel.canvas);
       const colours = labels.map((_, index) => CATEGORY_COLOURS[index % CATEGORY_COLOURS.length]);
       chartInstance = new Chart(chartPanel.canvas, {
         type: state.chartType,
@@ -193,7 +279,10 @@ function renderDashboard(target, reports, staff, onSignOut) {
         }
       });
     } catch (error) {
+      if (request !== chartRequest) return;
       console.error('Could not load report distribution chart.', error);
+      if (chartInstance) chartInstance.destroy();
+      chartInstance = null;
       chartPanel.chartHost.replaceChildren(createRetryState({
         title: 'Chart unavailable',
         message: error.message || 'Check your connection and reload the dashboard.',
@@ -214,7 +303,8 @@ async function initializeMap(container, state, onReady) {
       .setView([MAP_CONFIG.defaultCenter.lat, MAP_CONFIG.defaultCenter.lng], MAP_CONFIG.defaultZoom);
     const tileLayer = L.tileLayer(MAP_CONFIG.tileUrlTemplate, {
       maxZoom: MAP_CONFIG.maxZoom,
-      attribution: MAP_CONFIG.attribution
+      attribution: MAP_CONFIG.attribution,
+      crossOrigin: 'anonymous'
     });
     attachTileErrorNotice(tileLayer, container);
     tileLayer.addTo(state.map);
@@ -398,6 +488,180 @@ function createClusterControl() {
   };
 }
 
+function createToolbarButton(label, pathData) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'tbtn';
+  button.append(icon(pathData));
+  const text = document.createElement('span');
+  text.textContent = label;
+  button.append(text);
+  button.setAttribute('aria-label', label);
+  return button;
+}
+
+function createQueryBuilder(reports) {
+  const panel = document.createElement('section');
+  panel.id = 'dashboard-query-panel';
+  panel.className = 'query-builder-panel';
+  panel.hidden = true;
+  panel.setAttribute('aria-label', 'Report query builder');
+  const condition = document.createElement('div');
+  condition.className = 'query-condition';
+  const label = document.createElement('label');
+  label.htmlFor = 'dashboard-category-condition';
+  label.textContent = 'Category';
+  const operator = document.createElement('span');
+  operator.className = 'query-operator';
+  operator.textContent = 'is';
+  const categorySelect = document.createElement('select');
+  categorySelect.id = 'dashboard-category-condition';
+  categorySelect.className = 'query-category-select';
+  addOption(categorySelect, '', 'All categories');
+  for (const category of uniqueCategories(reports)) addOption(categorySelect, category, category);
+  condition.append(label, operator, categorySelect);
+
+  const clearButton = document.createElement('button');
+  clearButton.type = 'button';
+  clearButton.className = 'query-clear-button';
+  clearButton.textContent = 'Clear';
+  panel.append(condition, clearButton);
+  return { panel, categorySelect, clearButton };
+}
+
+function createExportDialog() {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'map-export-dialog';
+  const heading = document.createElement('h2');
+  heading.textContent = 'Export map';
+  const description = document.createElement('p');
+  description.textContent = 'Download the current map view, including visible report markers, as a PNG image.';
+  const status = document.createElement('p');
+  status.className = 'map-export-status';
+  status.setAttribute('role', 'status');
+  status.hidden = true;
+  const actions = document.createElement('div');
+  actions.className = 'map-export-actions';
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'tbtn';
+  closeButton.textContent = 'Cancel';
+  closeButton.addEventListener('click', () => dialog.close());
+  const downloadButton = document.createElement('button');
+  downloadButton.type = 'button';
+  downloadButton.className = 'tbtn solid-accent';
+  downloadButton.textContent = 'Download PNG';
+  actions.append(closeButton, downloadButton);
+  dialog.append(heading, description, status, actions);
+  return { dialog, downloadButton, status };
+}
+
+async function exportMapImage(map, mapArea, status) {
+  status.hidden = true;
+  status.textContent = '';
+  if (!map) {
+    setSafeText(status, 'The map is not ready yet. Please try again.');
+    status.hidden = false;
+    return;
+  }
+
+  const bounds = mapArea.getBoundingClientRect();
+  const scale = Math.min(window.devicePixelRatio || 1, 2);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bounds.width * scale);
+  canvas.height = Math.round(bounds.height * scale);
+  const context = canvas.getContext('2d');
+  if (!context) {
+    setSafeText(status, 'Your browser could not prepare the map image.');
+    status.hidden = false;
+    return;
+  }
+  context.scale(scale, scale);
+  context.fillStyle = '#E9EAEC';
+  context.fillRect(0, 0, bounds.width, bounds.height);
+
+  const tiles = [...mapArea.querySelectorAll('.leaflet-tile')].filter(
+    (tile) => tile.complete && tile.naturalWidth > 0
+  );
+  if (!tiles.length) {
+    setSafeText(status, 'Map tiles are not ready yet. Please wait and try again.');
+    status.hidden = false;
+    return;
+  }
+
+  try {
+    for (const tile of tiles) {
+      const rect = tile.getBoundingClientRect();
+      context.drawImage(
+        tile,
+        rect.left - bounds.left,
+        rect.top - bounds.top,
+        rect.width,
+        rect.height
+      );
+    }
+    drawExportMarkers(context, mapArea, bounds);
+    const attribution = mapArea.querySelector('.leaflet-control-attribution')?.textContent?.trim();
+    if (attribution) {
+      context.font = '10px sans-serif';
+      const width = context.measureText(attribution).width + 12;
+      context.fillStyle = 'rgba(255, 255, 255, .85)';
+      context.fillRect(bounds.width - width, bounds.height - 18, width, 18);
+      context.fillStyle = '#333';
+      context.fillText(attribution, bounds.width - width + 6, bounds.height - 6);
+    }
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob((result) => {
+        if (result) resolve(result);
+        else reject(new Error('The browser did not produce an image.'));
+      }, 'image/png');
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'civicneuro-map.png';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (error) {
+    console.error('Could not export the report map image.', error);
+    setSafeText(status, 'The map image could not be exported. Check the tile connection and try again.');
+    status.hidden = false;
+  }
+}
+
+function drawExportMarkers(context, mapArea, bounds) {
+  for (const marker of mapArea.querySelectorAll('.leaflet-marker-icon')) {
+    const rect = marker.getBoundingClientRect();
+    const cluster = marker.querySelector('.map-pin.cluster');
+    if (cluster) {
+      const centerX = rect.left - bounds.left + rect.width / 2;
+      const centerY = rect.top - bounds.top + rect.height / 2;
+      context.beginPath();
+      context.arc(centerX, centerY, 15, 0, Math.PI * 2);
+      context.fillStyle = '#A32D2D';
+      context.fill();
+      context.fillStyle = '#FFF';
+      context.font = '700 11px sans-serif';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(cluster.textContent, centerX, centerY);
+    } else {
+      const centerX = rect.left - bounds.left + rect.width / 2;
+      const top = rect.top - bounds.top + 3;
+      context.beginPath();
+      context.moveTo(centerX, top + 25);
+      context.bezierCurveTo(centerX - 2, top + 17, centerX - 11, top + 10, centerX - 11, top + 7);
+      context.arc(centerX, top + 7, 11, Math.PI, 0);
+      context.bezierCurveTo(centerX + 11, top + 10, centerX + 2, top + 17, centerX, top + 25);
+      context.fillStyle = '#A32D2D';
+      context.fill();
+      context.strokeStyle = '#FFF';
+      context.lineWidth = 2;
+      context.stroke();
+    }
+  }
+}
+
 function createChartPanel() {
   const card = document.createElement('section');
   card.className = 'panel-card chart-card';
@@ -418,7 +682,7 @@ function createChartPanel() {
   chartHost.append(canvas);
   body.append(chartHost);
   card.append(head.element, body);
-  return { card, barButton, lineButton, chartHost, canvas };
+  return { card, body, collapseButton: head.collapseButton, title: 'Report distribution', barButton, lineButton, chartHost, canvas };
 }
 
 function createStatsPanel() {
@@ -454,6 +718,9 @@ function createStatsPanel() {
   card.append(head.element, body);
   return {
     card,
+    body,
+    collapseButton: head.collapseButton,
+    title: 'Report stats',
     update(reports, selectedCategory) {
       const attended = reports.filter((report) => ATTENDED_STATUSES.has(report.status)).length;
       const pending = reports.length - attended;
@@ -473,14 +740,64 @@ function createPanelHead(title) {
   const element = document.createElement('div');
   element.className = 'panel-head';
   const heading = document.createElement('h3');
-  heading.textContent = title;
+  setSafeText(heading, title);
   const left = document.createElement('div');
   left.className = 'panel-head-left';
-  left.append(heading);
+  const collapseButton = document.createElement('button');
+  collapseButton.type = 'button';
+  collapseButton.className = 'panel-collapse-button';
+  collapseButton.setAttribute('aria-label', `Collapse ${title}`);
+  collapseButton.setAttribute('aria-expanded', 'true');
+  collapseButton.append(createChevronIcon());
+  left.append(heading, collapseButton);
   const right = document.createElement('div');
   right.className = 'panel-head-right';
   element.append(left, right);
-  return { element, right };
+  return { element, right, collapseButton };
+}
+
+function createChevronIcon() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('chev');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', 'M6 9l6 6 6-6');
+  svg.append(path);
+  return svg;
+}
+
+function setPanelCollapsed(panel, closed) {
+  panel.card.classList.toggle('closed', closed);
+  panel.body.hidden = closed;
+  panel.collapseButton.setAttribute('aria-expanded', String(!closed));
+  panel.collapseButton.setAttribute(
+    'aria-label',
+    `${closed ? 'Expand' : 'Collapse'} ${panel.title}`
+  );
+}
+
+function updateBottomPanelCollapsedState(bottomPanel, chartPanel, statsPanel) {
+  bottomPanel.classList.toggle(
+    'all-panels-closed',
+    chartPanel.card.classList.contains('closed') && statsPanel.card.classList.contains('closed')
+  );
+}
+
+function readCollapsedPreference(key) {
+  try {
+    return window.localStorage.getItem(key) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeCollapsedPreference(key, closed) {
+  try {
+    window.localStorage.setItem(key, String(closed));
+  } catch {
+    // The panel remains usable for this session if storage is unavailable.
+  }
 }
 
 function createStatBox(className, label) {

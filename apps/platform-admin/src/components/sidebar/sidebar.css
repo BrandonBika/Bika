@@ -1,4 +1,5 @@
 .dash-rail {
+  position: relative;
   width: 224px;
   flex: 0 0 224px;
   display: flex;
@@ -6,6 +7,7 @@
   padding: 22px 16px;
   background: var(--ink);
   color: #E4E5E8;
+  transition: width .22s ease, flex-basis .22s ease, padding .22s ease;
 }
 
 body[data-role="platform_employee"] .dash-rail {
@@ -20,6 +22,50 @@ body[data-role="platform_employee"] .dash-rail {
   color: #fff;
   font: 600 19px var(--font-heading);
   text-decoration: none;
+}
+
+.dash-brand-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail-toggle {
+  position: absolute;
+  z-index: 2;
+  top: 26px;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  box-shadow: 0 4px 10px rgb(17 18 20 / 18%);
+  cursor: pointer;
+}
+
+.rail-toggle:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--teal) 50%, #fff);
+  outline-offset: 2px;
+}
+
+.rail-toggle-icon {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  transition: transform .22s ease;
+}
+
+.dash.collapsed .rail-toggle-icon {
+  transform: rotate(180deg);
 }
 
 .dash-brand-mark {
@@ -133,15 +179,68 @@ body[data-role="platform_employee"] .n-item {
   font-size: 10px;
 }
 
+@media (min-width: 761px) {
+  .dash.collapsed .dash-rail {
+    width: 76px;
+    flex: 0 0 76px;
+    padding: 22px 14px;
+  }
+
+  .dash.collapsed .dash-brand {
+    justify-content: center;
+    padding-bottom: 22px;
+  }
+
+  .dash.collapsed .dash-brand-name,
+  .dash.collapsed .dash-nav .n-item .label,
+  .dash.collapsed .dash-nav .n-item .n-badge,
+  .dash.collapsed .dash-rail-identity {
+    display: none;
+  }
+
+  .dash.collapsed .dash-nav .n-item {
+    justify-content: center;
+    padding: 10px;
+  }
+
+  .dash.collapsed .dash-section-label {
+    padding: 0;
+    text-align: center;
+  }
+
+  .dash.collapsed .dash-section-label .full {
+    display: none;
+  }
+
+  .dash.collapsed .dash-section-label .dots {
+    display: inline;
+  }
+
+  .dash-section-label .dots {
+    display: none;
+  }
+
+  .dash.collapsed .dash-rail-foot {
+    justify-content: center;
+    gap: 0;
+  }
+}
+
 @media (max-width: 760px) {
   .dash {
     flex-direction: column;
   }
 
   .dash-rail {
+    position: static;
     width: 100%;
     flex-basis: auto;
     padding: 12px;
+    transition: none;
+  }
+
+  .rail-toggle {
+    display: none;
   }
 
   .dash-brand {
