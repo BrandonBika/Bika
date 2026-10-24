@@ -74,12 +74,11 @@ function validateCoordinates(coordinates, warnings, featureNumber) {
     }
     if (!isValidCoordinate(latitude, longitude)) {
       if (Math.abs(longitude) > 180 || Math.abs(latitude) > 90) {
-        const likelySwapped = Math.abs(longitude) <= 90 && Math.abs(latitude) <= 180;
-        const warning = likelySwapped
-          ? 'coordinates may have latitude/longitude swapped'
-          : 'coordinates may use a projected coordinate system';
+        const warning = 'looks projected; re-export as WGS84 lon/lat';
         warnings.push(`Feature ${featureNumber} ${warning}`);
-        throw new Error(`Feature ${featureNumber} has coordinates outside longitude/latitude ranges; ${warning}.`);
+        throw new Error(
+          `Feature ${featureNumber} has coordinates outside longitude/latitude ranges; ${warning}.`
+        );
       }
       throw new Error(`Feature ${featureNumber} has coordinates outside longitude/latitude ranges`);
     }

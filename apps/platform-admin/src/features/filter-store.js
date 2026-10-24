@@ -6,7 +6,8 @@ function emptyState() {
         combinator: 'AND',
         negate: false,
         children: []
-      }
+      },
+      boundary: null
     },
     spatial: {
       active: false,

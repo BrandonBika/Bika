@@ -17,6 +17,13 @@ import {
   describeNode,
   isCompleteCondition
 } from '../../features/filter-engine.js';
+import {
+  boundaryEvaluationContext,
+  cacheBoundaryLookup,
+  invalidateBoundaryLookup
+} from '../../features/boundary-cache.js';
+import { reportCoordinates } from '../../features/report-coordinates.js';
+import { renderFilterChips } from '../../features/filter-chips.js';
 import * as filterStore from '../../features/filter-store.js';
 import { createQueryBuilderDialog } from '../../features/query-builder-dialog.js';
 import { getCategoryLabel, getStatusLabel } from '../../features/status-labels.js';
@@ -53,7 +60,10 @@ function renderDashboard(target, reports, staff, onSignOut) {
     reports,
     getCategory: categoryOf,
     loadOrganisations: listOrganizations,
-    onOrganisationsLoaded: () => updateDashboardData()
+    onOrganisationsLoaded: () => updateDashboardData(),
+    listBoundaries,
+    downloadBoundary,
+    onBoundaryLoaded: handleBoundaryLoaded
   });
   const clusterControl = createClusterControl();
   const exportButton = createToolbarButton('Export map', 'M12 3v12 M7 10l5 5 5-5 M5 21h14');
@@ -127,6 +137,7 @@ function renderDashboard(target, reports, staff, onSignOut) {
     reports: [],
     markerRequest: 0,
     filterTree: null,
+    filterBoundaryPath: null,
     filterPredicate: null
   };
   let chartRequest = 0;
@@ -197,6 +208,8 @@ function renderDashboard(target, reports, staff, onSignOut) {
     dialog.progress.textContent = 'Uploading boundary…';
     try {
     const uploaded = await uploadBoundary(file, dialog.nameInput.value);
+    invalidateBoundaryLookup(uploaded.path);
+    queryBuilder.refreshBoundaryList();
     showBoundary(uploaded.path, uploaded.geojson);
       await refreshBoundaries(false);
       dialog.dialog.close();
@@ -263,7 +276,10 @@ function renderDashboard(target, reports, staff, onSignOut) {
             row.deleteButton.disabled = true;
             try {
               await deleteBoundary(boundary.path);
+              invalidateBoundaryLookup(boundary.path);
+              queryBuilder.refreshBoundaryList();
               hideBoundary(boundary.path);
+              queryBuilder.forgetBoundary(boundary.path);
               row.row.remove();
               boundaryToast.textContent = 'Boundary deleted';
               boundaryToast.hidden = false;
@@ -379,26 +395,39 @@ function renderDashboard(target, reports, staff, onSignOut) {
   });
 
   function filteredReports() {
-    const tree = filterStore.get().attribute.tree;
-    if (state.filterTree !== tree) {
+    const attribute = filterStore.get().attribute;
+    const tree = attribute.tree;
+    const boundaryPath = attribute.boundary?.path ?? null;
+    if (state.filterTree !== tree || state.filterBoundaryPath !== boundaryPath) {
       state.filterTree = tree;
+      state.filterBoundaryPath = boundaryPath;
       state.filterPredicate = compileTree(tree, {
         now: new Date(),
         getCategory: categoryOf,
-        organisations: queryBuilder.getOrganisations()
+        organisations: queryBuilder.getOrganisations(),
+        fields: attribute.boundary?.fields ?? [],
+        ...boundaryEvaluationContext(boundaryPath, reports)
       });
     }
     return reports.filter(state.filterPredicate);
   }
 
+  function handleBoundaryLoaded(path, geojson) {
+    cacheBoundaryLookup(path, reports, geojson, reportCoordinates);
+    if (filterStore.get().attribute.boundary?.path === path) updateDashboardData();
+  }
+
   function updateDashboardData() {
     const selected = filteredReports();
-    const tree = filterStore.get().attribute.tree;
+    const attribute = filterStore.get().attribute;
+    const tree = attribute.tree;
     const filterContext = {
       now: new Date(),
       getCategory: categoryOf,
       organisations: queryBuilder.getOrganisations(),
-      reports
+      reports,
+      fields: attribute.boundary?.fields ?? [],
+      ...boundaryEvaluationContext(attribute.boundary?.path ?? null, reports)
     };
     const activeConditions = countCompleteConditions(tree);
     state.chartReports = selected;
@@ -409,7 +438,7 @@ function renderDashboard(target, reports, staff, onSignOut) {
       nextTree.children.splice(index, 1);
       filterStore.set({
         ...filterStore.get(),
-        attribute: { tree: nextTree }
+        attribute: { ...attribute, tree: nextTree }
       });
     });
     state.reports = selected.filter(isMapVisible).map((report) => ({
@@ -540,6 +569,7 @@ function renderDashboard(target, reports, staff, onSignOut) {
 
   const unsubscribeFilters = filterStore.subscribe(updateDashboardData);
   window.addEventListener('pagehide', unsubscribeFilters, { once: true });
+  void queryBuilder.loadStoredBoundary();
   void initializeMap(mapCanvas, state, updateMapMarkers);
 }
 
@@ -1317,21 +1347,7 @@ function createStatsPanel() {
       showing.textContent = hasQuery
         ? `Showing: filtered reports (${reports.length} of ${totalCount})`
         : `Showing: all reports (${reports.length})`;
-      chips.replaceChildren();
-      for (const [index, condition] of tree.children.entries()) {
-        const chip = document.createElement('span');
-        chip.className = 'query-chip';
-        const label = document.createElement('span');
-        label.textContent = describeNode(condition, context);
-        const remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'query-chip-remove';
-        remove.textContent = '×';
-        remove.setAttribute('aria-label', `Remove filter: ${label.textContent}`);
-        remove.addEventListener('click', () => onRemoveCondition(index));
-        chip.append(label, remove);
-        chips.append(chip);
-      }
+      renderFilterChips(chips, tree, context, onRemoveCondition);
       const isEmpty = reports.length === 0;
       emptyState.hidden = !isEmpty;
       grid.hidden = isEmpty;

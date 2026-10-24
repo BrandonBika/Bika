@@ -21,6 +21,7 @@ export const FIELDS = Object.freeze([
 
 const OPERATORS = Object.freeze({
   enum: ['is', 'is not'],
+  derived: ['is', 'is not'],
   priority: ['is', 'is not'],
   ordinal: ['is', 'is not', 'greater than', 'less than', 'at least', 'at most'],
   organisation: ['is', 'is not', 'is null', 'is not null'],
@@ -53,11 +54,25 @@ const OPERATOR_LABELS = Object.freeze({
   'is exactly': 'is exactly'
 });
 
+export const OUTSIDE_BOUNDARY = '__outside_boundary__';
+
+function isDerivedFieldId(field) {
+  return typeof field === 'string' && field.startsWith('boundary:') && field.length > 9;
+}
+
+function getDerivedField(field, ctx = {}) {
+  if (!isDerivedFieldId(field)) return null;
+  const key = field.slice('boundary:'.length);
+  const descriptor = ctx.fields?.find((item) => item.field === field || item.key === key);
+  return descriptor ? { ...descriptor, field, key } : { field, key, label: key, type: 'derived', values: [] };
+}
+
 export function operatorsFor(fieldType) {
   return [...(OPERATORS[fieldType] ?? [])];
 }
 
-export function resolveFieldType(field, reports = []) {
+export function resolveFieldType(field, reports = [], ctx = {}) {
+  if (getDerivedField(field, ctx)) return 'derived';
   if (field !== 'priority') return FIELDS.find((item) => item.field === field)?.type ?? 'enum';
   const values = distinct(reports.map((report) => report.urgency).filter(hasValue));
   return values.every((value) => PRIORITY_RANK.has(String(value).trim().toLocaleLowerCase()))
@@ -66,6 +81,13 @@ export function resolveFieldType(field, reports = []) {
 }
 
 export function valueOptions(field, reports = [], ctx = {}) {
+  const derived = getDerivedField(field, ctx);
+  if (derived) {
+    return [
+      ...derived.values.map((value) => ({ value: String(value), label: String(value) })),
+      { value: OUTSIDE_BOUNDARY, label: 'Outside boundary' }
+    ];
+  }
   let values = [];
   if (field === 'status') {
     values = reports.map((report) => report.status).filter(hasValue);
@@ -93,9 +115,11 @@ export function valueOptions(field, reports = [], ctx = {}) {
 }
 
 export function isCompleteCondition(condition) {
-  if (!condition || condition.type !== 'condition' || !FIELDS.some((item) => item.field === condition.field)) {
+  if (!condition || condition.type !== 'condition'
+    || (!FIELDS.some((item) => item.field === condition.field) && !isDerivedFieldId(condition.field))) {
     return false;
   }
+  if (isDerivedFieldId(condition.field) && !['is', 'is not'].includes(condition.operator)) return false;
   if (condition.field === 'organisation' && ['is null', 'is not null'].includes(condition.operator)) {
     return true;
   }
@@ -133,7 +157,7 @@ export function describeNode(node, ctx = {}) {
   if (node.type === 'group') {
     return `${node.negate ? 'NOT ' : ''}Group (${countCompleteConditions(node)} conditions)`;
   }
-  const field = FIELDS.find((item) => item.field === node.field);
+  const field = FIELDS.find((item) => item.field === node.field) ?? getDerivedField(node.field, ctx);
   if (!field) return 'Unknown condition';
   const operator = OPERATOR_LABELS[node.operator] ?? node.operator ?? 'is';
   if (node.field === 'organisation' && ['is null', 'is not null'].includes(node.operator)) {
@@ -150,6 +174,9 @@ export function describeNode(node, ctx = {}) {
         .find((candidate) => candidate.value === String(raw));
       return option?.label ?? String(raw ?? '');
     }).filter(Boolean).join(' and ');
+  }
+  if (getDerivedField(node.field, ctx) && node.operator === 'is') {
+    return `${node.negate ? 'NOT ' : ''}${field.label}: ${value}`;
   }
   return `${node.negate ? 'NOT ' : ''}${field.label} ${operator}${value ? ` ${value}` : ''}`;
 }
@@ -185,6 +212,16 @@ function combine(matches, combinator = 'AND') {
 
 function evaluateCondition(condition, report, ctx) {
   const { field, operator, value } = condition;
+  const derived = getDerivedField(field, ctx);
+  if (derived) {
+    const features = ctx.boundaryFeature?.(report);
+    if (!Array.isArray(features)) return false;
+    if (value === OUTSIDE_BOUNDARY) return features.length === 0;
+    const values = ctx.boundaryValue?.(derived.key, report)
+      ?? features.map((feature) => feature.properties?.[derived.key] ?? null);
+    const foundMatch = values.some((actual) => compareEnum(actual, value, 'is'));
+    return operator === 'is not' ? !foundMatch : foundMatch;
+  }
   if (field === 'status') return compareEnum(report.status, value, operator);
   if (field === 'category') return compareEnum(ctx.getCategory(report), value, operator);
   if (field === 'organisation') {
@@ -193,6 +230,7 @@ function evaluateCondition(condition, report, ctx) {
     if (operator === 'is not null') return assigned;
     return compareEnum(report.assigned_organization_id, value, operator);
   }
+
   if (field === 'priority') return comparePriority(report.urgency, value, operator);
   if (field === 'created_at') return compareDate(report.created_at, condition, operator);
   if (field === 'days_open') return compareNumber(daysOpen(report.created_at, ctx.now), condition, operator);

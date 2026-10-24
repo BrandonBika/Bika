@@ -21,6 +21,15 @@ test('boundary validator accepts and retains polygon GeoJSON features', async ()
   assert.equal(result.geojson.features[0].properties.name, 'Ward 1');
 });
 
+test('boundary validator accepts degree coordinates when a CRS member is present', async () => {
+  const withCrs = {
+    ...validFeatureCollection,
+    crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:OGC:1.3:CRS84' } }
+  };
+  const result = await validateBoundaryContent(JSON.stringify(withCrs));
+  assert.equal(result.featureCount, 1);
+});
+
 test('boundary validator rejects files without the .geojson extension', async () => {
   assert.throws(
     () => validateBoundaryFile({ name: 'boundary.json', size: 1, text: async () => '{}' }),
@@ -39,5 +48,8 @@ test('boundary validator rejects a Point-only file', async () => {
 test('boundary validator rejects out-of-range coordinates', async () => {
   const invalid = JSON.parse(JSON.stringify(validFeatureCollection));
   invalid.features[0].geometry.coordinates[0][0] = [200, -29];
-  await assert.rejects(validateBoundaryContent(JSON.stringify(invalid)), /outside longitude\/latitude ranges/);
+  await assert.rejects(
+    validateBoundaryContent(JSON.stringify(invalid)),
+    /looks projected; re-export as WGS84 lon\/lat/
+  );
 });

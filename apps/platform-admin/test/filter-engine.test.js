@@ -171,6 +171,40 @@ test('category fallback chain and uncategorised options are available', () => {
   assert.equal(matches(group([condition('category', 'is', 'Uncategorised')]), reports[3]), true);
 });
 
+test('derived boundary fields compare feature properties and match outside reports separately', () => {
+  const field = {
+    field: 'boundary:WardNo',
+    key: 'WardNo',
+    label: 'Ward No (Wards)',
+    type: 'derived',
+    values: [2, 10]
+  };
+  const inside = { id: 'inside' };
+  const outside = { id: 'outside' };
+  const features = new Map([
+    ['inside', [{ properties: { WardNo: 10 } }]],
+    ['outside', []]
+  ]);
+  const derivedContext = {
+    ...ctx,
+    fields: [field],
+    reports: [inside, outside],
+    boundaryFeature: (report) => features.get(report.id),
+    boundaryValue: (key, report) => features.get(report.id).map((feature) => feature.properties?.[key] ?? null)
+  };
+  const derivedMatches = (tree, report) => compileTree(tree, derivedContext)(report);
+  assert.deepEqual(operatorsFor(resolveFieldType(field.field, [], derivedContext)), ['is', 'is not']);
+  assert.deepEqual(valueOptions(field.field, [], derivedContext), [
+    { value: '2', label: '2' },
+    { value: '10', label: '10' },
+    { value: '__outside_boundary__', label: 'Outside boundary' }
+  ]);
+  assert.equal(derivedMatches(group([condition(field.field, 'is', '10')]), inside), true);
+  assert.equal(derivedMatches(group([condition(field.field, 'is not', '10')]), outside), true);
+  assert.equal(derivedMatches(group([condition(field.field, 'is', '__outside_boundary__')]), outside), true);
+  assert.equal(describeNode(condition(field.field, 'is', '10'), derivedContext), 'Ward No (Wards): 10');
+});
+
 test('cloneTree copies nested filter nodes without sharing their children', () => {
   const original = group([group([condition('status', 'is', 'Open')])]);
   const cloned = cloneTree(original);

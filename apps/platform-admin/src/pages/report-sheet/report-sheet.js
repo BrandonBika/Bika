@@ -1,5 +1,20 @@
 import { createEmptyState, createRetryState } from '../../components/state-message/state-message.js';
-import { getReportSheetData } from '../../features/reports.client.js';
+import {
+  downloadBoundary,
+  listBoundaries
+} from '../../features/boundaries.client.js';
+import { boundaryEvaluationContext, cacheBoundaryLookup } from '../../features/boundary-cache.js';
+import { renderFilterChips } from '../../features/filter-chips.js';
+import {
+  cloneTree,
+  compileTree,
+  countCompleteConditions
+} from '../../features/filter-engine.js';
+import * as filterStore from '../../features/filter-store.js';
+import { createQueryBuilderDialog } from '../../features/query-builder-dialog.js';
+import { filterReportCandidates } from '../../features/report-sheet-filters.js';
+import { reportCoordinates } from '../../features/report-coordinates.js';
+import { getReportSheetData, listOrganizations } from '../../features/reports.client.js';
 import { resolveReporterDisplay } from '../../features/reporter-display.js';
 import {
   ageLabel,
@@ -35,8 +50,6 @@ function renderReportSheet(target, data) {
   const reportsById = new Map(reports.map((report) => [report.id, report]));
   const state = {
     tab: 'active',
-    status: '',
-    category: '',
     organization: '',
     unassigned: false,
     search: '',
@@ -44,6 +57,10 @@ function renderReportSheet(target, data) {
     sortAscending: false,
     page: 0
   };
+  let compiledStoreState = null;
+  let compiledReports = null;
+  let compiledOrganisations = null;
+  let queryPredicate = () => true;
   const page = document.createElement('div');
   page.className = 'report-sheet-page';
   const toolbar = document.createElement('section');
@@ -60,18 +77,35 @@ function renderReportSheet(target, data) {
     drawRows();
   });
 
-  const statusFilter = makeSelect('All statuses', unique(reports.map((report) => report.status)));
-  statusFilter.addEventListener('change', () => {
-    state.status = statusFilter.value;
-    state.page = 0;
-    drawRows();
+  const queryButton = document.createElement('button');
+  queryButton.type = 'button';
+  queryButton.className = 'tbtn';
+  queryButton.textContent = 'Query builder';
+  queryButton.setAttribute('aria-haspopup', 'dialog');
+  queryButton.setAttribute('aria-pressed', 'false');
+  const queryChips = document.createElement('div');
+  queryChips.className = 'query-chips';
+  const clearQueryButton = makeButton('Clear query');
+  clearQueryButton.addEventListener('click', clearQuery);
+  const queryCount = document.createElement('span');
+  queryCount.className = 'sheet-count-line';
+  const queryBuilder = createQueryBuilderDialog({
+    reports,
+    getCategory: categoryOf,
+    loadOrganisations: listOrganizations,
+    onOrganisationsLoaded: () => {
+      compiledStoreState = null;
+      drawRows();
+    },
+    listBoundaries,
+    downloadBoundary,
+    onBoundaryLoaded: (path, geojson) => {
+      cacheBoundaryLookup(path, reports, geojson, reportCoordinates);
+      drawRows();
+    }
   });
-  const categoryFilter = makeSelect('All categories', unique(reports.map(categoryOf)));
-  categoryFilter.addEventListener('change', () => {
-    state.category = categoryFilter.value;
-    state.page = 0;
-    drawRows();
-  });
+  queryButton.addEventListener('click', () => queryBuilder.open());
+  queryBuilder.dialog.addEventListener('close', () => queryButton.focus());
   const organizationFilter = document.createElement('select');
   organizationFilter.className = 'sheet-select';
   organizationFilter.setAttribute('aria-label', 'Filter by organisation');
@@ -95,7 +129,8 @@ function renderReportSheet(target, data) {
   const filterText = document.createElement('span');
   filterText.textContent = 'Unassigned / misallocated';
   unassignedLabel.append(unassigned, filterText);
-  toolbar.append(search, statusFilter, categoryFilter, organizationFilter, unassignedLabel);
+  toolbar.append(search, queryButton, queryChips, clearQueryButton, queryCount, organizationFilter, unassignedLabel);
+  toolbar.append(queryBuilder.dialog);
 
   const tabs = document.createElement('div');
   tabs.className = 'sheet-tabs';
@@ -147,6 +182,8 @@ function renderReportSheet(target, data) {
   table.append(thead, tbody);
   tableWrap.append(table);
   const emptyState = document.createElement('div');
+  const clearEmptyQueryButton = makeButton('Clear query');
+  clearEmptyQueryButton.addEventListener('click', clearQuery);
   const pagination = document.createElement('div');
   pagination.className = 'report-pagination';
   const pageInfo = document.createElement('span');
@@ -181,20 +218,67 @@ function renderReportSheet(target, data) {
     return button;
   }
 
-  function drawRows() {
-    const candidates = reports.filter((report) => {
-      const category = categoryOf(report);
-      if (state.status && report.status !== state.status) return false;
-      if (state.category && category !== state.category) return false;
-      if (state.organization && report.assigned_organization_id !== state.organization) return false;
-      if (state.unassigned && !isUnassignedOrMisallocated(report)) return false;
-      if (state.search) {
-        const tracking = String(report.tracking_number ?? '').toLocaleLowerCase();
-        const description = String(descriptionOf(report)).toLocaleLowerCase();
-        if (!tracking.includes(state.search) && !description.includes(state.search)) return false;
+  function clearQuery() {
+    const current = filterStore.get();
+    filterStore.set({
+      ...current,
+      attribute: {
+        ...current.attribute,
+        tree: { type: 'group', combinator: 'AND', negate: false, children: [] },
+        boundary: null
       }
-      return true;
     });
+  }
+
+  function currentQueryPredicate() {
+    const filterState = filterStore.get();
+    const organisations = queryBuilder.getOrganisations();
+    if (compiledStoreState !== filterState || compiledReports !== reports
+      || compiledOrganisations !== organisations) {
+      const boundaryPath = filterState.attribute.boundary?.path ?? null;
+      queryPredicate = compileTree(filterState.attribute.tree, {
+        now: new Date(),
+        getCategory: categoryOf,
+        organisations,
+        fields: filterState.attribute.boundary?.fields ?? [],
+        ...boundaryEvaluationContext(boundaryPath, reports),
+        reports
+      });
+      compiledStoreState = filterState;
+      compiledReports = reports;
+      compiledOrganisations = organisations;
+    }
+    return { filterState, predicate: queryPredicate };
+  }
+
+  function drawRows() {
+    const { filterState, predicate } = currentQueryPredicate();
+    const candidates = filterReportCandidates(reports, {
+      organization: state.organization,
+      unassigned: state.unassigned,
+      queryPredicate: predicate,
+      search: state.search
+    });
+    const filterContext = {
+      now: new Date(),
+      getCategory: categoryOf,
+      organisations: queryBuilder.getOrganisations(),
+      reports,
+      fields: filterState.attribute.boundary?.fields ?? [],
+      ...boundaryEvaluationContext(filterState.attribute.boundary?.path ?? null, reports)
+    };
+    const activeFilters = countCompleteConditions(filterState.attribute.tree) > 0;
+    queryButton.classList.toggle('active', activeFilters);
+    queryButton.setAttribute('aria-pressed', String(activeFilters));
+    renderFilterChips(queryChips, filterState.attribute.tree, filterContext, (index) => {
+      const nextTree = cloneTree(filterState.attribute.tree);
+      nextTree.children.splice(index, 1);
+      filterStore.set({
+        ...filterStore.get(),
+        attribute: { ...filterStore.get().attribute, tree: nextTree }
+      });
+    });
+    queryCount.textContent = `Showing ${candidates.length} of ${reports.length} reports`;
     const activeCount = candidates.filter((report) => !HISTORICAL_STATUSES.has(report.status)).length;
     const historicalCount = candidates.length - activeCount;
     const unassignedCount = candidates.filter((report) => isNullish(report.assigned_organization_id)).length;
@@ -224,13 +308,21 @@ function renderReportSheet(target, data) {
     sortDate.textContent = `Date reported ${state.sortBy === 'date' ? (state.sortAscending ? '↑' : '↓') : '↕'}`;
     sortPriority.textContent = `Priority ${state.sortBy === 'priority' ? (state.sortAscending ? '↑' : '↓') : '↕'}`;
     emptyState.replaceChildren();
-    if (pageRows.length === 0) {
-      emptyState.append(createEmptyState({
+    if (pageRows.length === 0 && activeFilters && candidates.length === 0) {
+      const noQueryMatches = createEmptyState({
+        title: 'No reports match this query',
+        message: 'Adjust or clear the query conditions to see reports.'
+      });
+      emptyState.replaceChildren(noQueryMatches, clearEmptyQueryButton);
+    } else if (pageRows.length === 0) {
+      emptyState.replaceChildren(createEmptyState({
         title: state.tab === 'historical' ? 'No historical reports' : 'No reports match these filters',
         message: state.tab === 'historical'
           ? 'Resolved, rejected, and duplicate reports will appear here when available.'
           : 'Try changing or clearing the filters.'
       }));
+    } else {
+      emptyState.replaceChildren();
     }
     tableWrap.hidden = pageRows.length === 0;
     emptyState.hidden = pageRows.length !== 0;
@@ -242,7 +334,16 @@ function renderReportSheet(target, data) {
   }
 
   target.replaceChildren(page);
-  drawRows();
+  let unsubscribeFilters = () => {};
+  unsubscribeFilters = filterStore.subscribe(() => {
+    if (!page.isConnected) {
+      unsubscribeFilters();
+      return;
+    }
+    state.page = 0;
+    drawRows();
+  });
+  void queryBuilder.loadStoredBoundary();
 }
 
 function createReportRow(report, data, reportsById, now) {
@@ -406,30 +507,8 @@ function categoryOf(report) {
   );
 }
 
-function isUnassignedOrMisallocated(report) {
-  return isNullish(report.assigned_organization_id)
-    || (!isNullish(report.recommended_organization_id)
-      && report.assigned_organization_id !== report.recommended_organization_id);
-}
-
 function isNullish(value) {
   return value === null || value === undefined;
-}
-
-function unique(values) {
-  return [...new Set(values.filter((value) => value !== null && value !== undefined))]
-    .map((value) => String(value).trim())
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b));
-}
-
-function makeSelect(placeholder, values) {
-  const select = document.createElement('select');
-  select.className = 'sheet-select';
-  select.setAttribute('aria-label', placeholder);
-  addOption(select, '', placeholder);
-  for (const value of values) addOption(select, value, value);
-  return select;
 }
 
 function addOption(select, value, label) {
