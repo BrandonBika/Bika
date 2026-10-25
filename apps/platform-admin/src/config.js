@@ -42,7 +42,7 @@ export const NAVIGATION = Object.freeze({
     item('organisation-approvals', 'Organisation approvals', true),
     item('pilot-mode', 'Pilot mode', true),
     item('platform-activity', 'Platform activity', true),
-    item('system-settings', 'System settings', false),
+    item('system-settings', 'System settings', true),
     item('platform-team', 'Platform team', false)
   ]),
   [PLATFORM_ROLES.EMPLOYEE]: Object.freeze([
