@@ -24,6 +24,40 @@ globalThis.window ||= {
   addEventListener() {},
   removeEventListener() {}
 };
+window.confirm ||= () => true;
+globalThis.document ||= {
+  body: {
+    children: [],
+    contains(element) {
+      return this.children.includes(element);
+    },
+    appendChild(element) {
+      this.children.push(element);
+      element.parentNode = this;
+    }
+  },
+  createElement() {
+    return {
+      classList: { add() {} },
+      style: {},
+      attributes: {},
+      setAttribute(name, value) {
+        this.attributes[name] = value;
+      },
+      appendChild(child) {
+        child.parentNode = this;
+        (this.children ||= []).push(child);
+      },
+      removeChild(child) {
+        this.children = (this.children || []).filter((item) => item !== child);
+        child.parentNode = null;
+      },
+      remove() {
+        this.parentNode?.removeChild(this);
+      }
+    };
+  }
+};
 globalThis.customElements ||= {
   define(name, element) {
     registeredElements.set(name, element);
@@ -55,7 +89,13 @@ registerHooks({
 
 const { configureSupabaseClient } = await import('../../../packages/supabase-client/src/client.js');
 const { setSession, clearSession } = await import('../../../packages/supabase-client/src/auth.js');
-const { getChatMessages, refreshChatMessages, subscribeBeacon, subscribeToBeaconChat } = await import('../src/features/beacon/beacon.client.js');
+const {
+  getChatMessages,
+  refreshBeaconCircle,
+  refreshChatMessages,
+  subscribeBeacon,
+  subscribeToBeaconChat
+} = await import('../src/features/beacon/beacon.client.js');
 const { PageBeaconChat } = await import('../src/pages/beacon-chat/beacon-chat.js');
 
 configureSupabaseClient({
@@ -139,6 +179,12 @@ test('an incoming Realtime message is rendered while the chat remains open', asy
     }
     if (parsed.pathname.endsWith('/rpc/mark_conversation_read')) {
       return jsonResponse(null);
+    }
+    if (parsed.pathname.endsWith('/rpc/list_circle')) {
+      return jsonResponse([{ user_id: memberId, display_name: 'Resident B' }]);
+    }
+    if (parsed.pathname.endsWith('/rpc/list_circle_requests')) {
+      return jsonResponse([]);
     }
     if (parsed.pathname.endsWith('/messages')) {
       messageFetchCount += 1;
@@ -251,6 +297,12 @@ test('a reconnect SUBSCRIBED catch-up refresh renders messages while the chat re
     if (parsed.pathname.endsWith('/rpc/mark_conversation_read')) {
       return jsonResponse(null);
     }
+    if (parsed.pathname.endsWith('/rpc/list_circle')) {
+      return jsonResponse([{ user_id: memberId, display_name: 'Resident B' }]);
+    }
+    if (parsed.pathname.endsWith('/rpc/list_circle_requests')) {
+      return jsonResponse([]);
+    }
     if (parsed.pathname.endsWith('/messages')) {
       messageFetchCount += 1;
       return jsonResponse(rows);
@@ -262,6 +314,7 @@ test('a reconnect SUBSCRIBED catch-up refresh renders messages while the chat re
   let subscription;
   const observedErrors = [];
   try {
+    await refreshBeaconCircle();
     await refreshChatMessages(memberId);
     page = Object.create(PageBeaconChat.prototype);
     page._memberId = memberId;
@@ -276,8 +329,12 @@ test('a reconnect SUBSCRIBED catch-up refresh renders messages while the chat re
     page.renderMessages = function renderMessagesForTest() {
       this.renderedMessages = this._messages;
     };
-    page.openConversation = async () => {};
-    page.connectedCallback();
+    page._unsubscribe = subscribeBeacon(() => {
+      if (page.isConnected) {
+        page._messages = getChatMessages(page._memberId);
+        page.renderMessages();
+      }
+    });
 
     subscription = await subscribeToBeaconChat(memberId, (error) => {
       observedErrors.push(error);
@@ -318,6 +375,87 @@ test('a reconnect SUBSCRIBED catch-up refresh renders messages while the chat re
     page?._unsubscribe?.();
     globalThis.fetch = originalFetch;
     globalThis.WebSocket = originalWebSocket;
+    clearSession();
+  }
+});
+
+test('removing a chat member requires confirmation, calls the RPC, and closes the chat', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalConfirm = window.confirm;
+  const originalHash = window.location.hash;
+  const requests = [];
+  const events = [];
+  setSession('resident-action-token', { id: 'resident-a' }, 'resident-action-refresh');
+  window.location.hash = '#beacon-chat?memberId=resident-b';
+  window.confirm = (message) => {
+    events.push('confirm');
+    assert.match(message, /They will no longer see your chat or be able to message you/);
+    return true;
+  };
+  globalThis.fetch = async (url, options) => {
+    const pathname = new URL(url).pathname;
+    requests.push({ pathname, body: options?.body ? JSON.parse(options.body) : null });
+    events.push('request');
+    return jsonResponse(pathname.endsWith('/rpc/list_circle') || pathname.endsWith('/rpc/list_circle_requests')
+      ? []
+      : null);
+  };
+
+  const page = Object.create(PageBeaconChat.prototype);
+  page._member = { id: 'resident-b', name: 'Resident B' };
+  page._memberId = 'resident-b';
+  page._memberActionButtons = [{ disabled: false }, { disabled: false }];
+  page._memberActionInProgress = false;
+  page._closing = false;
+  page.firstChild = null;
+  page.isConnected = true;
+
+  try {
+    await page.runMemberAction('remove');
+    assert.equal(events[0], 'confirm', 'confirmation is requested before any backend call');
+    assert.equal(requests[0].pathname, '/rest/v1/rpc/remove_connection');
+    assert.deepEqual(requests[0].body, { p_other_user_id: 'resident-b' });
+    assert.equal(window.location.hash, 'beacon-home');
+    assert.equal(page._closing, true, 'the chat closes after the removal succeeds');
+  } finally {
+    globalThis.fetch = originalFetch;
+    window.confirm = originalConfirm;
+    window.location.hash = originalHash;
+    clearSession();
+  }
+});
+
+test('a failed member action shows a safe error and keeps the chat open', async () => {
+  const originalFetch = globalThis.fetch;
+  const originalConfirm = window.confirm;
+  const originalHash = window.location.hash;
+  setSession('resident-action-token', { id: 'resident-a' }, 'resident-action-refresh');
+  window.location.hash = '#beacon-chat?memberId=resident-b';
+  window.confirm = () => true;
+  globalThis.fetch = async () => new Response('sensitive server detail', { status: 403 });
+
+  const page = Object.create(PageBeaconChat.prototype);
+  page._member = { id: 'resident-b', name: 'Resident B' };
+  page._memberId = 'resident-b';
+  page._memberActionButtons = [{ disabled: false }, { disabled: false }];
+  page._memberActionInProgress = false;
+  page._closing = false;
+  page.firstChild = null;
+  page.isConnected = true;
+
+  try {
+    await page.runMemberAction('block');
+    assert.equal(window.location.hash, '#beacon-chat?memberId=resident-b');
+    assert.equal(page._closing, false);
+    assert.deepEqual(page._memberActionButtons.map((button) => button.disabled), [false, false]);
+    assert.equal(
+      document.body.children.at(-1).children.at(-1).textContent,
+      'Could not update your circle. Please try again.'
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    window.confirm = originalConfirm;
+    window.location.hash = originalHash;
     clearSession();
   }
 });

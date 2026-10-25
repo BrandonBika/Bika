@@ -4,7 +4,7 @@
  * Safe DOM manipulation, full-bleed live map, interactive sheet, real-time pins.
  */
 
-import { BaseElement } from '@civicneuro/ui';
+import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import runtimeConfig from '../../../runtime-config.js';
 import {
@@ -14,6 +14,10 @@ import {
   subscribeBeaconCircle
 } from '../../features/beacon/beacon.client.js';
 import { BeaconIcons } from '../../features/beacon/beacon-icons.js';
+import {
+  block as blockUser,
+  removeConnection
+} from '../../features/beacon/beacon-circle.client.js';
 import { navigate } from '../../router.js';
 import {
   BEACON_MAX_REDUCED_ACCURACY_METERS,
@@ -116,6 +120,78 @@ export class PageBeaconHome extends BaseElement {
     this._locationWatchController?.stop();
     this._locationWatchController = null;
     super.disconnectedCallback();
+  }
+
+  closeMemberActions() {
+    this._memberActionDialog?.remove();
+    this._memberActionDialog = null;
+    this._memberActionButtons = [];
+  }
+
+  openMemberActions(member) {
+    this.closeMemberActions();
+    const backdrop = createElement('div', {
+      cls: 'bc-member-actions-backdrop',
+      attrs: {
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-label': `Actions for ${member.name}`
+      }
+    });
+    const sheet = createElement('section', { cls: 'bc-member-actions-sheet' });
+    sheet.append(
+      createElement('h2', { cls: 'bc-member-actions-title', text: member.name }),
+      createElement('p', {
+        cls: 'bc-member-actions-copy',
+        text: 'Choose how to manage this circle connection.'
+      })
+    );
+    const removeButton = createElement('button', {
+      cls: 'bc-member-action',
+      attrs: { type: 'button' },
+      text: 'Remove from circle'
+    });
+    const blockButton = createElement('button', {
+      cls: ['bc-member-action', 'danger'],
+      attrs: { type: 'button' },
+      text: 'Block'
+    });
+    const cancelButton = createElement('button', {
+      cls: 'bc-member-action-cancel',
+      attrs: { type: 'button' },
+      text: 'Cancel'
+    });
+    this._memberActionButtons = [removeButton, blockButton];
+    removeButton.onclick = () => this.runMemberAction('remove', member);
+    blockButton.onclick = () => this.runMemberAction('block', member);
+    cancelButton.onclick = () => this.closeMemberActions();
+    backdrop.onclick = (event) => {
+      if (event.target === backdrop) this.closeMemberActions();
+    };
+    sheet.append(removeButton, blockButton, cancelButton);
+    backdrop.appendChild(sheet);
+    this._memberActionDialog = backdrop;
+    this.appendChild(backdrop);
+  }
+
+  async runMemberAction(action, member) {
+    const isBlock = action === 'block';
+    const confirmation = isBlock
+      ? 'They will be removed, cannot find or message you, and cannot send you requests.'
+      : 'They will no longer see your chat or be able to message you. You can add them again later.';
+    if (!window.confirm(`${isBlock ? 'Block' : 'Remove'} ${member.name}? ${confirmation}`)) return;
+
+    for (const button of this._memberActionButtons || []) button.disabled = true;
+    try {
+      if (isBlock) await blockUser(member.id);
+      else await removeConnection(member.id);
+      await refreshBeaconCircle();
+      showToast(isBlock ? 'Resident blocked.' : 'Resident removed from your circle.', { type: 'success' });
+      this.closeMemberActions();
+    } catch {
+      showToast('Could not update your circle. Please try again.', { type: 'error' });
+      for (const button of this._memberActionButtons || []) button.disabled = false;
+    }
   }
 
   async detectLocationOnEntry() {
@@ -1031,6 +1107,19 @@ export class PageBeaconHome extends BaseElement {
         e.stopPropagation();
         navigate('beacon-chat', { memberId: member.id });
       };
+      const moreBtn = createElement('button', {
+        cls: 'bc-member-more-btn',
+        attrs: {
+          type: 'button',
+          'aria-label': `More actions for ${member.name}`,
+          title: 'More actions'
+        },
+        text: '⋯'
+      });
+      moreBtn.onclick = (event) => {
+        event.stopPropagation();
+        this.openMemberActions(member);
+      };
 
       row.onclick = () => {
         navigate('beacon-chat', { memberId: member.id });
@@ -1041,7 +1130,7 @@ export class PageBeaconHome extends BaseElement {
         navigate('beacon-chat', { memberId: member.id });
       };
 
-      row.append(avatar, textCol, msgBtn);
+      row.append(avatar, textCol, msgBtn, moreBtn);
       container.appendChild(row);
     }
   }

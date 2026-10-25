@@ -15,8 +15,13 @@ import {
   refreshChatMessages,
   sendChatMessage,
   subscribeBeacon,
+  subscribeBeaconCircle,
   subscribeToBeaconChat
 } from '../../features/beacon/beacon.client.js';
+import {
+  block as blockUser,
+  removeConnection
+} from '../../features/beacon/beacon-circle.client.js';
 import { navigate } from '../../router.js';
 
 function activateOnKeyboard(element, action) {
@@ -43,31 +48,122 @@ export class PageBeaconChat extends BaseElement {
     this._messages = getChatMessages(this._memberId);
 
     this._unsubscribe = subscribeBeacon(() => {
-      if (this.isConnected) {
-        this._messages = getChatMessages(this._memberId);
-        this.renderMessages();
+      if (!this.isConnected || this._memberActionInProgress) return;
+      if (!getMemberById(this._memberId)) {
+        this.closeChat('This conversation is no longer available.');
+        return;
       }
+      this._messages = getChatMessages(this._memberId);
+      this.renderMessages();
+    });
+    this._unsubscribeCircle = subscribeBeaconCircle(() => {
+      this.closeChat('This conversation is no longer available.');
     });
     this._onOnline = () => {
-      this.reloadConversation().catch((error) => {
-        console.error('Could not refresh Beacon chat after reconnect:', error);
+      this.reloadConversation().catch(() => {
+        console.error('Could not refresh Beacon chat after reconnect.');
+        this.closeChat('This conversation is no longer available.');
       });
     };
     window.addEventListener('online', this._onOnline);
 
-    this.openConversation().catch((error) => {
-      console.error('Could not open Beacon chat:', error);
+    this.openConversation().catch(() => {
+      console.error('Could not open Beacon chat.');
       this._opening = false;
-      showToast(error.message || 'Could not load this conversation.', { type: 'error' });
-      if (this.isConnected) this.render();
+      if (this.isConnected) this.closeChat('Could not open this conversation.');
     });
   }
 
   disconnectedCallback() {
     if (this._unsubscribe) this._unsubscribe();
+    if (this._unsubscribeCircle) this._unsubscribeCircle();
     if (this._unsubscribeChat) this._unsubscribeChat();
     window.removeEventListener('online', this._onOnline);
     super.disconnectedCallback();
+  }
+
+  closeChat(message) {
+    if (this._closing) return;
+    this._closing = true;
+    if (message) showToast(message, { type: 'info' });
+    clearChildren(this);
+    this._chatBody = null;
+    this._textInput = null;
+    this._memberActionDialog = null;
+    navigate('beacon-home');
+  }
+
+  openMemberActions() {
+    this._memberActionDialog?.remove();
+    const member = this._member;
+    const backdrop = createElement('div', {
+      cls: 'chat-member-actions-backdrop',
+      attrs: {
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-label': `Actions for ${member.name}`
+      }
+    });
+    const sheet = createElement('section', { cls: 'chat-member-actions-sheet' });
+    sheet.append(
+      createElement('h2', { cls: 'chat-member-actions-title', text: member.name }),
+      createElement('p', {
+        cls: 'chat-member-actions-copy',
+        text: 'Choose how to manage this circle connection.'
+      })
+    );
+    const removeButton = createElement('button', {
+      cls: 'chat-member-action',
+      attrs: { type: 'button' },
+      text: 'Remove from circle'
+    });
+    const blockButton = createElement('button', {
+      cls: ['chat-member-action', 'danger'],
+      attrs: { type: 'button' },
+      text: 'Block'
+    });
+    const cancelButton = createElement('button', {
+      cls: 'chat-member-action-cancel',
+      attrs: { type: 'button' },
+      text: 'Cancel'
+    });
+    this._memberActionButtons = [removeButton, blockButton];
+    removeButton.onclick = () => this.runMemberAction('remove');
+    blockButton.onclick = () => this.runMemberAction('block');
+    cancelButton.onclick = () => {
+      backdrop.remove();
+      this._memberActionDialog = null;
+    };
+    backdrop.onclick = (event) => {
+      if (event.target === backdrop) cancelButton.onclick();
+    };
+    sheet.append(removeButton, blockButton, cancelButton);
+    backdrop.appendChild(sheet);
+    this._memberActionDialog = backdrop;
+    this.appendChild(backdrop);
+  }
+
+  async runMemberAction(action) {
+    const member = this._member;
+    const isBlock = action === 'block';
+    const confirmation = isBlock
+      ? 'They will be removed, cannot find or message you, and cannot send you requests.'
+      : 'They will no longer see your chat or be able to message you. You can add them again later.';
+    if (!window.confirm(`${isBlock ? 'Block' : 'Remove'} ${member.name}? ${confirmation}`)) return;
+
+    this._memberActionInProgress = true;
+    for (const button of this._memberActionButtons || []) button.disabled = true;
+    try {
+      if (isBlock) await blockUser(member.id);
+      else await removeConnection(member.id);
+      await refreshBeaconCircle();
+      showToast(isBlock ? 'Resident blocked.' : 'Resident removed from your circle.', { type: 'success' });
+      this.closeChat();
+    } catch {
+      this._memberActionInProgress = false;
+      showToast('Could not update your circle. Please try again.', { type: 'error' });
+      for (const button of this._memberActionButtons || []) button.disabled = false;
+    }
   }
 
   async openConversation() {
@@ -76,17 +172,13 @@ export class PageBeaconChat extends BaseElement {
     const member = getMemberById(this._memberId);
     if (!member) {
       this._opening = false;
-      navigate('beacon-add-to-circle');
+      this.closeChat();
       return;
     }
 
-    const subscription = await subscribeToBeaconChat(this._memberId, (error) => {
-      console.error('Beacon chat Realtime error:', error);
-      this._opening = false;
-      if (this.isConnected) {
-        showToast(error.message || 'Could not open this conversation.', { type: 'error' });
-        this.render();
-      }
+    const subscription = await subscribeToBeaconChat(this._memberId, () => {
+      console.error('Beacon chat Realtime subscription failed.');
+      if (this.isConnected) this.closeChat('This conversation is no longer available.');
     });
     if (!subscription) return;
     this._unsubscribeChat = () => subscription.unsubscribe();
@@ -95,6 +187,11 @@ export class PageBeaconChat extends BaseElement {
     await refreshChatMessages(this._memberId);
     this._messages = getChatMessages(this._memberId);
     await refreshBeaconCircle();
+    if (!getMemberById(this._memberId)) {
+      this._opening = false;
+      this.closeChat();
+      return;
+    }
     this._opening = false;
     if (this.isConnected) this.render();
   }
@@ -102,7 +199,10 @@ export class PageBeaconChat extends BaseElement {
   async reloadConversation() {
     if (!this._memberId || !this.isConnected) return;
     await refreshBeaconCircle();
-    if (!getMemberById(this._memberId)) return;
+    if (!getMemberById(this._memberId)) {
+      this.closeChat('This conversation is no longer available.');
+      return;
+    }
     this._messages = await refreshChatMessages(this._memberId);
   }
 
@@ -113,7 +213,7 @@ export class PageBeaconChat extends BaseElement {
     }
     const member = getMemberById(this._memberId);
     if (!member) {
-      navigate('beacon-add-to-circle');
+      this.closeChat();
       return;
     }
 
@@ -137,6 +237,7 @@ export class PageBeaconChat extends BaseElement {
     const headerText = createElement('div', { cls: 'chat-header-text' });
     const name = createElement('div', { cls: 'chat-title', text: member.name });
     headerText.appendChild(name);
+    this._member = member;
 
     if (member.isSharing) {
       const liveStatus = createElement('div', {
@@ -154,7 +255,17 @@ export class PageBeaconChat extends BaseElement {
       headerText.appendChild(liveStatus);
     }
 
-    header.append(backBtn, headerText);
+    const moreButton = createElement('button', {
+      cls: 'chat-member-more-btn',
+      attrs: {
+        type: 'button',
+        'aria-label': `More actions for ${member.name}`,
+        title: 'More actions'
+      },
+      text: '⋯'
+    });
+    moreButton.onclick = () => this.openMemberActions();
+    header.append(backBtn, headerText, moreButton);
     this.appendChild(header);
 
     // 2. Chat Conversation Body

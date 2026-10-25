@@ -82,6 +82,11 @@ test('Beacon circle client calls secure RPCs and maps privacy-limited results', 
       p_request_id: 'request-1',
       p_accept: true
     });
+    assert.equal(new URL(requests[4].url).pathname, '/rest/v1/rpc/remove_connection');
+    assert.deepEqual(JSON.parse(requests[4].options.body), { p_other_user_id: 'resident-b' });
+    assert.equal(new URL(requests[5].url).pathname, '/rest/v1/rpc/block_user');
+    assert.deepEqual(JSON.parse(requests[5].options.body), { p_other_user_id: 'resident-b' });
+    assert.equal(new URL(requests[6].url).pathname, '/rest/v1/rpc/unblock_user');
     assert.deepEqual(JSON.parse(requests[6].options.body), { p_other_user_id: 'resident-b' });
     assert.equal(new URL(requests[7].url).pathname, '/rest/v1/rpc/list_circle');
     assert.equal(new URL(requests[8].url).pathname, '/rest/v1/rpc/list_circle_requests');
