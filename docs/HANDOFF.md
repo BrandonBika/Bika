@@ -7,3 +7,4 @@
 - Export data — partial. Map GeoJSON/CSV and report sheet CSV/print-to-PDF use the signed-in report query; Surveys and Polls exports are demo data.
 - My profile — done. Name, email, and role use the signed-in staff context; password update and sign-out use Supabase Auth. Support and legal copy are placeholders.
 - Pilot mode — partial (demo data). Master switch and mock organisation details are local; branch editing and promotion do not call a backend.
+- Platform activity — partial. Admin sees organization status audit rows; employees see labelled mock activity because the audit table is admin-only under current RLS.

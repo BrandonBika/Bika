@@ -127,12 +127,15 @@ function modal(target, title, content, onClose) {
   return dialog;
 }
 
-function header(route, target) {
+function header(route, target, staff) {
   const [title, subtitle] = titles[route];
   const node = el('header', undefined, 'workspace-header');
   const text = el('div');
   text.append(el('h1', title), el('p', subtitle));
-  if (DEMO_PAGES.has(route)) text.append(el('span', 'Demo data', 'workspace-demo'));
+  if (DEMO_PAGES.has(route)
+    && (route !== 'platform-activity' || staff?.role !== 'platform_admin')) {
+    text.append(el('span', 'Demo data', 'workspace-demo'));
+  }
   node.append(text);
   target.append(node);
 }
@@ -526,17 +529,35 @@ function renderPilotTable() {
     mockData.pilotOrganisations.map((o) => [o.name, o.branches, o.urgency, o.emailDelivery ? 'On' : 'Off', statusPill(o.status)]));
 }
 
-function renderActivity(target) {
+async function renderActivity(target, role) {
+  let activity;
+  if (role === 'platform_admin') {
+    const { data, error } = await withTimeout(
+      supabase.from('organization_status_audit')
+        .select('changed_at,actor_id,organization_id,old_status,new_status')
+        .order('changed_at', { ascending: false }),
+      'Platform audit log query'
+    );
+    if (error) throw error;
+    activity = (data || []).map((row) => ({
+      time: row.changed_at,
+      actor: row.actor_id,
+      action: `organization.${row.old_status}_to_${row.new_status}`,
+      target: row.organization_id
+    }));
+  } else {
+    activity = mockData.activity;
+  }
   const select = document.createElement('select');
   select.setAttribute('aria-label', 'Filter by action type');
-  ['', ...new Set(mockData.activity.map((row) => row.action))].forEach((value) => {
+  ['', ...new Set(activity.map((row) => row.action))].forEach((value) => {
     const option = el('option', value || 'All action types');
     option.value = value;
     select.append(option);
   });
   const listing = el('div');
   const render = () => {
-    const rows = mockData.activity.filter((row) => !select.value || row.action === select.value);
+    const rows = activity.filter((row) => !select.value || row.action === select.value);
     listing.replaceChildren(rows.length
       ? table(['Time', 'Actor', 'Action', 'Target'], rows.map((r) => [r.time, r.actor, r.action, r.target]))
       : emptyState('No activity', 'No rows match this action type.'));
@@ -598,7 +619,7 @@ function renderTeam(target) {
 
 export async function mountWorkspacePage(route, target, { staff, onSignOut } = {}) {
   target.replaceChildren();
-  header(route, target);
+  header(route, target, staff);
   try {
     if (route === 'organisation-approvals') renderApprovals(target, await loadApprovals(target));
     else if (route === 'posts') renderPosts(target);
@@ -607,7 +628,7 @@ export async function mountWorkspacePage(route, target, { staff, onSignOut } = {
     else if (route === 'export-data') renderExports(target);
     else if (route === 'my-profile') renderProfile(target, staff, onSignOut);
     else if (route === 'pilot-mode') renderPilot(target);
-    else if (route === 'platform-activity') renderActivity(target);
+    else if (route === 'platform-activity') await renderActivity(target, staff?.role);
     else if (route === 'chat') renderChat(target);
     else if (route === 'manage-profiles') renderManageProfiles(target);
     else if (route === 'system-settings') renderSettings(target);
