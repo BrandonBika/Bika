@@ -32,7 +32,7 @@ export const NAVIGATION = Object.freeze({
   [PLATFORM_ROLES.ADMIN]: Object.freeze([
     item('dashboard', 'Dashboard', true),
     item('report-sheet', 'Report sheet', true),
-    item('posts', 'Posts', false),
+    item('posts', 'Posts', true),
     item('chat', 'Chat', false),
     item('surveys', 'Surveys', false),
     item('analytics', 'Analytics', false),
@@ -48,7 +48,7 @@ export const NAVIGATION = Object.freeze({
   [PLATFORM_ROLES.EMPLOYEE]: Object.freeze([
     item('dashboard', 'Dashboard', true),
     item('report-sheet', 'Report sheet', true),
-    item('posts', 'Posts', false),
+    item('posts', 'Posts', true),
     item('chat', 'Chat', false),
     item('surveys', 'Surveys', false),
     item('analytics', 'Analytics', false),
