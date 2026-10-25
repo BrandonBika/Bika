@@ -107,6 +107,20 @@ body {
   color: var(--org-ink);
 }
 
+.dash {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  background: var(--org-surface);
+}
+
+.dash-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
 .org-shell {
   min-height: 100vh;
 }
