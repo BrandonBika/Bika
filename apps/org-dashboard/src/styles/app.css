@@ -166,6 +166,89 @@ body {
   font-size: 13px;
 }
 
+.org-topbar {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--org-line);
+  background: #fff;
+}
+
+.org-topbar h1 {
+  flex: 1;
+  margin: 0;
+  font-size: 22px;
+}
+
+.org-map {
+  width: 100%;
+  min-height: 360px;
+  border: 1px solid var(--org-line);
+  border-radius: 10px;
+  background: #f3f1eb;
+}
+
+.org-detail-map {
+  min-height: 300px;
+}
+
+.org-empty {
+  padding: 12px;
+  border-radius: 8px;
+  background: #f5f1ed;
+  color: var(--org-muted);
+}
+
+.org-metric h2 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.org-metric p {
+  margin-bottom: 0;
+  color: var(--org-muted);
+}
+
+.org-report-list,
+.org-timeline {
+  display: grid;
+  gap: 10px;
+  padding-left: 20px;
+}
+
+.org-report-list a {
+  color: var(--org-accent-dark);
+}
+
+.org-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.org-tabs .org-button[aria-pressed="true"] {
+  background: var(--org-accent);
+  color: #fff;
+}
+
+.org-table tbody tr {
+  cursor: pointer;
+}
+
+.org-table tbody tr:hover,
+.org-table tbody tr:focus-visible {
+  background: #fde8ea;
+  outline: 2px solid var(--org-accent);
+}
+
+.org-timeline time {
+  display: block;
+  color: var(--org-muted);
+  font-size: 12px;
+}
+
 @media (max-width: 720px) {
   .org-auth {
     padding: 12px;
@@ -177,5 +260,10 @@ body {
 
   .org-content {
     padding: 18px;
+  }
+
+  .org-topbar {
+    flex-wrap: wrap;
+    padding: 14px;
   }
 }

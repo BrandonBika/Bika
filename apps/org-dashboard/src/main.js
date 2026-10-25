@@ -21,6 +21,11 @@ let routeGeneration = 0;
 let stopSessionGuard = null;
 let routeMessage = '';
 let loginNotice = '';
+const pageLoaders = {
+  dashboard: () => import('./pages/dashboard-map/dashboard-map.js'),
+  'report-sheet': () => import('./pages/report-sheet/report-sheet.js'),
+  'report-detail': () => import('./pages/report-detail/report-detail.js')
+};
 
 subscribeToRouteChanges(() => void renderRoute());
 void renderRoute();
@@ -59,11 +64,11 @@ async function renderRoute() {
   const decision = guardRoute(route, context.role);
   if (!decision.allowed) {
     routeMessage = decision.reason;
-    renderWorkspace(context, decision.route, '');
+    await renderWorkspace(context, decision.route, '');
     return;
   }
   routeMessage = '';
-  renderWorkspace(context, decision.route, getCurrentRouteParam());
+  await renderWorkspace(context, decision.route, getCurrentRouteParam());
   if (!stopSessionGuard) {
     stopSessionGuard = startSessionGuard((error) => {
       loginNotice = error
@@ -85,7 +90,7 @@ function renderPublicPage(route) {
   else mountInviteUnavailable(root);
 }
 
-function renderWorkspace(context, route, routeParam) {
+async function renderWorkspace(context, route, routeParam) {
   const app = document.createElement('div');
   app.className = 'dash org-shell';
   const sidebar = createSidebar(context, route === 'report-detail' ? 'report-sheet' : route);
@@ -118,10 +123,27 @@ function renderWorkspace(context, route, routeParam) {
   content.className = 'page-content org-content';
   content.setAttribute('aria-live', 'polite');
   if (routeMessage) showWorkspaceMessage(content, routeMessage, false);
-  showUnavailablePage(content, route, routeParam, context.role);
   main.append(topbar, content);
   app.append(sidebar, main);
   root.replaceChildren(app);
+
+  const loadPage = pageLoaders[route];
+  if (!loadPage) {
+    showUnavailablePage(content, route, routeParam, context.role);
+    return;
+  }
+  try {
+    const page = await loadPage();
+    if (!content.isConnected) return;
+    const mount = route === 'dashboard'
+      ? page.mountDashboard
+      : route === 'report-sheet'
+        ? page.mountReportSheet
+        : page.mountReportDetail;
+    await mount(content, { context, reportId: routeParam });
+  } catch (error) {
+    if (content.isConnected) showWorkspaceMessage(content, error.message || 'Could not load this page.', true);
+  }
 }
 
 function showUnavailablePage(target, route, routeParam, role) {
