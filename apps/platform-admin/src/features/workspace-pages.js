@@ -3,6 +3,7 @@ import { updatePassword } from './auth/auth.client.js';
 import { mockData } from '../mock-data.js';
 import { toCsv } from '../../../../packages/security-web/src/csv-safe.js';
 import { withTimeout } from './with-timeout.js';
+import { getReportSheetData } from './reports.client.js';
 
 const titles = {
   'organisation-approvals': ['Organisation approvals', 'Review applications before an organisation can receive reports.'],
@@ -382,6 +383,47 @@ async function renderAnalytics(target) {
   target.append(card('Platform overview', grid), card('Reports by category', chart));
 }
 
+function downloadGeoJson(filename, reports) {
+  const features = reports.filter((report) => Number.isFinite(Number(report.longitude))
+    && Number.isFinite(Number(report.latitude)))
+    .map((report) => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [Number(report.longitude), Number(report.latitude)] },
+      properties: { tracking_number: report.tracking_number, category: report.category, status: report.status }
+    }));
+  const url = URL.createObjectURL(new Blob([JSON.stringify({ type: 'FeatureCollection', features })], {
+    type: 'application/geo+json'
+  }));
+  const link = el('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function printReports(reports) {
+  const frame = document.createElement('iframe');
+  frame.title = 'Printable report sheet';
+  frame.hidden = true;
+  document.body.append(frame);
+  const printWindow = frame.contentWindow;
+  if (!printWindow) {
+    frame.remove();
+    throw new Error('The report sheet could not be prepared for printing.');
+  }
+  const title = printWindow.document.createElement('h1');
+  title.textContent = 'Bika report sheet export';
+  printWindow.document.body.append(title);
+  const listing = printWindow.document.createElement('pre');
+  listing.textContent = reports.map((report) => [
+    report.tracking_number, report.category, report.status, report.description
+  ].filter(Boolean).join(' | ')).join('\n');
+  printWindow.document.body.append(listing);
+  printWindow.focus();
+  printWindow.print();
+  setTimeout(() => frame.remove(), 1000);
+}
+
 function renderExports(target) {
   const cards = [
     ['Map view', ['GeoJSON', 'CSV']],
@@ -393,11 +435,31 @@ function renderExports(target) {
     const actions = el('div', undefined, 'workspace-actions');
     for (const format of formats) {
       actions.append(button(`${format} export`, () => {
-        if (format === 'PDF') {
-          toast(target, 'PDF export is not available yet.', true);
-          return;
-        }
-        downloadCsv(`${name.toLowerCase().replaceAll(' ', '-')}.csv`, ['Item', 'Status'], [[`${name} demo export`, 'Demo only']]);
+        void (async () => {
+          try {
+            if (name === 'Map view' || name === 'Report sheet') {
+              const { reports } = await getReportSheetData();
+              if (name === 'Map view' && format === 'GeoJSON') {
+                downloadGeoJson('map-view.geojson', reports);
+              } else if (format === 'PDF') {
+                printReports(reports);
+              } else {
+                const columns = ['tracking_number', 'category', 'status', 'description', 'created_at'];
+                downloadCsv(`${name.toLowerCase().replaceAll(' ', '-')}.csv`, columns,
+                  reports.map((report) => columns.map((column) => report[column])));
+              }
+            } else {
+              const rows = name === 'Surveys'
+                ? mockData.surveys.map((item) => [item.title, item.status, item.responses])
+                : mockData.posts.filter((item) => item.type === 'Poll')
+                  .map((item) => [item.author, item.body, item.metric]);
+              downloadCsv(`${name.toLowerCase()}.csv`, ['Title / author', 'Status / body', 'Responses / votes'], rows);
+              toast(target, `${name} demo data exported.`);
+            }
+          } catch (error) {
+            toast(target, error.message || 'Export failed.', true);
+          }
+        })();
       }));
     }
     target.append(card(name, actions));
