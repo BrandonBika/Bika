@@ -40,7 +40,8 @@ where label = 'admin';
 insert into public.organizations (name, type, jurisdiction_level)
 values
   ('Approval Test Approved', 'municipality', 'local'),
-  ('Approval Test Pending', 'municipality', 'local');
+  ('Approval Test Pending', 'municipality', 'local'),
+  ('Approval Test Rejected', 'municipality', 'local');
 
 insert into organization_approval_test_orgs (label, id)
 select 'approved', id
@@ -51,6 +52,15 @@ insert into organization_approval_test_orgs (label, id)
 select 'pending', id
 from public.organizations
 where name = 'Approval Test Pending';
+
+update public.organizations
+set status = 'rejected'
+where name = 'Approval Test Rejected';
+
+insert into organization_approval_test_orgs (label, id)
+select 'rejected', id
+from public.organizations
+where name = 'Approval Test Rejected';
 
 insert into public.reports (source)
 values ('organization_approval_security_test');
@@ -85,6 +95,17 @@ select public.approve_organization(
   'approved'
 );
 
+insert into organization_approval_test_results
+select
+  'approval activates the organization',
+  exists (
+    select 1
+    from public.organizations
+    where id = (select id from organization_approval_test_orgs where label = 'approved')
+      and status = 'approved'
+      and is_active
+  );
+
 select pg_temp.set_organization_approval_claims('resident');
 do $$
 declare
@@ -100,6 +121,46 @@ begin
   end;
   insert into organization_approval_test_results
   values ('non-admin cannot approve an organization', denied);
+
+  denied := false;
+  begin
+    insert into public.organizations (name, type, jurisdiction_level, status, is_active)
+    values ('Approval Invalid Active Pending', 'municipality', 'local', 'pending', true);
+  exception when check_violation then
+    denied := true;
+  end;
+  insert into organization_approval_test_results
+  values ('pending organizations cannot be active', denied);
+
+  denied := false;
+  begin
+    insert into public.organizations (name, type, jurisdiction_level, status, is_active)
+    values ('Approval Invalid Inactive Approved', 'municipality', 'local', 'approved', false);
+  exception when check_violation then
+    denied := true;
+  end;
+  insert into organization_approval_test_results
+  values ('approved organizations cannot be inactive', denied);
+
+  denied := false;
+  begin
+    insert into public.organizations (name, type, jurisdiction_level, status, is_active)
+    values ('Approval Invalid Active Rejected', 'municipality', 'local', 'rejected', true);
+  exception when check_violation then
+    denied := true;
+  end;
+  insert into organization_approval_test_results
+  values ('rejected organizations cannot be active', denied);
+
+  insert into organization_approval_test_results
+  select
+    'rejected organizations remain inactive',
+    exists (
+      select 1 from public.organizations
+      where id = (select id from organization_approval_test_orgs where label = 'rejected')
+        and status = 'rejected'
+        and not is_active
+    );
 
   with registered as (
     insert into public.organizations (name, type, jurisdiction_level, submitted_by)
@@ -132,6 +193,26 @@ begin
   values ('pending organization cannot be assigned a report', denied);
 end;
 $$;
+
+select public.staff_set_organization_active(
+  (select id from organization_approval_test_orgs where label = 'approved'),
+  false
+);
+
+insert into organization_approval_test_results
+select
+  'admin deactivation returns an approved organization to pending',
+  exists (
+    select 1 from public.organizations
+    where id = (select id from organization_approval_test_orgs where label = 'approved')
+      and status = 'pending'
+      and not is_active
+  );
+
+select public.approve_organization(
+  (select id from organization_approval_test_orgs where label = 'approved'),
+  'approved'
+);
 
 reset role;
 do $$
