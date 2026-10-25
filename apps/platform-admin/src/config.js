@@ -43,7 +43,7 @@ export const NAVIGATION = Object.freeze({
     item('pilot-mode', 'Pilot mode', true),
     item('platform-activity', 'Platform activity', true),
     item('system-settings', 'System settings', true),
-    item('platform-team', 'Platform team', false)
+    item('platform-team', 'Platform team', true)
   ]),
   [PLATFORM_ROLES.EMPLOYEE]: Object.freeze([
     item('dashboard', 'Dashboard', true),

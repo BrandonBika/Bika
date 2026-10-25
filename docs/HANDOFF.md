@@ -11,3 +11,4 @@
 - Chat — partial (demo data). Read-only empty state is present; no conversation table or server query was found in this dashboard.
 - Manage profiles — partial (demo data). Employee listing and invite/deactivate controls are local-only; all mutations still require server-side admin checks.
 - System settings — partial (demo data). Requested fields and audit preview are shown but not persisted; enforcement of 2FA and timeout remains server-side work.
+- Platform team — partial (demo data). Full Admin/Support invite and revoke controls are mock-only; authorization must be enforced by server endpoints before use.
