@@ -24,7 +24,24 @@ let loginNotice = '';
 const pageLoaders = {
   dashboard: () => import('./pages/dashboard-map/dashboard-map.js'),
   'report-sheet': () => import('./pages/report-sheet/report-sheet.js'),
-  'report-detail': () => import('./pages/report-detail/report-detail.js')
+  'report-detail': () => import('./pages/report-detail/report-detail.js'),
+  analytics: () => import('./pages/analytics/analytics.js'),
+  'export-data': () => import('./pages/export-data/export-data.js'),
+  'manage-profiles': () => import('./pages/manage-profiles/manage-profiles.js'),
+  'my-profile': () => import('./pages/my-profile/my-profile.js'),
+  chat: () => import('./pages/chat/chat.js'),
+  'system-settings': () => import('./pages/system-settings/system-settings.js')
+};
+const pageMounts = {
+  dashboard: 'mountDashboard',
+  'report-sheet': 'mountReportSheet',
+  'report-detail': 'mountReportDetail',
+  analytics: 'mountAnalytics',
+  'export-data': 'mountExportData',
+  'manage-profiles': 'mountManageProfiles',
+  'my-profile': 'mountMyProfile',
+  chat: 'mountChat',
+  'system-settings': 'mountSystemSettings'
 };
 
 subscribeToRouteChanges(() => void renderRoute());
@@ -135,11 +152,7 @@ async function renderWorkspace(context, route, routeParam) {
   try {
     const page = await loadPage();
     if (!content.isConnected) return;
-    const mount = route === 'dashboard'
-      ? page.mountDashboard
-      : route === 'report-sheet'
-        ? page.mountReportSheet
-        : page.mountReportDetail;
+    const mount = page[pageMounts[route]];
     await mount(content, { context, reportId: routeParam });
   } catch (error) {
     if (content.isConnected) showWorkspaceMessage(content, error.message || 'Could not load this page.', true);
@@ -155,9 +168,14 @@ function showUnavailablePage(target, route, routeParam, role) {
     : ROUTE_TITLES[route] || 'Bika';
   const message = document.createElement('p');
   message.className = 'org-muted';
-  message.textContent = 'This page is not available yet.';
+  const unavailable = {
+    posts: 'Posts are not available yet; no organisation posts data source is configured.',
+    surveys: 'Surveys are not available yet; no organisation surveys data source is configured.',
+    'system-settings': 'System settings are not available yet; no organisation settings data source is configured.'
+  };
+  message.textContent = unavailable[route] || 'This page is not available yet.';
   if (role === 'org_employee' && ['posts', 'surveys'].includes(route)) {
-    message.textContent = 'No organisation content is available yet.';
+    message.textContent = `No organisation content is available yet. ${unavailable[route]}`;
   }
   card.append(title, message);
   target.append(card);
