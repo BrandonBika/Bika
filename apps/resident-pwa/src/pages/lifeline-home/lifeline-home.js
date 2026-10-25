@@ -5,6 +5,7 @@ import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { getLifelineCards, LIFELINE_STARTER_CARDS } from '../../features/lifeline/lifeline.client.js';
 import { createLifelineCallRoom, initializeLifelineCallKit } from '../../features/lifeline/lifeline-calls.js';
+import { listCircle } from '../../features/beacon/beacon-circle.client.js';
 import { navigate } from '../../router.js';
 import { sessionStore } from '../../session.js';
 import '../../components/lifeline-card/lifeline-card.js';
@@ -15,7 +16,10 @@ export class PageLifelineHome extends BaseElement {
     this.classList.add('cn-lifeline-page');
     const session = sessionStore.get();
     if (session.isAuthenticated && !session.isGuest) {
-      initializeLifelineCallKit().catch((error) => {
+      listCircle().then((members) => {
+        const recipientIds = members.slice(0, 100).map((member) => member.id);
+        if (recipientIds.length) return initializeLifelineCallKit(recipientIds);
+      }).catch((error) => {
         console.error('Lifeline call service could not be initialized.', error);
         showToast(error.message || 'Call service could not be initialized.', { type: 'error' });
       });

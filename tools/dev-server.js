@@ -168,9 +168,22 @@ const server = http.createServer((req, res) => {
   if (reqPath === '/api/zego-token') {
     import('../supabase/functions/zego-token/handler.js')
       .then(async ({ handleZegoToken }) => {
+        let body = '';
+        for await (const chunk of req) {
+          body += chunk;
+          if (Buffer.byteLength(body) > 8192) {
+            res.writeHead(413, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+            res.end(JSON.stringify({ error: 'The request is too large.' }));
+            return;
+          }
+        }
         const request = new Request('http://localhost/api/zego-token', {
           method: req.method,
-          headers: { authorization: req.headers.authorization || '' }
+          headers: {
+            authorization: req.headers.authorization || '',
+            'content-type': req.headers['content-type'] || ''
+          },
+          ...(body ? { body } : {})
         });
         const result = await handleZegoToken(request, {
           env: zegoEnv,

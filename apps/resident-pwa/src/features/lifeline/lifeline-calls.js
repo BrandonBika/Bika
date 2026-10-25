@@ -39,17 +39,25 @@ export function createLifelineCallRoom() {
   return container;
 }
 
-async function createCallKit() {
+async function requestCallToken(recipientIds) {
   const accessToken = getAccessToken();
   if (!accessToken) throw new Error('Sign in to start a Bika call.');
 
   const response = await fetch('/api/zego-token', {
     method: 'POST',
-    headers: { authorization: `Bearer ${accessToken}` }
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({ recipientIds })
   });
   const result = await response.json();
   if (!response.ok) throw new Error(result.error || 'Could not prepare the call service.');
+  return result;
+}
 
+async function createCallKit(recipientIds) {
+  const result = await requestCallToken(recipientIds);
   zegoModule = await import('@civicneuro/zego-uikit');
   const { ZegoUIKitPrebuilt, ZIM } = zegoModule;
   const authUser = sessionStore.get().user;
@@ -86,9 +94,9 @@ async function createCallKit() {
   return callKit;
 }
 
-export function initializeLifelineCallKit() {
+export function initializeLifelineCallKit(recipientIds) {
   if (!callKitPromise) {
-    callKitPromise = createCallKit().catch((error) => {
+    callKitPromise = createCallKit(recipientIds).catch((error) => {
       callKitPromise = null;
       throw error;
     });
@@ -114,7 +122,9 @@ export async function sendLifelineInvitations(members) {
   const inAppMembers = mappedMembers.filter((member) => member.userId);
   if (!inAppMembers.length) return { members: mappedMembers, invited: [] };
 
-  const kit = await initializeLifelineCallKit();
+  const recipientIds = [...new Set(inAppMembers.map((member) => member.userId))];
+  if (callKitPromise) await requestCallToken(recipientIds);
+  const kit = await initializeLifelineCallKit(recipientIds);
   const userIDs = new Set();
   const callees = inAppMembers
     .filter((member) => {
