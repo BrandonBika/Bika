@@ -68,7 +68,7 @@ export async function handleOrgsRegister(request, context = {}) {
     throw error;
   }
 
-  const response = await fetchImpl(`${identity.supabaseUrl}/rest/v1/organizations?select=id,name,status`, {
+  const response = await fetchImpl(`${identity.supabaseUrl}/rest/v1/rpc/register_organization`, {
     method: 'POST',
     headers: {
       apikey: identity.anonKey,
@@ -76,7 +76,13 @@ export async function handleOrgsRegister(request, context = {}) {
       'Content-Type': 'application/json',
       Prefer: 'return=representation'
     },
-    body: JSON.stringify(organization)
+    body: JSON.stringify({
+      p_name: organization.name,
+      p_type: organization.type,
+      p_jurisdiction_level: organization.jurisdiction_level,
+      p_province: organization.province,
+      p_municipality: organization.municipality
+    })
   });
 
   if (response.status === 401 || response.status === 403) {
@@ -85,14 +91,21 @@ export async function handleOrgsRegister(request, context = {}) {
   if (response.status === 409) {
     return respond({ ok: false, code: 'ORGANIZATION_CONFLICT' }, 409);
   }
+  if (response.status === 400 || response.status === 422) {
+    return respond({ ok: false, code: 'INVALID_REQUEST' }, 422);
+  }
   if (!response.ok) {
     return respond({ ok: false, code: 'REGISTRATION_FAILED' }, 502);
   }
 
   const rows = await response.json();
   const created = Array.isArray(rows) ? rows[0] : null;
-  if (!created || created.status !== 'pending' || typeof created.id !== 'string') {
+  if (
+    !created
+    || !['pending', 'approved', 'rejected'].includes(created.status)
+    || typeof created.id !== 'string'
+  ) {
     return respond({ ok: false, code: 'REGISTRATION_FAILED' }, 502);
   }
-  return respond({ ok: true, organization: created }, 201);
+  return respond({ ok: true, organization: created }, created.status === 'pending' ? 201 : 200);
 }
