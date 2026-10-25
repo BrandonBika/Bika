@@ -16,6 +16,21 @@ import { mountReportDetail } from './pages/report-detail/report-detail.js';
 import { getCurrentRouteParam } from './router.js';
 import { RequestTimeoutError } from './features/with-timeout.js';
 
+const workspacePages = {
+  'organisation-approvals': () => import('./pages/organisation-approvals/organisation-approvals.js'),
+  posts: () => import('./pages/posts/posts.js'),
+  surveys: () => import('./pages/surveys/surveys.js'),
+  analytics: () => import('./pages/analytics/analytics.js'),
+  'export-data': () => import('./pages/export-data/export-data.js'),
+  'my-profile': () => import('./pages/my-profile/my-profile.js'),
+  'pilot-mode': () => import('./pages/pilot-mode/pilot-mode.js'),
+  'platform-activity': () => import('./pages/platform-activity/platform-activity.js'),
+  chat: () => import('./pages/chat-readonly/chat-readonly.js'),
+  'manage-profiles': () => import('./pages/manage-profiles/manage-profiles.js'),
+  'system-settings': () => import('./pages/system-settings/system-settings.js'),
+  'platform-team': () => import('./pages/platform-team/platform-team.js')
+};
+
 const root = document.querySelector('#app');
 let routeSequence = 0;
 let routeNotice = '';
@@ -146,10 +161,11 @@ async function renderShell(staff, route, sequence) {
   });
   const content = document.createElement('main');
   content.className = 'page-content';
+  const isWorkspacePage = Boolean(workspacePages[route]);
   const navRoute = route === 'report-detail' ? 'report-sheet' : route;
   const item = NAVIGATION[staff.role].find((entry) => entry.id === navRoute);
 
-  if (route !== 'home') {
+  if (route !== 'home' && !isWorkspacePage) {
     const heading = document.createElement('h1');
     heading.className = 'page-title';
     heading.textContent = route === 'report-sheet'
@@ -178,9 +194,9 @@ async function renderShell(staff, route, sequence) {
       title: `Welcome, ${welcomeName} (${staff.role})`,
       message: 'Platform dashboard pages are being enabled. No sample or mock data is shown.'
     }));
-  } else if (route === 'report-sheet' || route === 'report-detail') {
+  } else if (route === 'report-sheet' || route === 'report-detail' || isWorkspacePage) {
     const routeContent = document.createElement('div');
-    routeContent.className = 'route-content';
+    routeContent.className = isWorkspacePage ? 'workspace-route-content' : 'route-content';
     routeContent.setAttribute('aria-live', 'polite');
     const loading = document.createElement('p');
     loading.className = 'muted-note';
@@ -201,6 +217,26 @@ async function renderShell(staff, route, sequence) {
   app.append(sidebar, main);
   root.replaceChildren(app);
 
+  const workspaceContent = content.querySelector('.workspace-route-content');
+  if (workspaceContent) {
+    const pageModule = await workspacePages[route]();
+    const pageMount = pageModule[{
+      'organisation-approvals': 'mountOrganisationApprovals',
+      posts: 'mountPosts',
+      surveys: 'mountSurveys',
+      analytics: 'mountAnalytics',
+      'export-data': 'mountExportData',
+      'my-profile': 'mountMyProfile',
+      'pilot-mode': 'mountPilotMode',
+      'platform-activity': 'mountPlatformActivity',
+      chat: 'mountChat',
+      'manage-profiles': 'mountManageProfiles',
+      'system-settings': 'mountSystemSettings',
+      'platform-team': 'mountPlatformTeam'
+    }[route]];
+    await pageMount(workspaceContent, { staff, onSignOut: handleSignOut });
+    if (sequence !== routeSequence) return;
+  }
   const routeContent = content.querySelector('.route-content');
   if (!routeContent) return;
   if (route === 'report-sheet') await mountReportSheet(routeContent);

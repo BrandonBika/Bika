@@ -39,7 +39,7 @@ export const NAVIGATION = Object.freeze({
     item('manage-profiles', 'Manage profiles', false),
     item('export-data', 'Export data', false),
     item('my-profile', 'My profile', false),
-    item('organisation-approvals', 'Organisation approvals', false),
+    item('organisation-approvals', 'Organisation approvals', true),
     item('pilot-mode', 'Pilot mode', false),
     item('platform-activity', 'Platform activity', false),
     item('system-settings', 'System settings', false),
@@ -54,7 +54,7 @@ export const NAVIGATION = Object.freeze({
     item('analytics', 'Analytics', false),
     item('export-data', 'Export data', false),
     item('my-profile', 'My profile', false),
-    item('organisation-approvals', 'Organisation approvals', false),
+    item('organisation-approvals', 'Organisation approvals', true),
     item('pilot-mode', 'Pilot mode', false),
     item('platform-activity', 'Platform activity', false)
   ])

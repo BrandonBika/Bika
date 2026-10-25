@@ -88,6 +88,12 @@ export function createSidebar({ role, activeRoute, onNavigate, fullName }) {
   nav.setAttribute('aria-label', 'Platform navigation');
   for (const item of NAVIGATION[role] ?? []) {
     if (!item.enabled) continue;
+    if (item.id === 'organisation-approvals') {
+      const group = document.createElement('div');
+      group.className = 'dash-nav-group';
+      setSafeText(group, 'Platform');
+      nav.append(group);
+    }
     const link = document.createElement('a');
     link.className = 'n-item';
     link.href = `#${item.path}`;
