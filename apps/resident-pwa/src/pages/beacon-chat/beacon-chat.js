@@ -36,6 +36,8 @@ export class PageBeaconChat extends BaseElement {
 
   connectedCallback() {
     clearChildren(this);
+    this._chatBody = null;
+    this._textInput = null;
     this.classList.add('cn-beacon-chat-page');
     this._opening = true;
     this._messages = getChatMessages(this._memberId);
@@ -43,7 +45,7 @@ export class PageBeaconChat extends BaseElement {
     this._unsubscribe = subscribeBeacon(() => {
       if (this.isConnected) {
         this._messages = getChatMessages(this._memberId);
-        this.render();
+        this.renderMessages();
       }
     });
     this._onOnline = () => {
@@ -105,15 +107,23 @@ export class PageBeaconChat extends BaseElement {
   }
 
   render() {
-    clearChildren(this);
-    if (this._opening) return;
+    if (this._opening) {
+      clearChildren(this);
+      return;
+    }
     const member = getMemberById(this._memberId);
     if (!member) {
       navigate('beacon-add-to-circle');
       return;
     }
 
-    const messages = this._messages || getChatMessages(this._memberId);
+    if (this._chatBody) {
+      this._member = member;
+      this.renderMessages();
+      return;
+    }
+
+    clearChildren(this);
 
     // 1. Header
     const header = createElement('div', { cls: 'chat-header' });
@@ -152,54 +162,10 @@ export class PageBeaconChat extends BaseElement {
       cls: 'chat-body',
       attrs: { id: 'chat-messages-container', role: 'log', 'aria-live': 'polite' }
     });
-
-    const dayLabel = createElement('div', { cls: 'chat-daylabel', text: 'Today' });
-    body.appendChild(dayLabel);
-
-    for (const msg of messages) {
-      if (msg.sender === 'system') {
-        const isAlert = msg.kind === 'off_path';
-        const card = createElement('div', {
-          cls: ['bc-share-card', isAlert ? 'alert' : ''],
-          attrs: { role: 'button', tabindex: '0' }
-        });
-        const label = createElement('div', { cls: 'bc-share-label' });
-        label.appendChild(isAlert ? BeaconIcons.warning(11) : BeaconIcons.pin(11, 'var(--beacon-deep, #0E5961)'));
-        label.appendChild(createElement('span', { text: msg.label || 'Live location started' }));
-
-        const sub = createElement('div', { cls: 'bc-share-sub', text: msg.sub || '' });
-        card.append(label, sub);
-
-        const openSession = () => navigate('beacon-share-session');
-        card.onclick = openSession;
-        activateOnKeyboard(card, openSession);
-        body.appendChild(card);
-      } else if (msg.sender === 'them') {
-        const row = createElement('div', { cls: ['m-bubble-row', 'theirs'] });
-        const avatar = createElement('div', { cls: 'chat-avatar', text: member.initial });
-        const wrap = createElement('div', { cls: 'm-bubble-wrap' });
-        const bubble = createElement('div', { cls: 'm-bubble', text: msg.text });
-        const time = createElement('div', { cls: 'm-bubble-time', text: msg.time });
-        wrap.append(bubble, time);
-        row.append(avatar, wrap);
-        body.appendChild(row);
-      } else {
-        const row = createElement('div', { cls: ['m-bubble-row', 'me'] });
-        const wrap = createElement('div', { cls: 'm-bubble-wrap' });
-        const bubble = createElement('div', { cls: 'm-bubble', text: msg.text });
-        const time = createElement('div', { cls: 'm-bubble-time', text: msg.time });
-        wrap.append(bubble, time);
-        row.appendChild(wrap);
-        body.appendChild(row);
-      }
-    }
-
+    this._chatBody = body;
+    this._member = member;
+    this.renderMessages();
     this.appendChild(body);
-
-    // Scroll body to bottom
-    setTimeout(() => {
-      body.scrollTop = body.scrollHeight;
-    }, 20);
 
     // 3. Input bar
     const inputBar = createElement('div', { cls: 'm-chat-input' });
@@ -227,6 +193,7 @@ export class PageBeaconChat extends BaseElement {
         value: this._draftText || ''
       }
     });
+    this._textInput = textInput;
     textInput.oninput = () => {
       this._draftText = textInput.value;
     };
@@ -249,7 +216,10 @@ export class PageBeaconChat extends BaseElement {
         await sendChatMessage(this._memberId, val);
         this._draftText = '';
         this._messages = getChatMessages(this._memberId);
-        if (this.isConnected) this.render();
+        textInput.value = '';
+        this._textInput?.focus?.();
+        if (this.isConnected) this.renderMessages();
+        sendBtn.disabled = false;
       } catch (error) {
         console.error('Could not send Beacon message:', error);
         showToast(error.message || 'Could not send message.', { type: 'error' });
@@ -267,6 +237,54 @@ export class PageBeaconChat extends BaseElement {
 
     inputBar.append(sharePinBtn, textInput, sendBtn);
     this.appendChild(inputBar);
+  }
+
+  renderMessages() {
+    const body = this._chatBody;
+    if (!body) return;
+    clearChildren(body);
+
+    const dayLabel = createElement('div', { cls: 'chat-daylabel', text: 'Today' });
+    body.appendChild(dayLabel);
+    for (const msg of this._messages || getChatMessages(this._memberId)) {
+      if (msg.sender === 'system') {
+        const isAlert = msg.kind === 'off_path';
+        const card = createElement('div', {
+          cls: ['bc-share-card', isAlert ? 'alert' : ''],
+          attrs: { role: 'button', tabindex: '0' }
+        });
+        const label = createElement('div', { cls: 'bc-share-label' });
+        label.appendChild(isAlert ? BeaconIcons.warning(11) : BeaconIcons.pin(11, 'var(--beacon-deep, #0E5961)'));
+        label.appendChild(createElement('span', { text: msg.label || 'Live location started' }));
+        const sub = createElement('div', { cls: 'bc-share-sub', text: msg.sub || '' });
+        card.append(label, sub);
+        const openSession = () => navigate('beacon-share-session');
+        card.onclick = openSession;
+        activateOnKeyboard(card, openSession);
+        body.appendChild(card);
+      } else if (msg.sender === 'them') {
+        const row = createElement('div', { cls: ['m-bubble-row', 'theirs'] });
+        const avatar = createElement('div', { cls: 'chat-avatar', text: this._member.initial });
+        const wrap = createElement('div', { cls: 'm-bubble-wrap' });
+        const bubble = createElement('div', { cls: 'm-bubble', text: msg.text });
+        const time = createElement('div', { cls: 'm-bubble-time', text: msg.time });
+        wrap.append(bubble, time);
+        row.append(avatar, wrap);
+        body.appendChild(row);
+      } else {
+        const row = createElement('div', { cls: ['m-bubble-row', 'me'] });
+        const wrap = createElement('div', { cls: 'm-bubble-wrap' });
+        const bubble = createElement('div', { cls: 'm-bubble', text: msg.text });
+        const time = createElement('div', { cls: 'm-bubble-time', text: msg.time });
+        wrap.append(bubble, time);
+        row.appendChild(wrap);
+        body.appendChild(row);
+      }
+    }
+
+    setTimeout(() => {
+      body.scrollTop = body.scrollHeight;
+    }, 20);
   }
 }
 customElements.define('page-beacon-chat', PageBeaconChat);

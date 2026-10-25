@@ -55,7 +55,7 @@ registerHooks({
 
 const { configureSupabaseClient } = await import('../../../packages/supabase-client/src/client.js');
 const { setSession, clearSession } = await import('../../../packages/supabase-client/src/auth.js');
-const { refreshChatMessages, subscribeToBeaconChat } = await import('../src/features/beacon/beacon.client.js');
+const { getChatMessages, refreshChatMessages, subscribeBeacon, subscribeToBeaconChat } = await import('../src/features/beacon/beacon.client.js');
 const { PageBeaconChat } = await import('../src/pages/beacon-chat/beacon-chat.js');
 
 configureSupabaseClient({
@@ -157,11 +157,29 @@ test('an incoming Realtime message is rendered while the chat remains open', asy
     page.firstChild = null;
     page.isConnected = true;
     page.classList = { add() {} };
+    page._opening = false;
+    page._chatBody = {};
+    page._textInput = { value: 'Draft stays in place' };
+    const composerInput = page._textInput;
     page.renderedMessages = null;
     page.render = function renderForTest() {
+      throw new Error('render() should not rebuild the composer during chat refresh');
+    };
+    page.renderMessages = function renderMessagesForTest() {
       this.renderedMessages = this._messages;
     };
     page.openConversation = async () => {};
+    page.connectedCallback = function connectedCallbackForTest() {
+      this._opening = false;
+      this._chatBody = {};
+      this._textInput = composerInput;
+      this._unsubscribe = subscribeBeacon(() => {
+        if (this.isConnected) {
+          this._messages = getChatMessages(this._memberId);
+          this.renderMessages();
+        }
+      });
+    };
     page.connectedCallback();
 
     subscription = await subscribeToBeaconChat(memberId, (error) => {
@@ -206,6 +224,8 @@ test('an incoming Realtime message is rendered while the chat remains open', asy
       true,
       'the still-open page renders the newly fetched Realtime message'
     );
+    assert.equal(page._textInput, composerInput, 'incoming messages do not replace the composer input');
+    assert.equal(page._textInput.value, 'Draft stays in place', 'incoming messages preserve the draft');
   } finally {
     subscription?.unsubscribe();
     page?._unsubscribe?.();
@@ -249,8 +269,11 @@ test('a reconnect SUBSCRIBED catch-up refresh renders messages while the chat re
     page.firstChild = null;
     page.isConnected = true;
     page.classList = { add() {} };
+    page._opening = false;
+    page._chatBody = {};
+    page._textInput = { value: 'Draft survives reconnect' };
     page.renderedMessages = null;
-    page.render = function renderForTest() {
+    page.renderMessages = function renderMessagesForTest() {
       this.renderedMessages = this._messages;
     };
     page.openConversation = async () => {};
