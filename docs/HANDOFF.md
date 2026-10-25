@@ -9,3 +9,4 @@
 - Pilot mode — partial (demo data). Master switch and mock organisation details are local; branch editing and promotion do not call a backend.
 - Platform activity — partial. Admin sees organization status audit rows; employees see labelled mock activity because the audit table is admin-only under current RLS.
 - Chat — partial (demo data). Read-only empty state is present; no conversation table or server query was found in this dashboard.
+- Manage profiles — partial (demo data). Employee listing and invite/deactivate controls are local-only; all mutations still require server-side admin checks.

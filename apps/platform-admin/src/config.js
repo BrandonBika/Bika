@@ -36,7 +36,7 @@ export const NAVIGATION = Object.freeze({
     item('chat', 'Chat', true),
     item('surveys', 'Surveys', true),
     item('analytics', 'Analytics', true),
-    item('manage-profiles', 'Manage profiles', false),
+    item('manage-profiles', 'Manage profiles', true),
     item('export-data', 'Export data', true),
     item('my-profile', 'My profile', true),
     item('organisation-approvals', 'Organisation approvals', true),
