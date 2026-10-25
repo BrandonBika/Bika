@@ -1,0 +1,6 @@
+[allowlist]
+description = "Vendored bundle and test fixtures (triaged)"
+paths = [
+  '''apps/resident-pwa/vendor/.*''',
+  '''.*\.test\.js'''
+]
