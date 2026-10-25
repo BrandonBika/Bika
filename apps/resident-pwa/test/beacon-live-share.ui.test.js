@@ -323,9 +323,30 @@ test('Stop sharing calls the server stop RPC', async () => {
   page.disconnectedCallback();
 });
 
+test('sharer sees precise-GPS guidance until a location update arrives', () => {
+  const page = new PageBeaconShareSession();
+  page.isConnected = true;
+  page._recipientName = 'Kai Contact';
+  page._liveShare = {
+    expiresAt: new Date(Date.now() + 15 * 60000).toISOString(),
+    lastAt: null
+  };
+
+  page.renderServerLiveShare();
+  assert.equal(
+    page.querySelector('#bc-live-share-last-update').textContent,
+    'Waiting for a precise GPS fix. This works best on a phone with location turned on.'
+  );
+
+  page._liveShare.lastAt = new Date().toISOString();
+  page.updateLiveShareCountdown();
+  assert.match(page.querySelector('#bc-live-share-last-update').textContent, /^Last update /);
+});
+
 test('viewer marker is removed and Sharing ended is rendered when the share ends', async () => {
   const page = new PageBeaconChat();
   page._chatBody = new FakeElement('div');
+  page.appendChild(page._chatBody);
   page._member = { id: 'resident-a', name: 'Kai Contact', initial: 'K' };
   page._memberId = 'resident-a';
   page._messages = [];
@@ -347,6 +368,33 @@ test('viewer marker is removed and Sharing ended is rendered when the share ends
   page.renderMessages();
   assert.equal(page._chatBody.querySelector('.bc-live-share-map'), null);
   assert.match(flattenText(page._chatBody), /Sharing ended/);
+});
+
+test('viewer identifies the contact before their first precise location arrives', () => {
+  const page = new PageBeaconChat();
+  page._chatBody = new FakeElement('div');
+  page.appendChild(page._chatBody);
+  page._member = { id: 'resident-a', name: 'Kai Contact', initial: 'K' };
+  page._memberId = 'resident-a';
+  page._messages = [];
+  page._incomingLiveShare = {
+    id: 'share-b',
+    sharerId: 'resident-a',
+    recipientId: 'resident-b',
+    lastLat: null,
+    lastLng: null,
+    lastAccuracyM: null,
+    lastAt: null
+  };
+
+  page.renderMessages();
+  assert.match(flattenText(page._chatBody), /Kai Contact hasn't shared a precise location yet\./);
+
+  page._incomingLiveShare.lastLat = -29.86;
+  page._incomingLiveShare.lastLng = 31.02;
+  page._incomingLiveShare.lastAt = new Date().toISOString();
+  page.renderMessages();
+  assert.match(page._chatBody.querySelector('.bc-live-share-age').textContent, /^Last updated 0s ago$/);
 });
 
 test.after(() => {

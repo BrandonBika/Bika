@@ -171,7 +171,7 @@ export class PageBeaconShareSession extends BaseElement {
     if (lastUpdate) {
       lastUpdate.textContent = share.lastAt
         ? `Last update ${new Date(share.lastAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
-        : 'Waiting for the first location update';
+        : 'Waiting for a precise GPS fix. This works best on a phone with location turned on.';
     }
     if (remainingSeconds === 0) {
       clearInterval(this._liveShareTimer);

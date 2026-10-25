@@ -626,7 +626,9 @@ export class PageBeaconChat extends BaseElement {
       createElement('strong', { text: `Live location · ${this._member.name}` }),
       createElement('span', {
         cls: 'bc-live-share-age',
-        text: share.lastAt ? '' : 'Waiting for the first location update'
+        text: share.lastAt
+          ? ''
+          : `${this._member.name} hasn't shared a precise location yet.`
       })
     );
     const lat = share.lastLat;
