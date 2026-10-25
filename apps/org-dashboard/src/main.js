@@ -118,7 +118,7 @@ async function renderWorkspace(context, route, routeParam) {
   const main = document.createElement('div');
   main.className = 'dash-main';
   const topbar = document.createElement('header');
-  topbar.className = 'org-topbar';
+  topbar.className = 'dash-topbar';
   const title = document.createElement('h1');
   title.textContent = ROUTE_TITLES[route] || 'Bika';
   const org = document.createElement('span');

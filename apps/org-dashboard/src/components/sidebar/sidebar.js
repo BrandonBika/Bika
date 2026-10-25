@@ -13,7 +13,7 @@ function readCollapsed() {
 
 export function createSidebar(context, activeRoute) {
   const rail = document.createElement('aside');
-  rail.className = 'dash-rail org-rail';
+  rail.className = 'dash-rail';
   rail.dataset.collapsed = String(readCollapsed());
   const brand = document.createElement('a');
   brand.className = 'dash-brand';
