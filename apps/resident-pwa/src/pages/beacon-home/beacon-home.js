@@ -42,6 +42,7 @@ import {
   mockPercentToLatLng,
   L
 } from '../../features/beacon/leaflet-map.js';
+import { getBeaconHomeFallbackMapView } from './beacon-home-map-view.js';
 
 export class PageBeaconHome extends BaseElement {
   init(params) {
@@ -234,7 +235,7 @@ export class PageBeaconHome extends BaseElement {
       );
     }
     this.startLocationWatch();
-    if (this.isConnected && this._openModeAfterLocationPrompt && !this._locationPromptMessage) {
+    if (this.isConnected && this._openModeAfterLocationPrompt) {
       this.openModeModal();
     }
   }
@@ -574,7 +575,10 @@ export class PageBeaconHome extends BaseElement {
       }
       this.updateLocationAccuracyStatus();
       this.updateLocationDiagnostics();
-      if (!this._manualRouteStartMarker) this._map.setView([0, 0], 2);
+      if (!this._manualRouteStartMarker && !this._mapHasCenteredOnLocation) {
+        const fallbackView = getBeaconHomeFallbackMapView();
+        this._map.setView(fallbackView.center, fallbackView.zoom);
+      }
       return;
     }
 
@@ -590,6 +594,10 @@ export class PageBeaconHome extends BaseElement {
     } else if (this._accuracyWaitStartedAt === null || this._accuracyWaitStartedAt === undefined) {
       this._accuracyWaitStartedAt = Date.now();
       this._accuracyGuidanceExpired = false;
+    }
+    if (accuracy > MAX_BEACON_LOCATION_ACCURACY_METERS && !this._mapHasCenteredOnLocation) {
+      const fallbackView = getBeaconHomeFallbackMapView();
+      this._map.setView(fallbackView.center, fallbackView.zoom);
     }
     this._locationAccuracyMessage = `GPS accuracy ±${accuracyText} · ${getBeaconAccuracyState(accuracy)}`;
     this.updateLocationAccuracyStatus();
@@ -648,21 +656,6 @@ export class PageBeaconHome extends BaseElement {
       this._map.setView(latLng, Math.max(this._map.getZoom(), 15));
       this._mapHasCenteredOnLocation = true;
     }
-    if (isPrecise) {
-      if (!this._selectingRouteStart) this.hideLocationPrompt();
-    } else if (!this._selectingRouteStart) {
-      if (this._accuracyGuidanceExpired) {
-        this.updateAccuracyGuidance();
-      } else {
-        this.showLocationPrompt(
-          accuracy > MAX_BEACON_LOCATION_ACCURACY_METERS
-            ? `Your device reports about ${accuracyText} accuracy. Beacon is not marking this as your current position and is still listening for a better fix.`
-            : `Approximate position only (±${accuracyText}). Beacon is improving accuracy; sharing starts normally under ${BEACON_PRECISE_ACCURACY_METERS} m or with confirmation up to ${BEACON_MAX_REDUCED_ACCURACY_METERS} m.`,
-          'Try again',
-          'Improving location accuracy'
-        );
-      }
-    }
   }
 
   openModeModal() {
@@ -703,11 +696,11 @@ export class PageBeaconHome extends BaseElement {
     }
     const detectedLocation = getCurrentLocation();
     if (
-      !getSelectedBeaconRouteStart()
-      && (!detectedLocation || detectedLocation.accuracy > MAX_BEACON_LOCATION_ACCURACY_METERS)
+      (!detectedLocation || detectedLocation.accuracy > MAX_BEACON_LOCATION_ACCURACY_METERS)
       && !previousMapView
     ) {
-      this._map.setView([0, 0], 2);
+      const fallbackView = getBeaconHomeFallbackMapView();
+      this._map.setView(fallbackView.center, fallbackView.zoom);
     }
 
     this._currentUserMarker = null;
@@ -731,54 +724,6 @@ export class PageBeaconHome extends BaseElement {
     }
 
     mapWrap.appendChild(map);
-    mapWrap.appendChild(createElement('div', {
-      cls: 'bc-location-accuracy-status',
-      attrs: { role: 'status', 'aria-live': 'polite' },
-      text: this._locationAccuracyMessage
-    }));
-    const locationPrompt = createElement('div', {
-      cls: 'bc-location-prompt-backdrop',
-      attrs: {
-        id: 'bc-location-prompt',
-        role: 'region',
-        'aria-labelledby': 'bc-location-prompt-title',
-        'aria-describedby': 'bc-location-prompt-message'
-      }
-    });
-    locationPrompt.hidden = !this._locationPromptMessage;
-    const promptCard = createElement('div', { cls: 'bc-location-prompt-card' });
-    promptCard.append(
-      createElement('h2', {
-        attrs: { id: 'bc-location-prompt-title' },
-        text: this._locationPromptTitle || 'Allow location access'
-      }),
-      createElement('p', {
-        cls: 'bc-location-prompt-message',
-        attrs: { id: 'bc-location-prompt-message', 'aria-live': 'polite' },
-        text: this._locationPromptMessage || 'Beacon needs your permission to show your location. Choose Allow if your browser asks.'
-      }),
-      createElement('button', {
-        cls: 'bc-location-allow',
-        attrs: { type: 'button' },
-        text: this._locationPromptActionLabel || 'Allow permission'
-      }),
-      createElement('button', {
-        cls: 'bc-location-dismiss',
-        attrs: { type: 'button' },
-        text: 'Not now'
-      })
-    );
-    const chooseStartButton = createElement('button', {
-      cls: 'bc-location-choose-start',
-      attrs: { type: 'button' },
-      text: getSelectedBeaconRouteStart() ? 'Change route start on map' : 'Choose route start on map'
-    });
-    chooseStartButton.onclick = () => this.chooseRouteStartOnMap();
-    promptCard.appendChild(chooseStartButton);
-    promptCard.querySelector('.bc-location-allow').onclick = () => this.requestLocationFromPrompt();
-    promptCard.querySelector('.bc-location-dismiss').onclick = () => this.dismissLocationPrompt();
-    locationPrompt.appendChild(promptCard);
-    mapWrap.appendChild(locationPrompt);
     if (this._debugEnabled) {
       const diagnostics = createElement('section', {
         cls: 'bc-location-diagnostics',
