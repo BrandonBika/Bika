@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUTPUT_DIR = path.join(ROOT, 'dist');
 const LOCAL_ENV_PATH = path.join(ROOT, '.env');
-const DEPLOYED_APPS = ['resident-pwa', 'platform-admin'];
+const DEPLOYED_APPS = ['resident-pwa', 'platform-admin', 'org-dashboard'];
 const EXCLUDED_NAMES = new Set(['README.md', 'PROJECT_REPORT.md', 'package.json']);
 
 function loadLocalEnv() {
@@ -197,12 +197,12 @@ function validateBuild() {
     }
   }
 
-  const [residentRuntimeConfig, platformRuntimeConfig] = DEPLOYED_APPS.map((app) => {
+  const runtimeConfigs = DEPLOYED_APPS.map((app) => {
     const contents = fs.readFileSync(path.join(OUTPUT_DIR, app, 'runtime-config.js'), 'utf8');
     return JSON.parse(contents.match(/const runtimeConfig = (\{.*\});/)[1]);
   });
-  if (JSON.stringify(residentRuntimeConfig) !== JSON.stringify(platformRuntimeConfig)) {
-    throw new Error('Resident and platform dashboard Supabase configs do not match.');
+  if (runtimeConfigs.some((config) => JSON.stringify(config) !== JSON.stringify(runtimeConfigs[0]))) {
+    throw new Error('Deployed app Supabase configs do not match.');
   }
 
   const residentDir = path.join(OUTPUT_DIR, 'resident-pwa');
@@ -242,4 +242,4 @@ for (const app of DEPLOYED_APPS) {
 writeRuntimeConfigs(publicConfig);
 validateBuild();
 
-console.log('Built landing page, resident PWA, platform dashboard, and shared packages to dist/.');
+console.log('Built landing page, resident PWA, platform and organisation dashboards, and shared packages to dist/.');

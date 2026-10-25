@@ -62,7 +62,8 @@ const STATIC_ROOTS = [
   path.join(ROOT, 'apps', 'landing'),
   path.join(ROOT, 'apps', 'platform-admin'),
   path.join(ROOT, 'apps', 'resident-pwa'),
-  path.join(ROOT, 'packages')
+  path.join(ROOT, 'packages'),
+  path.join(ROOT, 'apps', 'org-dashboard')
 ];
 const REAL_STATIC_ROOTS = STATIC_ROOTS.map((root) => fs.realpathSync(root));
 const BLOCKED_PATH_MARKERS = ['node_modules', 'supabase', 'tools', 'docs'];
@@ -76,6 +77,7 @@ function isRequiredSupabaseAsset(pathname) {
   return pathname.startsWith('/packages/supabase-client/src/')
     || pathname === '/apps/platform-admin/src/features/supabase.client.js'
     || pathname === '/platform-admin/src/features/supabase.client.js'
+    || pathname === '/org-dashboard/src/features/supabase.client.js'
     || pathname === '/apps/resident-pwa/vendor/supabase-js.js'
     || pathname === '/resident-pwa/vendor/supabase-js.js';
 }
@@ -125,6 +127,9 @@ function resolveStaticPath(requestPath) {
   } else if (decodedPath.startsWith('/packages/')) {
     staticRoot = STATIC_ROOTS[3];
     relativePath = decodedPath.slice('/packages/'.length);
+  } else if (decodedPath.startsWith('/org-dashboard/')) {
+    staticRoot = STATIC_ROOTS[4];
+    relativePath = decodedPath.slice('/org-dashboard/'.length);
   } else {
     return null;
   }
@@ -159,7 +164,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (reqPath === '/platform-admin' || reqPath === '/resident-pwa') {
+  if (reqPath === '/platform-admin' || reqPath === '/resident-pwa' || reqPath === '/org-dashboard') {
     res.writeHead(301, { Location: `${reqPath}/${query ? `?${query}` : ''}` });
     res.end();
     return;
@@ -210,7 +215,9 @@ const server = http.createServer((req, res) => {
     '/apps/resident-pwa/runtime-config.js',
     '/resident-pwa/runtime-config.js',
     '/platform-admin/runtime-config.js',
-    '/apps/platform-admin/runtime-config.js'
+    '/apps/platform-admin/runtime-config.js',
+    '/org-dashboard/runtime-config.js',
+    '/apps/org-dashboard/runtime-config.js'
   ].includes(reqPath)) {
     res.writeHead(200, {
       'Content-Type': 'text/javascript',
