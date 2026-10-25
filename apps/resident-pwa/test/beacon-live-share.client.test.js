@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   getActiveSharesForMe,
+  setLivePath,
+  simplifyLiveSharePath,
   startLiveShare,
   stopLiveShare,
   subscribeToLiveShares,
@@ -164,7 +166,8 @@ test('live share client calls secured RPCs and selects active shares for both pa
             last_lat: -29.86,
             last_lng: 31.02,
             last_accuracy_m: 20,
-            last_at: '2026-10-26T00:01:00.000Z'
+            last_at: '2026-10-26T00:01:00.000Z',
+            planned_path: [[-29.86, 31.02], [-29.87, 31.03]]
           }]
         : []));
     }
@@ -186,7 +189,8 @@ test('live share client calls secured RPCs and selects active shares for both pa
       lastLat: -29.86,
       lastLng: 31.02,
       lastAccuracyM: 20,
-      lastAt: '2026-10-26T00:01:00.000Z'
+      lastAt: '2026-10-26T00:01:00.000Z',
+      plannedPath: [[-29.86, 31.02], [-29.87, 31.03]]
     });
     assert.equal(new URL(requests[0].url).pathname, '/rest/v1/rpc/start_live_share');
     assert.deepEqual(JSON.parse(requests[0].options.body), {
@@ -201,6 +205,54 @@ test('live share client calls secured RPCs and selects active shares for both pa
     });
     assert.deepEqual(JSON.parse(requests[2].options.body), { p_id: 'share-1' });
     assert.equal(requests.filter(({ url }) => url.includes('/live_location_shares?')).length, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('planned route is simplified to at most 50 points and sent through its RPC', async () => {
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = async (url, options = {}) => {
+    requests.push({ url: String(url), options });
+    return new Response('null');
+  };
+  try {
+    const coordinates = Array.from({ length: 180 }, (_, index) => [
+      -29.86 + index * 0.0001,
+      31.02 + (index % 2 ? 0.0004 : 0)
+    ]);
+    const simplified = simplifyLiveSharePath(coordinates);
+    assert.ok(simplified.length <= 50);
+    assert.deepEqual(simplified[0], coordinates[0]);
+    assert.deepEqual(simplified.at(-1), coordinates.at(-1));
+
+    await setLivePath('share-path', coordinates);
+    assert.equal(new URL(requests[0].url).pathname, '/rest/v1/rpc/set_live_share_path');
+    const body = JSON.parse(requests[0].options.body);
+    assert.equal(body.p_id, 'share-path');
+    assert.ok(body.p_path.length <= 50);
+    assert.deepEqual(body.p_path[0], coordinates[0]);
+    assert.deepEqual(body.p_path.at(-1), coordinates.at(-1));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('planned route can be removed by sending null through the RPC', async () => {
+  const originalFetch = globalThis.fetch;
+  let request;
+  globalThis.fetch = async (url, options = {}) => {
+    request = { url: String(url), options };
+    return new Response('null');
+  };
+  try {
+    await setLivePath('share-clear', null);
+    assert.equal(new URL(request.url).pathname, '/rest/v1/rpc/set_live_share_path');
+    assert.deepEqual(JSON.parse(request.options.body), {
+      p_id: 'share-clear',
+      p_path: null
+    });
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -291,6 +343,7 @@ test('live-share viewer refreshes by Realtime and a ten-second polling fallback'
   const originalClearInterval = globalThis.clearInterval;
   const pollCallbacks = [];
   let selectCount = 0;
+  let active = true;
   const updates = [];
   globalThis.WebSocket = MockWebSocket;
   globalThis.setInterval = (callback, delay) => {
@@ -302,7 +355,22 @@ test('live-share viewer refreshes by Realtime and a ten-second polling fallback'
     const parsed = new URL(url);
     if (parsed.pathname.endsWith('/live_location_shares')) {
       selectCount += 1;
-      return new Response('[]');
+      const rows = parsed.searchParams.has('recipient_id') && active
+        ? [{
+            id: 'share-viewer',
+            sharer_id: 'resident-b',
+            recipient_id: 'resident-a',
+            started_at: '2026-10-26T00:00:00.000Z',
+            expires_at: '2026-10-26T00:15:00.000Z',
+            stopped_at: null,
+            last_lat: -29.86,
+            last_lng: 31.02,
+            last_accuracy_m: 20,
+            last_at: '2026-10-26T00:01:00.000Z',
+            planned_path: [[-29.86, 31.02], [-29.87, 31.03]]
+          }]
+        : [];
+      return new Response(JSON.stringify(rows));
     }
     return new Response('null');
   };
@@ -315,10 +383,13 @@ test('live-share viewer refreshes by Realtime and a ten-second polling fallback'
     const initialCount = selectCount;
     assert.ok(initialCount >= 2);
     assert.equal(pollCallbacks.length, 1);
+    assert.ok(updates.flat().some((share) => share.plannedPath?.length === 2));
+    active = false;
     pollCallbacks[0]();
     await flushPromises();
     assert.equal(selectCount, initialCount + 2);
     assert.ok(updates.length >= 2);
+    assert.deepEqual(updates.at(-1), []);
   } finally {
     subscription.unsubscribe();
     globalThis.fetch = originalFetch;

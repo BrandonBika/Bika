@@ -18,8 +18,10 @@ const LIVE_SHARE_COLUMNS = [
   'last_lat',
   'last_lng',
   'last_accuracy_m',
-  'last_at'
+  'last_at',
+  'planned_path'
 ].join(',');
+const LIVE_SHARE_PATH_MAX_POINTS = 50;
 const LIVE_SHARE_POLL_INTERVAL_MS = 10000;
 const LIVE_SHARE_UPDATE_INTERVAL_MS = 10000;
 const liveShareWatchers = new Map();
@@ -65,6 +67,88 @@ function validateLocation(location) {
   }
 }
 
+function normalizeLiveSharePath(coordinates) {
+  if (!Array.isArray(coordinates) || coordinates.length < 2 || coordinates.length > 5000) {
+    throw new TypeError('A planned route must contain between 2 and 5000 points.');
+  }
+  return coordinates.map((point) => {
+    if (Array.isArray(point) && point.length !== 2) {
+      throw new TypeError('A planned route contains invalid coordinates.');
+    }
+    const lat = Array.isArray(point) ? point[0] : point?.lat;
+    const lng = Array.isArray(point) ? point[1] : point?.lng;
+    if (
+      !Number.isFinite(lat) || lat < -90 || lat > 90
+      || !Number.isFinite(lng) || lng < -180 || lng > 180
+    ) {
+      throw new TypeError('A planned route contains invalid coordinates.');
+    }
+    return [lat, lng];
+  });
+}
+
+function simplifyPathAtTolerance(points, toleranceMeters) {
+  if (points.length <= 2) return points;
+  const referenceLatitude = points.reduce((sum, point) => sum + point[0], 0) / points.length;
+  const metersPerLongitudeDegree = 111320 * Math.cos(referenceLatitude * Math.PI / 180);
+  const toleranceSquared = toleranceMeters ** 2;
+  const keep = new Uint8Array(points.length);
+  keep[0] = 1;
+  keep[points.length - 1] = 1;
+  const stack = [[0, points.length - 1]];
+
+  while (stack.length) {
+    const [firstIndex, lastIndex] = stack.pop();
+    const first = points[firstIndex];
+    const last = points[lastIndex];
+    const dx = (last[1] - first[1]) * metersPerLongitudeDegree;
+    const dy = (last[0] - first[0]) * 111320;
+    const lengthSquared = dx * dx + dy * dy;
+    let farthestIndex = -1;
+    let farthestDistanceSquared = toleranceSquared;
+
+    for (let index = firstIndex + 1; index < lastIndex; index += 1) {
+      const point = points[index];
+      const pointX = (point[1] - first[1]) * metersPerLongitudeDegree;
+      const pointY = (point[0] - first[0]) * 111320;
+      const progress = lengthSquared === 0
+        ? 0
+        : Math.max(0, Math.min(1, (pointX * dx + pointY * dy) / lengthSquared));
+      const offsetX = pointX - progress * dx;
+      const offsetY = pointY - progress * dy;
+      const distanceSquared = offsetX * offsetX + offsetY * offsetY;
+      if (distanceSquared > farthestDistanceSquared) {
+        farthestDistanceSquared = distanceSquared;
+        farthestIndex = index;
+      }
+    }
+
+    if (farthestIndex >= 0) {
+      keep[farthestIndex] = 1;
+      stack.push([firstIndex, farthestIndex], [farthestIndex, lastIndex]);
+    }
+  }
+  return points.filter((_, index) => keep[index]);
+}
+
+export function simplifyLiveSharePath(coordinates) {
+  const points = normalizeLiveSharePath(coordinates);
+  if (points.length <= LIVE_SHARE_PATH_MAX_POINTS) return points;
+
+  let toleranceMeters = 5;
+  let simplified = simplifyPathAtTolerance(points, toleranceMeters);
+  while (simplified.length > LIVE_SHARE_PATH_MAX_POINTS && toleranceMeters < 100000) {
+    toleranceMeters *= 2;
+    simplified = simplifyPathAtTolerance(points, toleranceMeters);
+  }
+  if (simplified.length <= LIVE_SHARE_PATH_MAX_POINTS) return simplified;
+
+  const lastIndex = simplified.length - 1;
+  return Array.from({ length: LIVE_SHARE_PATH_MAX_POINTS }, (_, index) => (
+    simplified[Math.round(index * lastIndex / (LIVE_SHARE_PATH_MAX_POINTS - 1))]
+  ));
+}
+
 function mapLiveShareRow(row) {
   if (
     !row
@@ -86,7 +170,8 @@ function mapLiveShareRow(row) {
     lastLat: row.last_lat,
     lastLng: row.last_lng,
     lastAccuracyM: row.last_accuracy_m,
-    lastAt: row.last_at
+    lastAt: row.last_at,
+    plannedPath: row.planned_path
   };
 }
 
@@ -126,6 +211,14 @@ export async function updateLiveShare(shareId, location) {
     p_lat: location.lat,
     p_lng: location.lng,
     p_accuracy: location.accuracy
+  });
+}
+
+export async function setLivePath(shareId, coordinates) {
+  const path = coordinates === null ? null : simplifyLiveSharePath(coordinates);
+  return callRpc('set_live_share_path', {
+    p_id: requireId(shareId, 'Live share ID'),
+    p_path: path
   });
 }
 
