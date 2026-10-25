@@ -35,3 +35,11 @@
 ## Follow-up before production use
 
 The production build succeeds. The local development server serves `/platform-admin/` and its sign-in page loads without browser console or page errors; authenticated dashboard routes were not exercised because no test login was available. Browser-check the role-specific sidebar, CSV/GeoJSON downloads, PDF print flow, and Approve/Reject flow against a staging Supabase project with the organization approval migration applied. Keep demo-only actions visibly marked until server-side endpoints and authorization checks exist.
+
+After applying the organization approval migration, run this read-only check in the intended Supabase SQL editor:
+
+```sql
+select count(*) > 0 as has_approved_organization
+from public.organizations
+where status = 'approved';
+```
