@@ -14,6 +14,7 @@ import {
   refreshBeaconCircle,
   refreshChatMessages,
   sendChatMessage,
+  sendChatLocation,
   subscribeBeacon,
   subscribeBeaconCircle,
   subscribeToBeaconChat
@@ -22,6 +23,10 @@ import {
   block as blockUser,
   removeConnection
 } from '../../features/beacon/beacon-circle.client.js';
+import {
+  BEACON_MAX_REDUCED_ACCURACY_METERS,
+  requestCurrentLocation
+} from '../../features/beacon/beacon-location.js';
 import { navigate } from '../../router.js';
 
 function activateOnKeyboard(element, action) {
@@ -75,6 +80,8 @@ export class PageBeaconChat extends BaseElement {
   }
 
   disconnectedCallback() {
+    this._locationShareController?.abort();
+    this.closeLocationShareSheet();
     if (this._unsubscribe) this._unsubscribe();
     if (this._unsubscribeCircle) this._unsubscribeCircle();
     if (this._unsubscribeChat) this._unsubscribeChat();
@@ -90,7 +97,105 @@ export class PageBeaconChat extends BaseElement {
     this._chatBody = null;
     this._textInput = null;
     this._memberActionDialog = null;
+    this._locationShareSheet?.remove();
+    this._locationShareSheet = null;
     navigate('beacon-home');
+  }
+
+  openLocationShareSheet() {
+    this._locationShareSheet?.remove();
+    const member = this._member;
+    const backdrop = createElement('div', {
+      cls: 'chat-member-actions-backdrop',
+      attrs: {
+        role: 'dialog',
+        'aria-modal': 'true',
+        'aria-label': `Share your current location with ${member.name}`
+      }
+    });
+    const sheet = createElement('section', { cls: 'chat-member-actions-sheet' });
+    sheet.append(
+      createElement('h2', {
+        cls: 'chat-member-actions-title',
+        text: `Send your current location to ${member.name}?`
+      }),
+      createElement('p', {
+        cls: 'chat-member-actions-copy',
+        text: 'They will see where you are right now. This is a one-time share, not live tracking.'
+      })
+    );
+    const sendButton = createElement('button', {
+      cls: 'chat-member-action',
+      attrs: { type: 'button' },
+      text: 'Send location'
+    });
+    const cancelButton = createElement('button', {
+      cls: 'chat-member-action-cancel',
+      attrs: { type: 'button' },
+      text: 'Cancel'
+    });
+    this._locationShareButtons = [sendButton, cancelButton];
+    sendButton.onclick = () => this.sendOneTimeLocation();
+    cancelButton.onclick = () => this.closeLocationShareSheet();
+    backdrop.onclick = (event) => {
+      if (event.target === backdrop && !this._locationShareInProgress) {
+        this.closeLocationShareSheet();
+      }
+    };
+    sheet.append(sendButton, cancelButton);
+    backdrop.appendChild(sheet);
+    this._locationShareSheet = backdrop;
+    this.appendChild(backdrop);
+  }
+
+  closeLocationShareSheet() {
+    this._locationShareSheet?.remove();
+    this._locationShareSheet = null;
+    this._locationShareButtons = [];
+  }
+
+  async sendOneTimeLocation() {
+    if (this._locationShareInProgress) return;
+    this._locationShareInProgress = true;
+    this._locationShareController = new AbortController();
+    for (const button of this._locationShareButtons || []) button.disabled = true;
+    try {
+      const location = await requestCurrentLocation({
+        force: true,
+        firstFix: true,
+        timeoutMs: 10000,
+        signal: this._locationShareController.signal
+      });
+      if (!this.isConnected) return;
+      if (location.accuracy > BEACON_MAX_REDUCED_ACCURACY_METERS) {
+        showToast(
+          "Your location isn't accurate enough yet. Try again outdoors or on your phone.",
+          { type: 'error' }
+        );
+        return;
+      }
+      await sendChatLocation(this._memberId, {
+        lat: location.lat,
+        lng: location.lng,
+        accuracy: location.accuracy
+      });
+      this._messages = getChatMessages(this._memberId);
+      this.renderMessages();
+      this.closeLocationShareSheet();
+      showToast('Location shared once in this chat.', { type: 'success' });
+    } catch (error) {
+      if (!this.isConnected || error?.name === 'AbortError') return;
+      const message = error?.code === 1
+        ? 'Location permission was denied. Allow location access and try again.'
+        : error?.code === 3
+          ? "Couldn't get your location in time. Try again outdoors or on your phone."
+          : 'Could not send your location. Please try again.';
+      showToast(message, { type: 'error' });
+    } finally {
+      this._locationShareInProgress = false;
+      this._locationShareController = null;
+      for (const button of this._locationShareButtons || []) button.disabled = false;
+    }
   }
 
   openMemberActions() {
@@ -286,14 +391,12 @@ export class PageBeaconChat extends BaseElement {
       cls: 'chat-share-pin-btn',
       attrs: {
         type: 'button',
-        'aria-label': 'Prototype: share live location; it is not delivered to others',
-        title: 'Prototype: live location is not delivered to others'
+        'aria-label': 'Share your current location once',
+        title: 'Send a one-time location message'
       }
     });
     sharePinBtn.appendChild(BeaconIcons.pin(13, 'var(--beacon-deep, #0E5961)'));
-    sharePinBtn.onclick = () => {
-      navigate('beacon-start-confirm', { memberId: member.id, mode: 'live' });
-    };
+    sharePinBtn.onclick = () => this.openLocationShareSheet();
 
     const textInput = createElement('input', {
       attrs: {
@@ -373,6 +476,43 @@ export class PageBeaconChat extends BaseElement {
         card.onclick = openSession;
         activateOnKeyboard(card, openSession);
         body.appendChild(card);
+      } else if (msg.kind === 'location') {
+        const row = createElement('div', {
+          cls: ['m-bubble-row', msg.sender === 'them' ? 'theirs' : 'me']
+        });
+        if (msg.sender === 'them') {
+          row.appendChild(createElement('div', { cls: 'chat-avatar', text: this._member.initial }));
+        }
+        const wrap = createElement('div', { cls: 'm-bubble-wrap' });
+        const card = createElement('div', { cls: 'm-bubble m-location-card' });
+        const { lat, lng, accuracy } = msg.payload || {};
+        if (
+          !Number.isFinite(lat) || lat < -90 || lat > 90
+          || !Number.isFinite(lng) || lng < -180 || lng > 180
+        ) {
+          card.appendChild(createElement('strong', { text: 'Location unavailable' }));
+        } else {
+          card.append(
+            createElement('strong', { text: 'Shared location' }),
+            createElement('span', { text: `Shared at ${msg.time}` })
+          );
+          if (Number.isFinite(accuracy) && accuracy >= 0) {
+            card.appendChild(createElement('span', {
+              text: `Accuracy ±${Math.round(accuracy)} m`
+            }));
+          }
+          card.appendChild(createElement('a', {
+            attrs: {
+              href: `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}`,
+              rel: 'noopener noreferrer',
+              target: '_blank'
+            },
+            text: 'Open in Maps'
+          }));
+        }
+        wrap.appendChild(card);
+        row.appendChild(wrap);
+        body.appendChild(row);
       } else if (msg.sender === 'them') {
         const row = createElement('div', { cls: ['m-bubble-row', 'theirs'] });
         const avatar = createElement('div', { cls: 'chat-avatar', text: this._member.initial });

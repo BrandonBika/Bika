@@ -872,12 +872,12 @@ export class PageBeaconHome extends BaseElement {
       cls: 'bc-cta-share',
       attrs: {
         type: 'button',
-        'aria-label': 'Prototype: share my live location; it is not delivered to others',
+        'aria-label': 'Choose a Beacon location-sharing option',
         id: 'bc-share-location-btn'
       }
     });
     shareBtn.appendChild(BeaconIcons.pin(14, '#ffffff', '#ffffff'));
-    const shareText = createElement('span', { text: 'Share my live location' });
+    const shareText = createElement('span', { text: 'Share location' });
     const sharePrototype = createElement('span', {
       cls: 'bc-prototype-label',
       text: 'Prototype'
@@ -958,10 +958,10 @@ export class PageBeaconHome extends BaseElement {
 
     const modeSheet = createElement('div', { cls: ['sheet', 'mode-sheet'] });
     const modeHandle = createElement('div', { cls: 'sheet-handle' });
-    const modeTitle = createElement('div', { cls: 'sheet-title', text: 'Beacon sharing prototype' });
+    const modeTitle = createElement('div', { cls: 'sheet-title', text: 'Share location' });
     const modeSub = createElement('div', {
       cls: 'sheet-sub',
-      text: 'Circle and chat work. Live location and route alerts are not delivered to others.'
+      text: 'You can share your current location in chat once. Live tracking is a prototype and is not delivered.'
     });
 
     // Option 1: Share live location
@@ -972,10 +972,10 @@ export class PageBeaconHome extends BaseElement {
     const icLive = createElement('div', { cls: 'u-ic' });
     icLive.appendChild(BeaconIcons.pin(18, 'var(--beacon, #1C8C99)'));
     const textLive = createElement('div', { attrs: { style: 'flex: 1;' } });
-    const tLive = createElement('div', { cls: 'u-t', text: 'Share live location · Prototype' });
+    const tLive = createElement('div', { cls: 'u-t', text: 'Live tracking · Prototype' });
     const dLive = createElement('div', {
       cls: 'u-d',
-      text: 'This preview does not send your location to circle members or a server.'
+      text: 'Live tracking is a prototype and is not delivered.'
     });
     textLive.append(tLive, dLive);
     const chevLive = createElement('div', { cls: 'sh-chev' });

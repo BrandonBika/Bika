@@ -36,26 +36,38 @@ globalThis.document ||= {
       element.parentNode = this;
     }
   },
-  createElement() {
-    return {
+  createElement(tagName) {
+    const element = {
+      tagName: tagName.toUpperCase(),
       classList: { add() {} },
       style: {},
       attributes: {},
+      children: [],
       setAttribute(name, value) {
         this.attributes[name] = value;
       },
+      getAttribute(name) {
+        return this.attributes[name] ?? null;
+      },
       appendChild(child) {
         child.parentNode = this;
-        (this.children ||= []).push(child);
+        this.children.push(child);
+      },
+      append(...children) {
+        for (const child of children) this.appendChild(child);
       },
       removeChild(child) {
-        this.children = (this.children || []).filter((item) => item !== child);
+        this.children = this.children.filter((item) => item !== child);
         child.parentNode = null;
       },
       remove() {
         this.parentNode?.removeChild(this);
       }
     };
+    Object.defineProperty(element, 'firstChild', {
+      get() { return this.children[0] || null; }
+    });
+    return element;
   }
 };
 globalThis.customElements ||= {
@@ -162,6 +174,53 @@ class MockWebSocket {
 
 function jsonResponse(value, status = 200) {
   return new Response(JSON.stringify(value), { status });
+}
+
+function createLocationPage(memberId = `location-share-${Date.now()}`) {
+  const page = Object.create(PageBeaconChat.prototype);
+  page._memberId = memberId;
+  page._member = { id: memberId, name: 'Resident B', initial: 'R' };
+  page._messages = [];
+  page._chatBody = document.createElement('div');
+  page.isConnected = true;
+  page.appendChild = (element) => {
+    element.parentNode = page;
+    page.child = element;
+  };
+  return page;
+}
+
+function installGeolocation({ position, error }) {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  let watchCount = 0;
+  let clearCount = 0;
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: {
+      geolocation: {
+        watchPosition(onPosition, onError) {
+          watchCount += 1;
+          if (position) onPosition(position);
+          if (error) onError(error);
+          return watchCount;
+        },
+        clearWatch() {
+          clearCount += 1;
+        }
+      }
+    }
+  });
+  return {
+    counts: () => ({ watchCount, clearCount }),
+    restore() {
+      if (descriptor) Object.defineProperty(globalThis, 'navigator', descriptor);
+      else delete globalThis.navigator;
+    }
+  };
+}
+
+function collectText(node) {
+  return [node.textContent || '', ...(node.children || []).map(collectText)].join(' ');
 }
 
 test('an incoming Realtime message is rendered while the chat remains open', async () => {
@@ -458,4 +517,196 @@ test('a failed member action shows a safe error and keeps the chat open', async 
     window.location.hash = originalHash;
     clearSession();
   }
+});
+
+test('one-time location share waits for sheet confirmation and sends exactly one location message', async () => {
+  const originalFetch = globalThis.fetch;
+  const geolocation = installGeolocation({
+    position: {
+      coords: { latitude: -29.86, longitude: 31.02, accuracy: 45 },
+      timestamp: Date.now()
+    }
+  });
+  const insertBodies = [];
+  const memberId = `one-time-location-${Date.now()}`;
+  setSession('resident-location-token', { id: 'resident-a' }, 'resident-location-refresh');
+  globalThis.fetch = async (url, options = {}) => {
+    const parsed = new URL(url);
+    if (parsed.pathname.endsWith('/rpc/create_direct_conversation')) {
+      return jsonResponse('one-time-location-conversation');
+    }
+    if (parsed.pathname.endsWith('/rpc/mark_conversation_read')) return jsonResponse(null);
+    if (parsed.pathname.endsWith('/messages') && options.method === 'POST') {
+      const body = JSON.parse(options.body);
+      insertBodies.push(body);
+      return jsonResponse([{
+        ...body,
+        id: 'location-message-1',
+        conversation_id: 'one-time-location-conversation',
+        sender_id: 'resident-a',
+        created_at: '2026-10-25T12:34:00.000Z'
+      }]);
+    }
+    if (parsed.pathname.endsWith('/messages')) {
+      return jsonResponse([{
+        id: 'location-message-1',
+        conversation_id: 'one-time-location-conversation',
+        sender_id: 'resident-a',
+        type: 'location',
+        body: null,
+        payload: { lat: -29.86, lng: 31.02, accuracy: 45 },
+        created_at: '2026-10-25T12:34:00.000Z'
+      }]);
+    }
+    assert.fail(`Unexpected request path: ${parsed.pathname}`);
+  };
+
+  const page = createLocationPage(memberId);
+  try {
+    page.openLocationShareSheet();
+    assert.match(collectText(page.child), /Send your current location to Resident B/);
+    assert.match(collectText(page.child), /one-time share, not live tracking/);
+    assert.deepEqual(insertBodies, [], 'no location is sent before pressing Send location');
+
+    const confirmSend = page._locationShareButtons[0].onclick;
+    await Promise.all([confirmSend(), confirmSend()]);
+    assert.equal(insertBodies.length, 1, 'one confirmation sends one message');
+    assert.equal(insertBodies[0].type, 'location');
+    assert.equal(insertBodies[0].body, null);
+    assert.deepEqual(insertBodies[0].payload, {
+      lat: -29.86,
+      lng: 31.02,
+      accuracy: 45
+    });
+    assert.deepEqual(geolocation.counts(), { watchCount: 1, clearCount: 1 });
+    assert.match(collectText(page._chatBody), /Shared location/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    geolocation.restore();
+    clearSession();
+  }
+});
+
+test('coarse one-time location is not sent and shows the accuracy guidance', async () => {
+  const originalFetch = globalThis.fetch;
+  const geolocation = installGeolocation({
+    position: {
+      coords: { latitude: -29.86, longitude: 31.02, accuracy: 151 },
+      timestamp: Date.now()
+    }
+  });
+  let requestCount = 0;
+  setSession('resident-coarse-token', { id: 'resident-a' }, 'resident-coarse-refresh');
+  globalThis.fetch = async () => {
+    requestCount += 1;
+    return jsonResponse(null);
+  };
+  const page = createLocationPage();
+  try {
+    page.openLocationShareSheet();
+    await page._locationShareButtons[0].onclick();
+    assert.equal(requestCount, 0);
+    assert.deepEqual(geolocation.counts(), { watchCount: 1, clearCount: 1 });
+    assert.match(
+      collectText(document.body.children.at(-1)),
+      /Your location isn't accurate enough yet\. Try again outdoors or on your phone\./
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    geolocation.restore();
+    clearSession();
+  }
+});
+
+test('denied location permission sends nothing and shows a safe error', async () => {
+  const originalFetch = globalThis.fetch;
+  const geolocation = installGeolocation({ error: { code: 1, message: 'private device detail' } });
+  let requestCount = 0;
+  setSession('resident-denied-token', { id: 'resident-a' }, 'resident-denied-refresh');
+  globalThis.fetch = async () => {
+    requestCount += 1;
+    return jsonResponse(null);
+  };
+  const page = createLocationPage();
+  try {
+    page.openLocationShareSheet();
+    await page._locationShareButtons[0].onclick();
+    assert.equal(requestCount, 0);
+    assert.deepEqual(geolocation.counts(), { watchCount: 1, clearCount: 1 });
+    const toastText = collectText(document.body.children.at(-1));
+    assert.match(toastText, /Location permission was denied/);
+    assert.doesNotMatch(toastText, /private device detail/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    geolocation.restore();
+    clearSession();
+  }
+});
+
+test('location timeout sends nothing and shows retry guidance', async () => {
+  const originalFetch = globalThis.fetch;
+  const geolocation = installGeolocation({ error: { code: 3, message: 'private device detail' } });
+  let requestCount = 0;
+  setSession('resident-timeout-token', { id: 'resident-a' }, 'resident-timeout-refresh');
+  globalThis.fetch = async () => {
+    requestCount += 1;
+    return jsonResponse(null);
+  };
+  const page = createLocationPage();
+  try {
+    page.openLocationShareSheet();
+    await page._locationShareButtons[0].onclick();
+    assert.equal(requestCount, 0);
+    assert.deepEqual(geolocation.counts(), { watchCount: 1, clearCount: 1 });
+    const toastText = collectText(document.body.children.at(-1));
+    assert.match(toastText, /Couldn't get your location in time/);
+    assert.doesNotMatch(toastText, /private device detail/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    geolocation.restore();
+    clearSession();
+  }
+});
+
+test('location messages render as a card with a safe Google Maps link', () => {
+  const page = createLocationPage();
+  page._messages = [{
+    sender: 'them',
+    kind: 'location',
+    time: '12:34 PM',
+    payload: { lat: -29.86, lng: 31.02, accuracy: 45 }
+  }];
+  page.renderMessages();
+  const nodes = [];
+  const visit = (node) => {
+    nodes.push(node);
+    for (const child of node.children || []) visit(child);
+  };
+  visit(page._chatBody);
+  const link = nodes.find((node) => node.tagName === 'A');
+  assert.match(collectText(page._chatBody), /Shared location/);
+  assert.match(collectText(page._chatBody), /Shared at 12:34 PM/);
+  assert.match(collectText(page._chatBody), /Accuracy ±45 m/);
+  assert.equal(link.getAttribute('href'), 'https://www.google.com/maps?q=-29.86%2C31.02');
+  assert.equal(link.getAttribute('rel'), 'noopener noreferrer');
+  assert.equal(link.getAttribute('target'), '_blank');
+});
+
+test('invalid location messages show unavailable without a map link', () => {
+  const page = createLocationPage();
+  page._messages = [{
+    sender: 'them',
+    kind: 'location',
+    time: '12:34 PM',
+    payload: { lat: 91, lng: 31.02, accuracy: 45 }
+  }];
+  page.renderMessages();
+  const nodes = [];
+  const visit = (node) => {
+    nodes.push(node);
+    for (const child of node.children || []) visit(child);
+  };
+  visit(page._chatBody);
+  assert.match(collectText(page._chatBody), /Location unavailable/);
+  assert.equal(nodes.some((node) => node.tagName === 'A'), false);
 });

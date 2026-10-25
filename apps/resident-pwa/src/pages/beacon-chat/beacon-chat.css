@@ -259,6 +259,18 @@
   box-sizing: border-box;
 }
 
+.m-location-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.m-location-card a {
+  color: var(--teal-deep, #085041);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 .m-bubble-row.me .m-bubble {
   background: var(--teal, #0F6E56);
   color: #FFFFFF;

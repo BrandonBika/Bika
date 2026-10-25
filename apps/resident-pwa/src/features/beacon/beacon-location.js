@@ -256,8 +256,14 @@ function createLocationTimeoutError(bestPosition) {
 export function requestCurrentLocation({
   force = false,
   allowRecentReducedAccuracy = false,
-  onAccuracyUpdate
+  onAccuracyUpdate,
+  timeoutMs = BEACON_LOCATION_TIMEOUT_MS,
+  firstFix = false,
+  signal
 } = {}) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return Promise.reject(new TypeError('Location timeout must be a positive number.'));
+  }
   if (!navigator.geolocation) {
     const error = new Error('Location services are not available in this browser.');
     recordLocationError(error);
@@ -285,14 +291,16 @@ export function requestCurrentLocation({
     let timeoutId;
     let bestPosition = null;
     let settled = false;
+    let onAbort;
 
     const finish = (position, error) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeoutId);
+      signal?.removeEventListener('abort', onAbort);
       if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
       if (error) {
-        recordLocationError(error);
+        if (error.name !== 'AbortError') recordLocationError(error);
         reject(error);
         return;
       }
@@ -304,19 +312,34 @@ export function requestCurrentLocation({
     };
 
     try {
+      onAbort = () => {
+        const error = new Error('Location request was cancelled.');
+        error.name = 'AbortError';
+        error.code = 20;
+        finish(null, error);
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+      if (signal?.aborted) {
+        onAbort();
+        return;
+      }
       timeoutId = setTimeout(() => {
         if (bestPosition && bestPosition.coords.accuracy <= BEACON_MAX_REDUCED_ACCURACY_METERS) {
           finish(bestPosition);
           return;
         }
         finish(null, createLocationTimeoutError(bestPosition));
-      }, BEACON_LOCATION_TIMEOUT_MS);
+      }, timeoutMs);
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           try {
             const candidate = normalizePosition(position);
             recordLocationFix(candidate);
             onAccuracyUpdate?.(candidate, getBeaconAccuracyState(candidate.accuracy));
+            if (firstFix) {
+              finish(position);
+              return;
+            }
             if (
               candidate.accuracy <= BEACON_MAX_UNUSABLE_ACCURACY_METERS
               && (!bestPosition || candidate.accuracy < bestPosition.coords.accuracy)

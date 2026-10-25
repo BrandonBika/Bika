@@ -35,7 +35,7 @@ export class PageBeaconSafetyNotice extends BaseElement {
     this.appendChild(iconWrap);
 
     // Title
-    const title = createElement('h1', { cls: 'safety-title', text: 'Beacon live sharing is a prototype' });
+    const title = createElement('h1', { cls: 'safety-title', text: 'Beacon live tracking is a prototype' });
     this.appendChild(title);
 
     const liveLocationNotice = config.beaconEnabled
@@ -43,8 +43,8 @@ export class PageBeaconSafetyNotice extends BaseElement {
     const safetyPoints = [{
       title: 'What this means today',
       body: liveLocationNotice
-        ? 'Circle requests and chat are available. Prototype live location and route alerts are not delivered to others.'
-        : 'Circle requests, chat, and live location are not delivered to other people or stored on a server. Beacon controls are temporarily unavailable.'
+        ? 'You can share your current location in chat once. Live tracking is a prototype and is not delivered.'
+        : 'Beacon controls are temporarily unavailable. You can share your current location in chat once. Live tracking is a prototype and is not delivered.'
     }];
 
     // Safety items
