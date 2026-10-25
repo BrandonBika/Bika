@@ -209,8 +209,8 @@ export class PageBeaconChat extends BaseElement {
       cls: 'chat-share-pin-btn',
       attrs: {
         type: 'button',
-        'aria-label': 'Share live location with this member',
-        title: 'Share live location'
+        'aria-label': 'Prototype: share live location; it is not delivered to others',
+        title: 'Prototype: live location is not delivered to others'
       }
     });
     sharePinBtn.appendChild(BeaconIcons.pin(13, 'var(--beacon-deep, #0E5961)'));

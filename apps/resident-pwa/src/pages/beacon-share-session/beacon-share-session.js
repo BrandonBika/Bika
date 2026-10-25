@@ -92,7 +92,7 @@ export class PageBeaconShareSession extends BaseElement {
       if (!this.isConnected) return;
       if (!getActiveSession()) {
         if (!this._ending) {
-          showToast('Timed sharing ended', { type: 'info' });
+          showToast('Beacon prototype session ended', { type: 'info' });
         }
         navigate('beacon-home');
         return;
@@ -401,8 +401,14 @@ export class PageBeaconShareSession extends BaseElement {
     // 5. Floating Session Card
     const card = createElement('section', {
       cls: 'bc-session-card',
-      attrs: { 'aria-label': 'Active Beacon session', id: 'bc-session-card' }
+      attrs: { 'aria-label': 'Beacon prototype session', id: 'bc-session-card' }
     });
+    const prototypeNotice = createElement('div', {
+      cls: 'bc-prototype-notice',
+      attrs: { role: 'status' },
+      text: 'Prototype — location and alerts stay on this device and are not sent to others.'
+    });
+    card.appendChild(prototypeNotice);
 
     const row = createElement('div', { cls: 'bcs-row' });
     const avatars = createElement('div', { cls: 'bcs-avatars' });
@@ -423,14 +429,14 @@ export class PageBeaconShareSession extends BaseElement {
     const title = createElement('div', {
       cls: 'bcs-title',
       text: sharingMembers.length
-        ? `Sharing with ${memberNames}`
-        : 'Sharing with selected circle members'
+        ? `Prototype preview for ${memberNames}`
+        : 'Prototype preview for selected circle members'
     });
     const sub = createElement('div', {
       cls: 'bcs-sub',
       text: session.mode === 'path'
-        ? `Walk to ${session.destination} · ETA ${session.eta}`
-        : 'Live location · Real-time'
+        ? `Local route preview to ${session.destination} · ETA ${session.eta}`
+        : 'Live location prototype · this device only'
     });
     textCol.append(title, sub);
     row.append(avatars, textCol);
@@ -449,11 +455,7 @@ export class PageBeaconShareSession extends BaseElement {
 
       const bannerText = createElement('div', { cls: 'offpath-banner-text' });
       const bold = createElement('b', { text: 'You are off your path. ' });
-      const rest = document.createTextNode(
-        session.offPathAlert
-          ? `${memberNames} have been notified.`
-          : 'Your circle has not been notified.'
-      );
+      const rest = document.createTextNode('Prototype only: no one was notified.');
       bannerText.append(bold, rest);
       banner.appendChild(bannerText);
       card.appendChild(banner);
@@ -476,7 +478,7 @@ export class PageBeaconShareSession extends BaseElement {
       okBtn.onclick = () => {
         this._offPathMonitor.dismiss();
         setSessionOffPath(false);
-        showToast('Off-path alert dismissed. Sharing continues.', { type: 'info' });
+        showToast('Prototype preview continues on this device.', { type: 'info' });
       };
 
       btnRow.append(updateBtn, okBtn);
@@ -487,12 +489,12 @@ export class PageBeaconShareSession extends BaseElement {
     const stopBtn = createElement('button', {
       cls: 'bcs-stop',
       attrs: { type: 'button', id: 'bc-stop-sharing-btn' },
-      text: 'Stop sharing'
+      text: 'Stop prototype'
     });
     stopBtn.onclick = async () => {
       this._ending = true;
       await stopActiveSession();
-      showToast('Location sharing stopped', { type: 'info' });
+      showToast('Beacon prototype session stopped', { type: 'info' });
       navigate('beacon-home');
     };
     card.appendChild(stopBtn);

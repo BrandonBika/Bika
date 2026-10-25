@@ -121,7 +121,7 @@ so group creation does not depend on the failing Edge Function CORS setup.
 - **Report Lifecycle**: `#report-new`, `#report-duplicate-check`, `#report-submitted`, `#my-reports` (Track), `#report-detail`, `#report-thread`, `#report-satisfaction`, `#report-reopen-escalate`
 - **Voice / AI**: `#snap-and-say`
 - **Safety & Lifeline**: `#lifeline-home`, `#lifeline-call-countdown`, `#lifeline-calling-status`, `#lifeline-card-create`, `#lifeline-card-edit`, `#lifeline-contacts-picker`, `#contacts-permission`
-- **Live Location (Beacon)**: `#beacon-home`, `#beacon-safety-notice`, `#beacon-add-to-circle`, `#beacon-requests`, `#beacon-find-contacts`, `#beacon-chat`, `#beacon-draw-path`, `#beacon-start-confirm`, `#beacon-share-session` (currently route to a coming-soon notice)
+- **Beacon**: `#beacon-home`, `#beacon-add-to-circle`, `#beacon-requests`, `#beacon-find-contacts`, and `#beacon-chat` support the Circle and chat flows. Live-location and route-sharing screens redirect to a prototype notice; location and alerts are not delivered to other people.
 - **Ward & Community**: `#your-area`, `#polls`, `#poll-detail`, `#community-pulse`, `#trending-issues`, `#news`, `#news-article`, `#survey`, `#survey-submitted`, `#safety-info`, `#help-and-safety`
 - **Account & POPIA**: `#account`, `#profile-edit`, `#badges-edit`, `#notification-settings`, `#language`, `#terms`, `#privacy-policy`, `#contacts`, `#data-export`, `#delete-account`, `#pilot-org-select`
 

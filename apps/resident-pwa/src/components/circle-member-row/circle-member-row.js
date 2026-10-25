@@ -20,7 +20,7 @@ export class CnCircleMemberRow extends BaseElement {
     const name = createElement('span', { cls: 'cn-circle-member-name', text: this._data.name });
     const status = createElement('span', {
       cls: ['cn-circle-member-status', this._data.isSharing ? 'is-sharing' : ''],
-      text: this._data.isSharing ? 'Sharing live location' : 'Not sharing'
+      text: this._data.isSharing ? 'Prototype preview' : 'Not sharing'
     });
     info.append(name, status);
 
@@ -29,8 +29,12 @@ export class CnCircleMemberRow extends BaseElement {
       text: this._data.isSharing ? '◉' : 'Share',
       attrs: {
         type: 'button',
-        title: this._data.isSharing ? 'Open conversation' : 'Share live location',
-        'aria-label': this._data.isSharing ? `Message ${this._data.name}` : `Share live location with ${this._data.name}`
+        title: this._data.isSharing
+          ? 'Open conversation'
+          : 'Prototype: live location is not delivered to others',
+        'aria-label': this._data.isSharing
+          ? `Message ${this._data.name}`
+          : `Prototype: share live location with ${this._data.name}; it is not delivered to others`
       }
     });
     shareBtn.onclick = () => navigate(

@@ -11,10 +11,12 @@ export class CnBeaconShareIndicator extends BaseElement {
     clearChildren(this);
     this.classList.add('cn-beacon-indicator');
 
-    const span = createElement('span', { text: '📍 Live Beacon location sharing active' });
+    const span = createElement('span', {
+      text: 'Beacon prototype active — location is not shared with others'
+    });
     const stopBtn = createElement('button', {
       cls: 'cn-btn cn-btn--danger',
-      text: 'Stop Sharing'
+      text: 'Stop Prototype'
     });
     stopBtn.style.minHeight = '32px';
     stopBtn.style.padding = '4px 8px';

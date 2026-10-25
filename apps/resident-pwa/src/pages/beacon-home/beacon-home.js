@@ -618,7 +618,7 @@ export class PageBeaconHome extends BaseElement {
     const mapWrap = createElement('div', { cls: 'bc-map-wrap' });
     const map = createElement('div', {
       cls: 'bc-map',
-      attrs: { 'aria-label': 'Beacon live map', id: 'bc-leaflet-map' }
+      attrs: { 'aria-label': 'Beacon prototype map', id: 'bc-leaflet-map' }
     });
     this._map = createBeaconMap(map, { zoom: 15 });
     L.control.zoom({ position: 'topright' }).addTo(this._map);
@@ -641,15 +641,15 @@ export class PageBeaconHome extends BaseElement {
       this._mapHasCenteredOnLocation = true;
     });
 
-    // Live pins for members sharing
+    // Mocked pins are previews; the app does not receive other users' locations.
     for (const member of liveMembers) {
       const livePin = L.marker(mockPercentToLatLng(member), {
         icon: createBeaconDivIcon(member.initial),
-        title: `${member.name}: ${member.statusText}`
+        title: `${member.name}: prototype preview`
       }).addTo(this._map);
       livePin.getElement()?.setAttribute(
         'aria-label',
-        `${member.name}, sharing live location, ${member.statusText}`
+        `${member.name}, prototype location preview; not shared with others`
       );
       livePin.on('click', () => navigate('beacon-chat', { memberId: member.id }));
     }
@@ -796,13 +796,17 @@ export class PageBeaconHome extends BaseElement {
       cls: 'bc-cta-share',
       attrs: {
         type: 'button',
-        'aria-label': 'Share my live location',
+        'aria-label': 'Prototype: share my live location; it is not delivered to others',
         id: 'bc-share-location-btn'
       }
     });
     shareBtn.appendChild(BeaconIcons.pin(14, '#ffffff', '#ffffff'));
     const shareText = createElement('span', { text: 'Share my live location' });
-    shareBtn.appendChild(shareText);
+    const sharePrototype = createElement('span', {
+      cls: 'bc-prototype-label',
+      text: 'Prototype'
+    });
+    shareBtn.append(shareText, sharePrototype);
     shareBtn.onclick = () => {
       this.dismissLocationPrompt();
       this.openModeModal();
@@ -822,7 +826,7 @@ export class PageBeaconHome extends BaseElement {
         'aria-selected': this._activeTab === 'live' ? 'true' : 'false',
         id: 'bc-tab-live'
       },
-      text: `Live now · ${liveMembers.length}`
+      text: `Live preview · ${liveMembers.length}`
     });
 
     const circleTab = createElement('button', {
@@ -878,10 +882,10 @@ export class PageBeaconHome extends BaseElement {
 
     const modeSheet = createElement('div', { cls: ['sheet', 'mode-sheet'] });
     const modeHandle = createElement('div', { cls: 'sheet-handle' });
-    const modeTitle = createElement('div', { cls: 'sheet-title', text: 'How do you want to share?' });
+    const modeTitle = createElement('div', { cls: 'sheet-title', text: 'Beacon sharing prototype' });
     const modeSub = createElement('div', {
       cls: 'sheet-sub',
-      text: 'Choose how your circle follows you. You pick who sees it and for how long on the next step.'
+      text: 'Circle and chat work. Live location and route alerts are not delivered to others.'
     });
 
     // Option 1: Share live location
@@ -892,10 +896,10 @@ export class PageBeaconHome extends BaseElement {
     const icLive = createElement('div', { cls: 'u-ic' });
     icLive.appendChild(BeaconIcons.pin(18, 'var(--beacon, #1C8C99)'));
     const textLive = createElement('div', { attrs: { style: 'flex: 1;' } });
-    const tLive = createElement('div', { cls: 'u-t', text: 'Share live location' });
+    const tLive = createElement('div', { cls: 'u-t', text: 'Share live location · Prototype' });
     const dLive = createElement('div', {
       cls: 'u-d',
-      text: 'Your circle sees you move on the map in real time. No route needed.'
+      text: 'This preview does not send your location to circle members or a server.'
     });
     textLive.append(tLive, dLive);
     const chevLive = createElement('div', { cls: 'sh-chev' });
@@ -922,7 +926,7 @@ export class PageBeaconHome extends BaseElement {
     const tDraw = createElement('div', { cls: 'u-t', text: 'Draw a path' });
     const dDraw = createElement('div', {
       cls: 'u-d',
-      text: 'Draw where you are going. Your circle follows your progress and is alerted if you stray off it.'
+      text: 'Prototype only: route progress and off-path alerts are not sent to your circle.'
     });
     const tagDraw = createElement('div', { cls: 'sh-tag', text: 'Safer for walks' });
     textDraw.append(tDraw, dDraw, tagDraw);
@@ -960,13 +964,13 @@ export class PageBeaconHome extends BaseElement {
       const empty = createElement('div', { cls: 'bc-empty-state' });
       const title = createElement('div', {
         cls: 'bc-empty-title',
-        text: this._activeTab === 'live' ? 'No one is sharing right now' : 'Your circle is empty'
+        text: this._activeTab === 'live' ? 'No live preview available' : 'Your circle is empty'
       });
       const desc = createElement('div', {
         cls: 'bc-empty-desc',
         text: this._activeTab === 'live'
-          ? "When someone in your circle shares their live location, they'll appear here."
-          : "Add family and friends to see each other's live location."
+          ? "Beacon live location is a prototype and does not receive other people's locations."
+          : 'Add trusted contacts to your circle. Live location sharing is not delivered to others.'
       });
       empty.append(title, desc);
 

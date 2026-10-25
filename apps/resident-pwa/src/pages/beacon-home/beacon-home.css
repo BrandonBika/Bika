@@ -381,6 +381,22 @@
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
+.bc-prototype-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.bc-cta-share .bc-prototype-label {
+  color: #FFFFFF;
+}
+
 .bc-cta-share:hover {
   opacity: 0.95;
 }

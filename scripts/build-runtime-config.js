@@ -122,7 +122,7 @@ function writeRuntimeConfigs(publicConfig) {
 
   fs.writeFileSync(
     path.join(OUTPUT_DIR, 'resident-pwa', 'runtime-options.js'),
-    'const runtimeOptions = { env: \'production\', useMock: false, beaconEnabled: false };\n'
+    'const runtimeOptions = { env: \'production\', useMock: false, beaconEnabled: true };\n'
       + 'export default runtimeOptions;\n'
   );
 }

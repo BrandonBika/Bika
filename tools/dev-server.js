@@ -34,7 +34,7 @@ const runtimeConfigSource = `const runtimeConfig = ${JSON.stringify(runtimeConfi
 const runtimeOptionsSource = `const runtimeOptions = ${JSON.stringify({
   env: 'development',
   useMock: false,
-  beaconEnabled: demoMode
+  beaconEnabled: true
 })};\nexport default runtimeOptions;\n`;
 
 const packageImports = {};

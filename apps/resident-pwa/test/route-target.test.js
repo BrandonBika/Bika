@@ -4,7 +4,6 @@ import { config } from '../src/config.js';
 import { isBeaconRouteGated } from '../src/route-target.js';
 
 test('Beacon routes stay gated when the runtime flag is missing or false', () => {
-  assert.equal(config.beaconEnabled, false);
   assert.equal(isBeaconRouteGated('beacon-home'), true);
   assert.equal(isBeaconRouteGated('beacon-chat', {}, false), true);
   assert.equal(isBeaconRouteGated('beacon-requests', {}, false), true);
@@ -17,7 +16,8 @@ test('Beacon routes stay gated when the runtime flag is missing or false', () =>
   assert.equal(isBeaconRouteGated('contacts-permission', { source: 'lifeline' }), false);
 });
 
-test('the enabled runtime flag opens circle and chat but keeps live location gated', () => {
+test('the production runtime enables Circle and chat but keeps live location gated', () => {
+  assert.equal(config.beaconEnabled, true);
   assert.equal(isBeaconRouteGated('beacon-home', {}, true), false);
   assert.equal(isBeaconRouteGated('beacon-requests', {}, true), false);
   assert.equal(isBeaconRouteGated('beacon-add-to-circle', {}, true), false);

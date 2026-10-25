@@ -1,7 +1,7 @@
 const runtimeOptions = {
   env: 'production',
   useMock: false,
-  beaconEnabled: false
+  beaconEnabled: true
 };
 
 export default runtimeOptions;
