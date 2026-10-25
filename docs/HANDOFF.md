@@ -8,3 +8,4 @@
 - My profile — done. Name, email, and role use the signed-in staff context; password update and sign-out use Supabase Auth. Support and legal copy are placeholders.
 - Pilot mode — partial (demo data). Master switch and mock organisation details are local; branch editing and promotion do not call a backend.
 - Platform activity — partial. Admin sees organization status audit rows; employees see labelled mock activity because the audit table is admin-only under current RLS.
+- Chat — partial (demo data). Read-only empty state is present; no conversation table or server query was found in this dashboard.
