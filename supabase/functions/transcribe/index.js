@@ -1,4 +1,6 @@
-Deno.serve(() => new Response(JSON.stringify({ ok: true, message: 'Transcription stub ready.' }), {
-  status: 200,
-  headers: { 'Content-Type': 'application/json' }
+import { handleTranscribe } from './handler.js';
+
+Deno.serve((request) => handleTranscribe(request, {
+  env: { get: (name) => Deno.env.get(name) },
+  fetchImpl: fetch
 }));
