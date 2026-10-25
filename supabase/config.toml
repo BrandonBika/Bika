@@ -17,3 +17,19 @@ entrypoint = "./functions/snap-and-say/index.js"
 [functions.reprocess-report]
 verify_jwt = false
 entrypoint = "./functions/reprocess-report/index.js"
+
+[functions.orgs-register]
+verify_jwt = false
+entrypoint = "./functions/orgs-register/index.js"
+
+[functions.orgs-approve]
+verify_jwt = false
+entrypoint = "./functions/orgs-approve/index.js"
+
+[functions.orgs-invite]
+verify_jwt = false
+entrypoint = "./functions/orgs-invite/index.js"
+
+[functions.orgs-invitation-accept]
+verify_jwt = false
+entrypoint = "./functions/orgs-invitation-accept/index.js"

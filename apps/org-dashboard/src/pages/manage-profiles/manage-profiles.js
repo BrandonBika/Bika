@@ -14,7 +14,7 @@ export async function mountManageProfiles(target, { context }) {
     card.className = 'org-card';
     const heading = document.createElement('h2');
     heading.textContent = 'Organisation members';
-    card.append(heading);
+    card.append(heading, createInviteForm());
     if (!data?.length) {
       const empty = document.createElement('p');
       empty.className = 'org-empty';
@@ -50,12 +50,52 @@ export async function mountManageProfiles(target, { context }) {
     }
     const note = document.createElement('p');
     note.className = 'org-muted';
-    note.textContent = 'Member invitations and profile editing are not available yet.';
+    note.textContent = 'Profile editing is not available yet.';
     card.append(note);
     target.append(card);
   } catch (error) {
     renderError(target, error);
   }
+}
+
+function createInviteForm() {
+  const form = document.createElement('form');
+  form.className = 'org-form org-invite-form';
+  const label = document.createElement('label');
+  label.textContent = 'Employee email address';
+  const input = document.createElement('input');
+  input.name = 'email';
+  input.type = 'email';
+  input.required = true;
+  input.autocomplete = 'email';
+  label.append(input);
+  const submit = document.createElement('button');
+  submit.type = 'submit';
+  submit.className = 'org-button';
+  submit.textContent = 'Invite employee';
+  const feedback = document.createElement('p');
+  feedback.setAttribute('aria-live', 'polite');
+  form.append(label, submit, feedback);
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    feedback.textContent = '';
+    try {
+      const { data, error } = await supabase.functions.invoke('orgs-invite', {
+        body: { email: input.value.trim() }
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error('The invitation could not be sent.');
+      feedback.textContent = 'Invitation sent. It expires after seven days.';
+      form.reset();
+    } catch (error) {
+      feedback.textContent = error.message || 'Could not send the invitation.';
+      feedback.setAttribute('role', 'alert');
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  return form;
 }
 
 function formatDate(value) {

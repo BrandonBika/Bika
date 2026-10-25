@@ -317,3 +317,64 @@ export function mountInviteUnavailable(target, expired = false) {
   link.href = '#/login';
   card.append(link);
 }
+
+export async function mountInvitation(target) {
+  const card = authPage(target, 'Accept employee invitation', 'Verifying your secure Bika invitation.');
+  const params = new URLSearchParams(window.location.search);
+  const tokenHash = params.get('token_hash');
+  if (!tokenHash || params.get('type') !== 'invite') {
+    showMessage(card, 'This invitation link is invalid or expired.', true);
+    links(card, [['Request a new invitation', 'expired-invite']]);
+    return;
+  }
+  try {
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'invite' });
+    if (error) throw error;
+    navigate('create-password');
+  } catch {
+    navigate('expired-invite');
+  }
+}
+
+export async function mountCreatePassword(target) {
+  const card = authPage(target, 'Create your password', 'Set a password to activate your organisation employee account.');
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    if (!data.session?.user) {
+      showMessage(card, 'Verify an invitation link before creating your password.', true);
+      links(card, [['Return to sign in', 'login']]);
+      return;
+    }
+  } catch (error) {
+    showMessage(card, messageForError(error), true);
+    return;
+  }
+
+  const form = document.createElement('form');
+  form.className = 'org-form';
+  form.append(formField('New password', 'password', 'password'));
+  const submit = node('button', 'Create password', 'org-button');
+  submit.type = 'submit';
+  form.append(submit);
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    submit.disabled = true;
+    try {
+      await updatePassword(String(new FormData(form).get('password')));
+      const { data, error } = await supabase.functions.invoke('orgs-invitation-accept', { body: {} });
+      if (error) {
+        throw new Error(`Could not accept the invitation: ${error.message}. If it expired, ask an administrator for a new invitation.`);
+      }
+      if (!data?.ok || !data.organization_id) {
+        throw new Error('Invitation could not be accepted. It may have expired; ask an administrator to resend it.');
+      }
+      navigate('dashboard');
+    } catch (error) {
+      showMessage(card, messageForError(error), true);
+    } finally {
+      submit.disabled = false;
+    }
+  });
+  card.append(form);
+}

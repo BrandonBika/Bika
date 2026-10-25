@@ -7,8 +7,10 @@ import {
   mountApplicationPending,
   mountForgotPassword,
   mountInviteUnavailable,
+  mountInvitation,
   mountLogin,
   mountRegistration,
+  mountCreatePassword,
   mountResetPassword,
   mountSessionExpired
 } from './pages/auth-pages.js';
@@ -104,6 +106,8 @@ function renderPublicPage(route) {
   else if (route === 'reset-password') mountResetPassword(root);
   else if (route === 'session-expired') mountSessionExpired(root);
   else if (route === 'expired-invite') mountInviteUnavailable(root, true);
+  else if (route === 'invitation') void mountInvitation(root);
+  else if (route === 'create-password') void mountCreatePassword(root);
   else mountInviteUnavailable(root);
 }
 
