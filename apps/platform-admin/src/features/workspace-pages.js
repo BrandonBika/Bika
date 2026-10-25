@@ -1,6 +1,5 @@
 import { supabase } from './supabase.client.js';
 import { updatePassword } from './auth/auth.client.js';
-import { mockData } from '../mock-data.js';
 import { toCsv } from '../../../../packages/security-web/src/csv-safe.js';
 import { withTimeout } from './with-timeout.js';
 import { getReportSheetData } from './reports.client.js';
@@ -19,11 +18,6 @@ const titles = {
   'system-settings': ['System settings', 'Configure platform defaults and security preferences.'],
   'platform-team': ['Platform team', 'Invite and manage platform staff access.']
 };
-
-const DEMO_PAGES = new Set([
-  'posts', 'surveys', 'export-data', 'pilot-mode', 'platform-activity',
-  'chat', 'manage-profiles', 'system-settings', 'platform-team'
-]);
 
 function el(tag, text, className) {
   const node = document.createElement(tag);
@@ -127,15 +121,11 @@ function modal(target, title, content, onClose) {
   return dialog;
 }
 
-function header(route, target, staff) {
+function header(route, target) {
   const [title, subtitle] = titles[route];
   const node = el('header', undefined, 'workspace-header');
   const text = el('div');
   text.append(el('h1', title), el('p', subtitle));
-  if (DEMO_PAGES.has(route)
-    && (route !== 'platform-activity' || staff?.role !== 'platform_admin')) {
-    text.append(el('span', 'Demo data', 'workspace-demo'));
-  }
   node.append(text);
   target.append(node);
 }
@@ -150,42 +140,6 @@ function downloadCsv(filename, headings, rows) {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function openForm(target, title, fields, onSubmit) {
-  const form = document.createElement('form');
-  form.className = 'workspace-form';
-  for (const field of fields) {
-    const label = el('label', field.label);
-    const input = field.options
-      ? document.createElement('select')
-      : (field.multiline ? document.createElement('textarea') : document.createElement('input'));
-    input.name = field.name;
-    input.required = Boolean(field.required);
-    if (field.options) {
-      for (const option of field.options) {
-        const opt = el('option', option);
-        opt.value = option;
-        input.append(opt);
-      }
-    }
-    label.append(input);
-    form.append(label);
-  }
-  form.append(button('Save', (event) => event.preventDefault(), 'primary'));
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    onSubmit(Object.fromEntries(new FormData(form).entries()));
-  });
-  const dialog = modal(target, title, form);
-  form.querySelector('button').addEventListener('click', (event) => {
-    event.preventDefault();
-    if (!form.reportValidity()) return;
-    form.requestSubmit();
-    dialog.close();
-    dialog.remove();
-  });
-  return form;
 }
 
 async function loadApprovals(target) {
@@ -261,101 +215,17 @@ function renderApprovals(target, initial) {
 }
 
 function renderPosts(target) {
-  let lifecycle = 'Published';
-  let composeType = 'Alert';
-  const data = mockData.posts;
-  const content = el('div');
-  const render = () => {
-    content.replaceChildren(tabs(['Published', 'Draft', 'Scheduled', 'Archived'], lifecycle, (value) => {
-      lifecycle = value;
-      render();
-    }));
-    const rows = data.filter((post) => post.status === lifecycle);
-    if (!rows.length) {
-      content.append(emptyState('No posts', `There are no ${lifecycle.toLowerCase()} posts.`));
-    } else {
-      content.append(table(['Author organisation', 'Time', 'Type', 'Post', 'Views / votes', 'Status'],
-        rows.map((post) => [post.author, post.time, statusPill(post.type), post.body, post.metric, post.status])));
-    }
-  };
-  target.append(button('Create post', () => {
-    const form = document.createElement('form');
-    form.className = 'workspace-form';
-    let composeTabs;
-    composeTabs = tabs(['Alert', 'News', 'Poll'], composeType, (value) => {
-      composeType = value;
-      for (const tab of composeTabs.querySelectorAll('[role="tab"]')) {
-        const selected = tab.textContent === value;
-        tab.classList.toggle('selected', selected);
-        tab.setAttribute('aria-selected', String(selected));
-      }
-    });
-    form.append(composeTabs);
-    const label = el('label', 'Post body');
-    const textarea = document.createElement('textarea');
-    textarea.required = true;
-    label.append(textarea);
-    form.append(label);
-    modal(target, 'Create post', form);
-    const submit = button('Save draft', () => {
-      if (!textarea.value.trim()) return;
-      data.unshift({ id: crypto.randomUUID(), author: 'Demo organisation', time: 'Just now', type: composeType, body: textarea.value.trim(), metric: '0 views', status: 'Draft' });
-      render();
-      toast(target, 'Draft saved locally.');
-      form.closest('dialog')?.close();
-    }, 'primary');
-    form.append(submit);
-  }, 'primary'));
-  target.append(card('', content));
-  render();
+  target.append(emptyState(
+    'Posts not available yet',
+    'There is no real posts data source configured. Post creation is unavailable.'
+  ));
 }
 
 function renderSurveys(target) {
-  const content = el('div');
-  let selected = mockData.surveys[0];
-  let detailTab = 'Responses';
-  const render = () => {
-    content.replaceChildren();
-    const rows = mockData.surveys.map((survey) => {
-      const actions = el('div', undefined, 'workspace-actions');
-      actions.append(button('View', () => { selected = survey; render(); }));
-      if (survey.status === 'Active') actions.append(button('Close', () => { survey.status = 'Closed'; render(); }));
-      if (survey.status !== 'Archived') actions.append(button('Archive', () => { survey.status = 'Archived'; render(); }));
-      return [survey.title, survey.questions, statusPill(survey.status), survey.responses, survey.created, actions];
-    });
-    content.append(table(['Title', 'Questions', 'Status', 'Responses', 'Created', 'Actions'], rows));
-    content.append(el('p', 'Editing unavailable once responses exist.', 'workspace-note'));
-    if (!selected) return;
-    content.append(tabs(['Responses', 'Analytics'], detailTab, (value) => { detailTab = value; render(); }));
-    if (detailTab === 'Responses') content.append(emptyState('Survey responses', `${selected.responses} responses recorded.`));
-    else content.append(card('Response totals by question', barChart(selected.results)));
-  };
-  target.append(button('Create survey', () => openForm(target, 'Create survey', [
-    { name: 'title', label: 'Survey title', required: true },
-    { name: 'question', label: 'First question', required: true }
-  ], ({ title }) => {
-    mockData.surveys.unshift({ id: crypto.randomUUID(), title, questions: 1, status: 'Draft', responses: 0, created: new Date().toISOString().slice(0, 10), results: [0] });
-    selected = mockData.surveys[0];
-    render();
-    toast(target, 'Survey saved locally.');
-  }), 'primary'));
-  target.append(card('', content));
-  render();
-}
-
-function barChart(values) {
-  const chart = el('div', undefined, 'workspace-bars');
-  values.forEach((value, index) => {
-    const row = el('div', undefined, 'workspace-bar-row');
-    row.append(el('span', `Question ${index + 1}`));
-    const track = el('div', undefined, 'workspace-bar-track');
-    const bar = el('div', undefined, 'workspace-bar');
-    bar.style.width = `${Math.min(100, Number(value) || 0)}%`;
-    track.append(bar);
-    row.append(track, el('strong', value));
-    chart.append(row);
-  });
-  return chart;
+  target.append(emptyState(
+    'Surveys not available yet',
+    'There is no real surveys or polls data source configured. Survey creation is unavailable.'
+  ));
 }
 
 async function renderAnalytics(target) {
@@ -450,9 +320,7 @@ function printReports(reports) {
 function renderExports(target) {
   const cards = [
     ['Map view', ['GeoJSON', 'CSV']],
-    ['Report sheet', ['CSV', 'PDF']],
-    ['Surveys', ['CSV']],
-    ['Polls', ['CSV']]
+    ['Report sheet', ['CSV', 'PDF']]
   ];
   for (const [name, formats] of cards) {
     const actions = el('div', undefined, 'workspace-actions');
@@ -471,13 +339,6 @@ function renderExports(target) {
                 downloadCsv(`${name.toLowerCase().replaceAll(' ', '-')}.csv`, columns,
                   reports.map((report) => columns.map((column) => report[column])));
               }
-            } else {
-              const rows = name === 'Surveys'
-                ? mockData.surveys.map((item) => [item.title, item.status, item.responses])
-                : mockData.posts.filter((item) => item.type === 'Poll')
-                  .map((item) => [item.author, item.body, item.metric]);
-              downloadCsv(`${name.toLowerCase()}.csv`, ['Title / author', 'Status / body', 'Responses / votes'], rows);
-              toast(target, `${name} demo data exported.`);
             }
           } catch (error) {
             toast(target, error.message || 'Export failed.', true);
@@ -487,6 +348,10 @@ function renderExports(target) {
     }
     target.append(card(name, actions));
   }
+  target.append(
+    card('Surveys', emptyState('Not available yet', 'There is no real surveys data source to export.')),
+    card('Polls', emptyState('Not available yet', 'There is no real polls data source to export.'))
+  );
 }
 
 function renderProfile(target, staff, onSignOut) {
@@ -522,52 +387,33 @@ function renderProfile(target, staff, onSignOut) {
 }
 
 function renderPilot(target) {
-  const switchLabel = el('label', 'Pilot mode enabled ');
-  const toggle = document.createElement('input');
-  toggle.type = 'checkbox';
-  toggle.checked = true;
-  switchLabel.append(toggle);
-  target.append(card('Pilot controls', switchLabel));
-  const actions = el('div', undefined, 'workspace-actions');
-  actions.append(
-    button('Create mock organisation', () => openForm(target, 'Create mock organisation', [
-      { name: 'name', label: 'Organisation name', required: true },
-      { name: 'branches', label: 'Branches', required: true }
-    ], ({ name, branches }) => {
-      mockData.pilotOrganisations.push({ name, branches: Number(branches), urgency: 'Medium', emailDelivery: false, status: 'Pilot' });
-      toast(target, 'Mock organisation created locally.');
-      target.querySelector('.workspace-table-wrap')?.replaceWith(renderPilotTable());
-    })),
-    button('Edit branches', () => modal(target, 'Edit branches', el('p', 'Branch edits are local demo state only.'))),
-    button('Promote to real org', () => modal(target, 'Promote to real org', el('p', 'Promotion is unavailable without a server workflow.')))
-  );
-  target.append(actions, renderPilotTable());
-}
-
-function renderPilotTable() {
-  return table(['Organisation', 'Branches', 'Default urgency', 'Email delivery', 'Status'],
-    mockData.pilotOrganisations.map((o) => [o.name, o.branches, o.urgency, o.emailDelivery ? 'On' : 'Off', statusPill(o.status)]));
+  target.append(emptyState(
+    'Pilot controls not available yet',
+    'No real pilot-mode settings or pilot organisation workflow is configured.'
+  ));
 }
 
 async function renderActivity(target, role) {
-  let activity;
-  if (role === 'platform_admin') {
-    const { data, error } = await withTimeout(
-      supabase.from('organization_status_audit')
-        .select('changed_at,actor_id,organization_id,old_status,new_status')
-        .order('changed_at', { ascending: false }),
-      'Platform audit log query'
-    );
-    if (error) throw error;
-    activity = (data || []).map((row) => ({
-      time: row.changed_at,
-      actor: row.actor_id,
-      action: `organization.${row.old_status}_to_${row.new_status}`,
-      target: row.organization_id
-    }));
-  } else {
-    activity = mockData.activity;
+  if (role !== 'platform_admin') {
+    target.append(emptyState(
+      'No access',
+      'The organisation status audit is restricted to Platform Admins by database policy.'
+    ));
+    return;
   }
+  const { data, error } = await withTimeout(
+    supabase.from('organization_status_audit')
+      .select('changed_at,actor_id,organization_id,old_status,new_status')
+      .order('changed_at', { ascending: false }),
+    'Platform audit log query'
+  );
+  if (error) throw error;
+  const activity = (data || []).map((row) => ({
+    time: row.changed_at,
+    actor: row.actor_id,
+    action: `organization.${row.old_status}_to_${row.new_status}`,
+    target: row.organization_id
+  }));
   const select = document.createElement('select');
   select.setAttribute('aria-label', 'Filter by action type');
   ['', ...new Set(activity.map((row) => row.action))].forEach((value) => {
@@ -588,58 +434,36 @@ async function renderActivity(target, role) {
 }
 
 function renderChat(target) {
-  target.append(emptyState('No conversations yet. Threads open when a resident messages an organisation about a report.', 'This inbox is read-only. Replies and deletion are not available.'));
+  target.append(emptyState(
+    'Chat not available yet',
+    'Resident conversations are not connected to the platform staff inbox.'
+  ));
 }
 
 function renderManageProfiles(target) {
-  target.append(button('Invite platform employee', () => openForm(target, 'Invite platform employee', [
-    { name: 'email', label: 'Email', required: true },
-    { name: 'role', label: 'Access level', options: ['Platform Employee', 'Support'] }
-  ], () => toast(target, 'Invitation flow is mocked; no invite was sent.'))));
-  target.append(table(['Name', 'Email', 'Role', 'Status', 'Actions'], mockData.staff.map((person) => [
-    person.name, person.email, person.role, statusPill(person.status),
-    button('Deactivate', () => toast(target, 'Staff changes are mocked; no account was changed.'))
-  ])));
+  target.append(emptyState(
+    'Not available yet',
+    'Platform staff member lookup, invitations, and deactivation are not configured.'
+  ));
 }
 
 function renderSettings(target) {
-  const form = document.createElement('form');
-  form.className = 'workspace-form';
-  for (const [name, value] of Object.entries({
-    'Platform name': mockData.settings.platformName,
-    'Support contact': mockData.settings.supportContact,
-    'Default categories': mockData.settings.categories,
-    'Session timeout (minutes)': mockData.settings.sessionTimeout
-  })) {
-    const label = el('label', name);
-    const input = document.createElement('input');
-    input.value = String(value);
-    label.append(input);
-    form.append(label);
-  }
-  const twoFactorLabel = el('label', 'Require 2FA ');
-  const twoFactor = document.createElement('input');
-  twoFactor.type = 'checkbox';
-  twoFactor.checked = mockData.settings.twoFactor;
-  twoFactorLabel.append(twoFactor);
-  form.append(twoFactorLabel, el('p', 'Settings shown here are demo values and are not saved.'));
-  target.append(card('Platform defaults', form), card('Audit log preview', table(['Time', 'Action'], mockData.activity.slice(0, 2).map((r) => [r.time, r.action]))));
+  target.append(emptyState(
+    'System settings not available yet',
+    'No real platform settings data source or save workflow is configured.'
+  ));
 }
 
 function renderTeam(target) {
-  target.append(button('Invite staff', () => openForm(target, 'Invite platform staff', [
-    { name: 'email', label: 'Email', required: true },
-    { name: 'level', label: 'Access level', options: ['Full Admin', 'Support'] }
-  ], () => toast(target, 'Invitation flow is mocked; no invite was sent.'))));
-  target.append(table(['Name', 'Email', 'Access level', 'Status', 'Actions'], mockData.staff.map((person) => [
-    person.name, person.email, person.role, statusPill(person.status),
-    button('Revoke access', () => toast(target, 'Access revocation is mocked; no account was changed.', true))
-  ])));
+  target.append(emptyState(
+    'Platform team not available yet',
+    'No real platform team listing, invitation, or access-revocation workflow is configured.'
+  ));
 }
 
 export async function mountWorkspacePage(route, target, { staff, onSignOut } = {}) {
   target.replaceChildren();
-  header(route, target, staff);
+  header(route, target);
   try {
     if (route === 'organisation-approvals') renderApprovals(target, await loadApprovals(target));
     else if (route === 'posts') renderPosts(target);
