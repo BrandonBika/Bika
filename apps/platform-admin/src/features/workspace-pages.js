@@ -146,8 +146,10 @@ function downloadCsv(filename, headings, rows) {
   const link = el('a');
   link.href = url;
   link.download = filename;
+  document.body.append(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function openForm(target, title, fields, onSubmit) {
@@ -279,7 +281,16 @@ function renderPosts(target) {
   target.append(button('Create post', () => {
     const form = document.createElement('form');
     form.className = 'workspace-form';
-    form.append(tabs(['Alert', 'News', 'Poll'], composeType, (value) => { composeType = value; }));
+    let composeTabs;
+    composeTabs = tabs(['Alert', 'News', 'Poll'], composeType, (value) => {
+      composeType = value;
+      for (const tab of composeTabs.querySelectorAll('[role="tab"]')) {
+        const selected = tab.textContent === value;
+        tab.classList.toggle('selected', selected);
+        tab.setAttribute('aria-selected', String(selected));
+      }
+    });
+    form.append(composeTabs);
     const label = el('label', 'Post body');
     const textarea = document.createElement('textarea');
     textarea.required = true;
@@ -400,14 +411,23 @@ function downloadGeoJson(filename, reports) {
   const link = el('a');
   link.href = url;
   link.download = filename;
+  document.body.append(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function printReports(reports) {
   const frame = document.createElement('iframe');
   frame.title = 'Printable report sheet';
-  frame.hidden = true;
+  Object.assign(frame.style, {
+    position: 'fixed',
+    width: '1px',
+    height: '1px',
+    opacity: '0',
+    border: '0',
+    pointerEvents: 'none'
+  });
   document.body.append(frame);
   const printWindow = frame.contentWindow;
   if (!printWindow) {
