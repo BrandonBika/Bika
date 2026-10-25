@@ -27,6 +27,10 @@ import {
   BEACON_MAX_REDUCED_ACCURACY_METERS,
   requestCurrentLocation
 } from '../../features/beacon/beacon-location.js';
+import {
+  getActiveSharesForMe,
+  subscribeToLiveShares
+} from '../../features/beacon/beacon-live-share.client.js';
 import { navigate } from '../../router.js';
 
 function activateOnKeyboard(element, action) {
@@ -85,6 +89,7 @@ export class PageBeaconChat extends BaseElement {
     if (this._unsubscribe) this._unsubscribe();
     if (this._unsubscribeCircle) this._unsubscribeCircle();
     if (this._unsubscribeChat) this._unsubscribeChat();
+    this.stopLiveShareViewer();
     window.removeEventListener('online', this._onOnline);
     super.disconnectedCallback();
   }
@@ -93,6 +98,7 @@ export class PageBeaconChat extends BaseElement {
     if (this._closing) return;
     this._closing = true;
     if (message) showToast(message, { type: 'info' });
+    this.stopLiveShareViewer();
     clearChildren(this);
     this._chatBody = null;
     this._textInput = null;
@@ -298,7 +304,67 @@ export class PageBeaconChat extends BaseElement {
       return;
     }
     this._opening = false;
-    if (this.isConnected) this.render();
+    if (this.isConnected) {
+      this.render();
+      this.startLiveShareViewer().catch(() => {
+        console.error('Could not load Beacon live location in chat.');
+      });
+    }
+  }
+
+  async startLiveShareViewer() {
+    if (this._liveShareSubscription || !this.isConnected) return;
+    this._liveShareWasActive = false;
+    this._liveShareEnded = false;
+    this._incomingLiveShare = null;
+    const update = (shares) => {
+      if (!this.isConnected) return;
+      const activeShare = shares.find((share) =>
+        share.sharerId === this._memberId
+        && share.recipientId !== this._memberId
+      );
+      if (activeShare) {
+        this._incomingLiveShare = activeShare;
+        this._liveShareWasActive = true;
+      } else if (this._liveShareWasActive) {
+        this._incomingLiveShare = null;
+        this._liveShareEnded = true;
+      }
+      this.renderMessages();
+    };
+    update(await getActiveSharesForMe());
+    if (!this.isConnected) return;
+    this._liveShareSubscription = subscribeToLiveShares(update, () => {
+      console.error('Could not refresh Beacon live location in chat.');
+    });
+    this._liveShareSubscription.ready.catch(() => {
+      console.error('Beacon live-share Realtime subscription failed in chat.');
+    });
+    this._liveShareAgeTimer = setInterval(() => this.updateLiveShareAge(), 1000);
+  }
+
+  stopLiveShareViewer() {
+    this._liveShareSubscription?.unsubscribe();
+    this._liveShareSubscription = null;
+    clearInterval(this._liveShareAgeTimer);
+    this._liveShareAgeTimer = null;
+    this._liveShareMap?.remove();
+    this._liveShareMap = null;
+  }
+
+  updateLiveShareAge() {
+    const age = this.querySelector('.bc-live-share-age');
+    const share = this._incomingLiveShare;
+    if (!age || !share?.lastAt) return;
+    const updatedAt = Date.parse(share.lastAt);
+    if (!Number.isFinite(updatedAt)) {
+      age.textContent = 'Last update unavailable';
+      return;
+    }
+    const updatedSeconds = Math.max(0, Math.floor((Date.now() - updatedAt) / 1000));
+    age.textContent = updatedSeconds >= 60
+      ? `Stale · last updated ${updatedSeconds}s ago`
+      : `Last updated ${updatedSeconds}s ago`;
   }
 
   async reloadConversation() {
@@ -456,10 +522,13 @@ export class PageBeaconChat extends BaseElement {
   renderMessages() {
     const body = this._chatBody;
     if (!body) return;
+    this._liveShareMap?.remove();
+    this._liveShareMap = null;
     clearChildren(body);
 
     const dayLabel = createElement('div', { cls: 'chat-daylabel', text: 'Today' });
     body.appendChild(dayLabel);
+    this.renderLiveShareCard(body);
     for (const msg of this._messages || getChatMessages(this._memberId)) {
       if (msg.sender === 'system') {
         const isAlert = msg.kind === 'off_path';
@@ -531,11 +600,73 @@ export class PageBeaconChat extends BaseElement {
         row.appendChild(wrap);
         body.appendChild(row);
       }
-    }
 
+    }
     setTimeout(() => {
       body.scrollTop = body.scrollHeight;
     }, 20);
+  }
+
+  renderLiveShareCard(body) {
+    if (this._liveShareEnded && !this._incomingLiveShare) {
+      body.appendChild(createElement('section', {
+        cls: ['bc-live-share-card', 'ended'],
+        attrs: { role: 'status' },
+        text: 'Sharing ended'
+      }));
+      return;
+    }
+    const share = this._incomingLiveShare;
+    if (!share) return;
+    const card = createElement('section', {
+      cls: 'bc-live-share-card',
+      attrs: { 'aria-label': `Live location shared by ${this._member.name}` }
+    });
+    card.append(
+      createElement('strong', { text: `Live location · ${this._member.name}` }),
+      createElement('span', {
+        cls: 'bc-live-share-age',
+        text: share.lastAt ? '' : 'Waiting for the first location update'
+      })
+    );
+    const lat = share.lastLat;
+    const lng = share.lastLng;
+    if (
+      Number.isFinite(lat) && lat >= -90 && lat <= 90
+      && Number.isFinite(lng) && lng >= -180 && lng <= 180
+    ) {
+      const mapElement = createElement('div', {
+        cls: 'bc-live-share-map',
+        attrs: { role: 'img', 'aria-label': `Live location map for ${this._member.name}` }
+      });
+      card.appendChild(mapElement);
+      if (Number.isFinite(share.lastAccuracyM) && share.lastAccuracyM >= 0) {
+        card.appendChild(createElement('span', {
+          cls: 'bc-live-share-accuracy',
+          text: `Accuracy ±${Math.round(share.lastAccuracyM)} m`
+        }));
+      }
+      body.appendChild(card);
+      this.mountLiveShareMap(mapElement, share, lat, lng);
+      this.updateLiveShareAge();
+      return;
+    }
+    body.appendChild(card);
+    this.updateLiveShareAge();
+  }
+
+  async mountLiveShareMap(container, share, lat, lng) {
+    try {
+      const { createBeaconDotIcon, createBeaconMap, L } = await import(
+        '../../features/beacon/leaflet-map.js'
+      );
+      if (!this.isConnected || !container.isConnected || this._incomingLiveShare !== share) return;
+      this._liveShareMap = createBeaconMap(container, { interactive: false, zoom: 15 });
+      this._liveShareMap.setView([lat, lng], 15);
+      L.marker([lat, lng], { icon: createBeaconDotIcon() }).addTo(this._liveShareMap);
+    } catch {
+      console.error('Could not render the Beacon live location map.');
+    }
   }
 }
 customElements.define('page-beacon-chat', PageBeaconChat);

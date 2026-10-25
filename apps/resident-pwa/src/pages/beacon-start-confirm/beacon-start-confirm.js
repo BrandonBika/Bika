@@ -13,6 +13,10 @@ import {
   getBeaconState,
   startActiveSession
 } from '../../features/beacon/beacon.client.js';
+import { listCircle } from '../../features/beacon/beacon-circle.client.js';
+import {
+  startLiveShare
+} from '../../features/beacon/beacon-live-share.client.js';
 import {
   BEACON_MAX_REDUCED_ACCURACY_METERS,
   getLocationErrorMessage,
@@ -30,7 +34,7 @@ import { navigate } from '../../router.js';
 export class PageBeaconStartConfirm extends BaseElement {
   init(params) {
     this._params = params || {};
-    this._mode = this._params.mode === 'live' ? 'live' : 'path';
+    this._mode = 'live';
     this._destination = this._params.destination || 'Musgrave Centre';
     this._distance = this._params.distance || '1.4 km';
     this._time = this._params.time || '18 min';
@@ -38,6 +42,16 @@ export class PageBeaconStartConfirm extends BaseElement {
   }
 
   connectedCallback() {
+    if (this._mode === 'live') {
+      this.connectLiveShare().catch(() => {
+        console.error('Could not load accepted Beacon contacts.');
+        showToast('Could not load your circle. Please try again.', { type: 'error' });
+        this._loadingCircle = false;
+        this._loadFailed = true;
+        if (this.isConnected) this.renderLiveShare();
+      });
+      return;
+    }
     clearChildren(this);
     this.classList.add('cn-beacon-confirm-page');
     this._isOnline = navigator.onLine;
@@ -64,6 +78,170 @@ export class PageBeaconStartConfirm extends BaseElement {
     this._startingSession = false;
 
     this.render();
+  }
+
+  async connectLiveShare() {
+    clearChildren(this);
+    this.classList.add('cn-beacon-confirm-page');
+    this._members = [];
+    this._selectedRecipientId = this._preselectedMember || null;
+    this._durationMinutes = 15;
+    this._loadingCircle = true;
+    this._loadFailed = false;
+    this._startingLiveShare = false;
+    this.renderLiveShare();
+    try {
+      this._members = await listCircle();
+      if (!this._members.some((member) => member.id === this._selectedRecipientId)) {
+        this._selectedRecipientId = null;
+      }
+      this._loadingCircle = false;
+      if (this.isConnected) this.renderLiveShare();
+    } catch (error) {
+      this._loadingCircle = false;
+      throw error;
+    }
+  }
+
+  renderLiveShare() {
+    clearChildren(this);
+    const header = createElement('div', { cls: 'cf-header' });
+    const backButton = createElement('button', {
+      cls: 'cf-back-btn',
+      attrs: { type: 'button', 'aria-label': 'Back to Beacon', id: 'cf-back-btn' }
+    });
+    backButton.appendChild(BeaconIcons.back(13));
+    backButton.onclick = () => navigate('beacon-home', { mode: 'choose' });
+    header.append(
+      backButton,
+      createElement('div')
+    );
+    header.lastChild.append(
+      createElement('div', { cls: 'cf-title', text: 'Start live sharing' }),
+      createElement('div', { cls: 'cf-sub', text: 'Share with one accepted circle contact' })
+    );
+    this.appendChild(header);
+
+    this.appendChild(createElement('div', {
+      cls: 'cf-section-label',
+      text: 'Share with'
+    }));
+    const memberList = createElement('div', {
+      cls: 'cf-member-list',
+      attrs: { role: 'radiogroup', 'aria-label': 'Choose one accepted contact' }
+    });
+    if (this._loadingCircle) {
+      memberList.appendChild(createElement('p', {
+        cls: 'cf-live-empty',
+        text: 'Loading your accepted circle…'
+      }));
+    } else if (this._loadFailed) {
+      memberList.appendChild(createElement('p', {
+        cls: 'cf-live-empty',
+        text: 'Your accepted circle could not be loaded.'
+      }));
+    } else if (this._members.length === 0) {
+      memberList.append(
+        createElement('p', {
+          cls: 'cf-live-empty',
+          text: 'Add someone to your circle to share your location.'
+        }),
+        createElement('button', {
+          cls: 'cf-location-retry',
+          attrs: { type: 'button' },
+          text: 'Add someone to your circle'
+        })
+      );
+      memberList.lastChild.onclick = () => navigate('beacon-add-to-circle');
+    }
+    for (const member of this._members) {
+      const selected = member.id === this._selectedRecipientId;
+      const row = createElement('button', {
+        cls: ['cf-member-row', selected ? 'selected' : ''],
+        attrs: {
+          type: 'button',
+          role: 'radio',
+          'aria-checked': selected ? 'true' : 'false'
+        }
+      });
+      const memberInfo = createElement('div', { cls: 'cf-member-info' });
+      memberInfo.append(
+        createElement('div', { cls: 'cf-member-name', text: member.name }),
+        createElement('div', { cls: 'cf-member-meta', text: 'Accepted connection' })
+      );
+      row.append(
+        createElement('div', { cls: 'cf-member-avatar', text: member.initial }),
+        memberInfo,
+        createElement('span', {
+          cls: ['cf-check-circle', selected ? 'on' : ''],
+          attrs: { 'aria-hidden': 'true' }
+        })
+      );
+      row.onclick = () => {
+        this._selectedRecipientId = member.id;
+        this.renderLiveShare();
+      };
+      memberList.appendChild(row);
+    }
+    this.appendChild(memberList);
+
+    this.appendChild(createElement('div', {
+      cls: 'cf-section-label',
+      text: 'Duration'
+    }));
+    const durationRow = createElement('div', { cls: 'cf-duration-row' });
+    for (const minutes of [15, 30, 60]) {
+      const button = createElement('button', {
+        cls: ['cf-chip', this._durationMinutes === minutes ? 'on' : ''],
+        attrs: {
+          type: 'button',
+          'aria-pressed': this._durationMinutes === minutes ? 'true' : 'false'
+        },
+        text: `${minutes} min`
+      });
+      button.onclick = () => {
+        this._durationMinutes = minutes;
+        this.renderLiveShare();
+      };
+      durationRow.appendChild(button);
+    }
+    this.appendChild(durationRow);
+
+    const recipient = this._members.find((member) => member.id === this._selectedRecipientId);
+    const until = new Date(Date.now() + this._durationMinutes * 60000)
+      .toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    this.appendChild(createElement('p', {
+      cls: 'cf-live-consent',
+      attrs: { id: 'cf-live-consent' },
+      text: recipient
+        ? `Shares your location with ${recipient.name} until ${until}. It only updates while Bika is open. You can stop any time. Removing or blocking ${recipient.name} stops it immediately.`
+        : 'Choose one accepted contact to review the sharing consent.'
+    }));
+
+    const startButton = createElement('button', {
+      cls: 'cf-start-btn',
+      attrs: { type: 'button', id: 'cf-start-sharing-btn' },
+      text: this._startingLiveShare ? 'Starting…' : 'Start sharing'
+    });
+    startButton.disabled = !recipient || this._loadingCircle || this._startingLiveShare
+      || globalThis.navigator?.onLine === false;
+    startButton.onclick = () => this.startServerLiveShare();
+    this.appendChild(startButton);
+  }
+
+  async startServerLiveShare() {
+    if (!this._selectedRecipientId || this._startingLiveShare) return;
+    this._startingLiveShare = true;
+    this.renderLiveShare();
+    try {
+      const shareId = await startLiveShare(this._selectedRecipientId, this._durationMinutes);
+      navigate('beacon-share-session', { shareId });
+    } catch (error) {
+      console.error('Could not start Beacon live sharing.');
+      showToast('Could not start sharing. Check your connection and try again.', { type: 'error' });
+      this._startingLiveShare = false;
+      if (this.isConnected) this.renderLiveShare();
+    }
   }
 
   disconnectedCallback() {

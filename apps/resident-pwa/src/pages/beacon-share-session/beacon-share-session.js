@@ -1,508 +1,223 @@
 /**
  * @file apps/resident-pwa/src/pages/beacon-share-session/beacon-share-session.js
- * Screen D: Live session & Screen D2: Off-path alert state.
- * Full-screen map, dotted route line, moving position marker, destination pin,
- * floating session card, stop sharing, off-path alert banner and update routing.
+ * Server-backed Beacon live-share controls for the sharer.
  */
 
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
-import { BeaconIcons } from '../../features/beacon/beacon-icons.js';
+import { getCurrentUser } from '@civicneuro/supabase-client';
+import { listCircle } from '../../features/beacon/beacon-circle.client.js';
 import {
-  BEACON_MAX_REDUCED_ACCURACY_METERS,
-  BEACON_PRECISE_ACCURACY_METERS,
-  getBeaconAccuracyTier,
-  getCurrentLocation,
-  getLocationErrorMessage,
-  isWithinBeaconArrivalZone,
-  requestCurrentLocation,
-  subscribeCurrentLocation,
-  watchCurrentLocation
-} from '../../features/beacon/beacon-location.js';
-import {
-  getActiveSession,
-  stopActiveSession,
-  setSessionOffPath,
-  subscribeBeacon,
-  getBeaconState
-} from '../../features/beacon/beacon.client.js';
-import {
-  createBeaconDivIcon,
-  createBeaconDotIcon,
-  createBeaconMap,
-  mockPathToLatLngs,
-  rebasePathToLocation,
-  L
-} from '../../features/beacon/leaflet-map.js';
-import {
-  getOffPathMonitor,
-  resetOffPathMonitor
-} from '../../features/beacon/off-path-monitor.js';
+  getActiveSharesForMe,
+  stopLiveShare,
+  subscribeToLiveShares,
+  watchLiveShareLocation
+} from '../../features/beacon/beacon-live-share.client.js';
 import { navigate } from '../../router.js';
 
-const LOCATION_STALE_AFTER_MS = 30000;
-
 export class PageBeaconShareSession extends BaseElement {
-  async connectedCallback() {
-    clearChildren(this);
-    this.classList.add('cn-beacon-session-page');
+  init(params) {
+    this._params = params || {};
+  }
 
-    const session = getActiveSession();
-    if (!session) {
-      showToast('Start a Beacon session before opening live sharing.', { type: 'info' });
+  connectedCallback() {
+    clearChildren(this);
+    this.classList.add('cn-beacon-session-page', 'bc-live-share-page');
+    this.appendChild(createElement('p', {
+      cls: 'bc-live-share-loading',
+      text: 'Opening live sharing…'
+    }));
+    if (!this._params?.shareId) {
       navigate('beacon-home');
       return;
     }
+    this.connectServerLiveShare().catch(() => {
+      console.error('Could not open Beacon live sharing.');
+      showToast('This sharing session is no longer available.', { type: 'info' });
+      navigate('beacon-home');
+    });
+  }
 
-    this._offPathMonitor = getOffPathMonitor(session, {
-      initiallyOffPath: Boolean(session.isOffPath)
-    });
-    this._monitoredPathCoordinates = session.pathCoordinates;
-    this._stepIndex = 0;
-    this._latestLocation = getCurrentLocation();
-    this._locationWatchError = null;
-    this._unsubscribeLocation = subscribeCurrentLocation((location) => {
-      this._latestLocation = location;
-      const activeSession = getActiveSession();
-      if (
-        activeSession?.reducedAccuracy
-        && location
-        && location.accuracy < BEACON_PRECISE_ACCURACY_METERS
-        && Date.now() - location.timestamp <= LOCATION_STALE_AFTER_MS
-      ) {
-        activeSession.reducedAccuracy = false;
-      }
-      this._locationWatchError = null;
-      this._locationErrorShown = false;
-      if (this._routeNeedsLocationAnchor()) {
-        this.render();
-        return;
-      }
-      this.updateAccuracyStatus();
-      this.updateMarkerPosition();
-      this.updateOffPathState({ fromLocationUpdate: true });
-    });
+  async connectServerLiveShare() {
+    this._shareId = this._params.shareId;
+    const shares = await getActiveSharesForMe();
+    this._liveShare = shares.find((share) =>
+      share.id === this._shareId && share.sharerId === getCurrentUser()?.id
+    );
+    if (!this._liveShare) {
+      navigate('beacon-home');
+      return;
+    }
+    if (!this.isConnected) {
+      await stopLiveShare(this._shareId);
+      return;
+    }
+
     try {
-      this._stopWatchingLocation = watchCurrentLocation((error) => this.reportLocationError(error));
-    } catch (error) {
-      this.reportLocationError(error);
+      const members = await listCircle();
+      this._recipientName = members.find((member) =>
+        member.id === this._liveShare.recipientId
+      )?.name || 'your circle contact';
+    } catch {
+      console.error('Could not load the Beacon recipient name.');
+      this._recipientName = 'your circle contact';
+    }
+    if (!this.isConnected) {
+      await stopLiveShare(this._shareId);
+      return;
     }
 
-    this._unsubscribe = subscribeBeacon(() => {
+    this.renderServerLiveShare();
+    try {
+      this.startLocationWatch();
+    } catch {
+      console.error('Could not start Beacon location updates.');
+      showToast('Could not access your location. Sharing has stopped.', { type: 'error' });
+      await stopLiveShare(this._shareId);
+      navigate('beacon-home');
+      return;
+    }
+    this._liveShareSubscription = subscribeToLiveShares((updatedShares) => {
       if (!this.isConnected) return;
-      if (!getActiveSession()) {
-        if (!this._ending) {
-          showToast('Beacon prototype session ended', { type: 'info' });
-        }
-        navigate('beacon-home');
+      const activeShare = updatedShares.find((share) =>
+        share.id === this._shareId && share.sharerId === getCurrentUser()?.id
+      );
+      if (!activeShare) {
+        this._liveShare = null;
+        this.renderServerShareEnded();
         return;
       }
-      this.render();
+      this._liveShare = activeShare;
+      this.renderServerLiveShare();
+    }, () => {
+      console.error('Could not refresh Beacon live sharing.');
     });
-
-    this.render();
-    this._locationStatusTimer = setInterval(() => {
-      this.updateAccuracyStatus();
-      this.updateOffPathState();
-    }, 5000);
-    if (this._latestLocation) {
-      this.updateMarkerPosition();
-      this.updateOffPathState({ fromLocationUpdate: true });
-    } else {
-      requestCurrentLocation().catch((error) => this.reportLocationError(error));
-    }
+    this._liveShareSubscription.ready.catch(() => {
+      console.error('Beacon live-share Realtime subscription failed.');
+    });
+    this._liveShareTimer = setInterval(() => this.updateLiveShareCountdown(), 1000);
   }
 
-  reportLocationError(error) {
-    if (!this.isConnected || this._locationErrorShown) return;
-    this._locationWatchError = error;
-    this._locationErrorShown = true;
-    this.updateAccuracyStatus();
-    showToast(getLocationErrorMessage(error), { type: 'error' });
-  }
-
-  _routeNeedsLocationAnchor() {
-    const session = getActiveSession();
-    const firstPoint = session?.pathCoordinates?.[0];
-    return session?.mode === 'path'
-      && this._latestLocation
-      && !this._resolvedRouteCoordinates
-      && firstPoint
-      && !Array.isArray(firstPoint)
-      && !Number.isFinite(firstPoint.lat);
+  startLocationWatch() {
+    this._stopWatchingLiveShare = watchLiveShareLocation(this._liveShare, () => {
+      console.error('Beacon live location updates stopped.');
+      if (!this.isConnected) return;
+      showToast('Live location updates stopped. You can try sharing again.', { type: 'error' });
+      this.renderServerShareEnded();
+    });
   }
 
   disconnectedCallback() {
-    if (this._unsubscribe) this._unsubscribe();
-    if (this._unsubscribeLocation) this._unsubscribeLocation();
-    if (this._stopWatchingLocation) this._stopWatchingLocation();
-    clearInterval(this._locationStatusTimer);
-    this._offPathMonitor?.resetEvidence();
-    this._map?.remove();
-    this._map = null;
+    this._liveShareSubscription?.unsubscribe();
+    clearInterval(this._liveShareTimer);
+    clearTimeout(this._endNavigationTimer);
+    if (this._stopWatchingLiveShare) this._stopWatchingLiveShare();
     super.disconnectedCallback();
   }
 
-  updateMarkerPosition() {
-    const session = getActiveSession();
-    if (!this._positionMarker || !session) return;
-    const location = this._latestLocation || getCurrentLocation();
-    if (location) {
-      const latLng = [location.lat, location.lng];
-      this._positionMarker.setLatLng(latLng);
-      this._accuracyCircle?.setLatLng(latLng);
-      this._accuracyCircle?.setRadius(location.accuracy);
-      this._positionMarker.setIcon(createBeaconDotIcon(session.isOffPath));
-      if (session.isOffPath) {
-        this._positionMarker.unbindTooltip();
-        this._positionMarker.bindTooltip(`Off path · ${session.offPathDistance || '140 m'}`, {
-          permanent: true,
-          direction: 'top',
-          offset: [0, -8],
-          className: 'beacon-offpath-tooltip'
-        });
-      } else {
-        this._positionMarker.unbindTooltip();
-      }
-      return;
-    }
-
-    if (session.isOffPath) {
-      this._positionMarker.setIcon(createBeaconDotIcon(true));
-      this._positionMarker.unbindTooltip();
-      this._positionMarker.bindTooltip(`Off path · ${session.offPathDistance || '140 m'}`, {
-        permanent: true,
-        direction: 'top',
-        offset: [0, -8],
-        className: 'beacon-offpath-tooltip'
-      });
-    }
-  }
-
-  updateAccuracyStatus() {
-    const status = this.querySelector('#bc-location-accuracy-status');
-    const location = this._latestLocation;
-    const session = getActiveSession();
-    if (!status) return;
-    if (
-      session?.reducedAccuracy
-      && location
-      && location.accuracy < BEACON_PRECISE_ACCURACY_METERS
-      && Date.now() - location.timestamp <= LOCATION_STALE_AFTER_MS
-    ) {
-      session.reducedAccuracy = false;
-    }
-    if (
-      session?.reducedAccuracy
-      && (!location || location.accuracy >= BEACON_PRECISE_ACCURACY_METERS)
-    ) {
-      const accuracyMeters = location?.accuracy ?? session.initialAccuracyMeters;
-      const accuracy = Number.isFinite(accuracyMeters)
-        ? ` (±${Math.round(accuracyMeters)} m)`
-        : '';
-      const updateError = this._locationWatchError
-        ? ` Location updates unavailable: ${getLocationErrorMessage(this._locationWatchError)}`
-        : '';
-      status.textContent = `Reduced accuracy${accuracy}. Off-path alerts and automatic arrival detection may be unreliable or paused until a fresh fix under ${BEACON_PRECISE_ACCURACY_METERS} m.${updateError}`;
-      status.hidden = false;
-      return;
-    }
-    if (this._locationWatchError) {
-      status.textContent = `Location updates unavailable. Off-path alerts are paused. ${getLocationErrorMessage(this._locationWatchError)}`;
-      status.hidden = false;
-      return;
-    }
-    if (!location) {
-      status.textContent = 'Waiting for a location fix. Your live position and off-path alerts are not current.';
-      status.hidden = false;
-      return;
-    }
-    const ageMs = Date.now() - location.timestamp;
-    if (ageMs > LOCATION_STALE_AFTER_MS) {
-      const ageMinutes = Math.max(1, Math.round(ageMs / 60000));
-      status.textContent = `Last location update was ${ageMinutes} min ago. Off-path alerts are paused until location updates resume.`;
-      status.hidden = false;
-    } else if (getBeaconAccuracyTier(location.accuracy) !== 'precise') {
-      status.textContent = getBeaconAccuracyTier(location.accuracy) === 'reduced'
-        ? `Reduced accuracy (about ${Math.round(location.accuracy)} m). Off-path alerts and automatic arrival detection are paused until a fix under ${BEACON_PRECISE_ACCURACY_METERS} m is available.`
-        : `Location accuracy is over ${BEACON_MAX_REDUCED_ACCURACY_METERS} m (about ${Math.round(location.accuracy)} m). Safety alerts and automatic arrival detection are paused.`;
-      status.hidden = false;
-    } else {
-      status.hidden = true;
-      status.textContent = '';
-    }
-  }
-
-  updateOffPathState({ fromLocationUpdate = false } = {}) {
-    const session = getActiveSession();
-    const location = this._latestLocation;
-    if (!session) return;
-    if (session?.pathCoordinates !== this._monitoredPathCoordinates) {
-      this._offPathMonitor = resetOffPathMonitor(session);
-      this._monitoredPathCoordinates = session?.pathCoordinates;
-    }
-    if (session?.offPathAlert !== true) {
-      this._offPathMonitor.resetEvidence();
-      if (session?.isOffPath) setSessionOffPath(false);
-      return;
-    }
-    if (!this._map || !this._routeLatLngs || !location || session?.mode !== 'path') {
-      this._offPathMonitor.resetEvidence();
-      return;
-    }
-    if (
-      location.accuracy >= BEACON_PRECISE_ACCURACY_METERS
-      || Date.now() - location.timestamp > LOCATION_STALE_AFTER_MS
-    ) {
-      this._offPathMonitor.observe({
-        distanceMeters: Number.NaN,
-        accuracyMeters: location.accuracy
-      });
-      return;
-    }
-    if (!fromLocationUpdate) return;
-    if (session.mode === 'path' && session.duration === 'Until I arrive') {
-      const finalPoint = session.pathCoordinates?.[session.pathCoordinates.length - 1];
-      const destination = Array.isArray(finalPoint)
-        ? { lat: finalPoint[0], lng: finalPoint[1] }
-        : finalPoint && Number.isFinite(finalPoint.lat) && Number.isFinite(finalPoint.lng)
-          ? { lat: finalPoint.lat, lng: finalPoint.lng }
-          : null;
-      if (isWithinBeaconArrivalZone(location, destination)) {
-        this._ending = true;
-        stopActiveSession('arrived');
-        showToast(`You have arrived at ${session.destination}.`, { type: 'success' });
-        return;
-      }
-    }
-
-    const position = this._map.latLngToLayerPoint([location.lat, location.lng]);
-    let nearestDistance = Infinity;
-    for (let index = 1; index < this._routeLatLngs.length; index++) {
-      const start = this._map.latLngToLayerPoint(this._routeLatLngs[index - 1]);
-      const end = this._map.latLngToLayerPoint(this._routeLatLngs[index]);
-      const nearestPoint = L.LineUtil.closestPointOnSegment(position, start, end);
-      const nearestLatLng = this._map.layerPointToLatLng(nearestPoint);
-      nearestDistance = Math.min(
-        nearestDistance,
-        L.latLng([location.lat, location.lng]).distanceTo(nearestLatLng)
-      );
-    }
-
-    const isOffPath = this._offPathMonitor.observe({
-      distanceMeters: nearestDistance,
-      accuracyMeters: location.accuracy,
-      now: location.timestamp
-    });
-    if (session.isOffPath !== isOffPath) {
-      setSessionOffPath(isOffPath, isOffPath ? nearestDistance : undefined);
-    }
-  }
-
-  render() {
-    this._map?.remove();
-    this._map = null;
+  renderServerLiveShare() {
     clearChildren(this);
-    const session = getActiveSession();
-    if (!session) {
-      navigate('beacon-home');
-      return;
-    }
-    const state = getBeaconState();
-
-    // 1. Full bleed map container
-    const mapWrap = createElement('div', { cls: 'bc-map-wrap' });
-    const map = createElement('div', {
-      cls: 'bc-map',
-      attrs: { 'aria-label': 'OpenStreetMap live route map' }
-    });
-    mapWrap.appendChild(map);
-    this.appendChild(mapWrap);
-    this._map = createBeaconMap(map, { zoom: 15 });
-
-    if (this._resolvedRouteSource !== session.pathCoordinates) {
-      this._resolvedRouteCoordinates = null;
-      this._resolvedRouteSource = session.pathCoordinates;
-    }
-    const pathCoordinates = this._resolvedRouteCoordinates
-      || (session.pathCoordinates?.length > 1
-        ? session.pathCoordinates
-      : [
-          { x: 60, y: 430 },
-          { x: 80, y: 360 },
-          { x: 130, y: 340 },
-          { x: 140, y: 280 },
-          { x: 90, y: 200 },
-          { x: 150, y: 160 },
-          { x: 230, y: 120 },
-          { x: 225, y: 70 }
-        ]);
-    const legacyPath = !Array.isArray(pathCoordinates[0])
-      && !Number.isFinite(pathCoordinates[0]?.lat);
-    if (legacyPath && this._latestLocation && !this._resolvedRouteCoordinates) {
-      this._resolvedRouteCoordinates = rebasePathToLocation(pathCoordinates, this._latestLocation);
-    }
-    this._routeLatLngs = this._resolvedRouteCoordinates || mockPathToLatLngs(pathCoordinates);
-
-    if (session.mode === 'path') {
-      L.polyline(this._routeLatLngs, {
-        color: '#1C8C99',
-        opacity: 0.16,
-        weight: 34,
-        lineCap: 'round',
-        lineJoin: 'round'
-      }).addTo(this._map);
-      L.polyline(this._routeLatLngs, {
-        color: '#1C8C99',
-        weight: 3,
-        dashArray: '2 9',
-        lineCap: 'round',
-        lineJoin: 'round'
-      }).addTo(this._map);
-      L.marker(this._routeLatLngs[0], {
-        icon: createBeaconDivIcon('Y', 'self'),
-        title: 'Your starting location'
-      }).addTo(this._map);
-      L.marker(this._routeLatLngs[this._routeLatLngs.length - 1], {
-        icon: createBeaconDivIcon('D', 'destination'),
-        title: session.destination || 'Destination'
-      }).addTo(this._map);
-      this._map.fitBounds(this._routeLatLngs, { padding: [36, 36], maxZoom: 15 });
-    } else if (this._latestLocation) {
-      this._map.setView([this._latestLocation.lat, this._latestLocation.lng], 15);
-    }
-
-    this._positionMarker = null;
-    this._accuracyCircle = null;
-    if (this._latestLocation) {
-      this._accuracyCircle = L.circle(
-        [this._latestLocation.lat, this._latestLocation.lng],
-        {
-          radius: this._latestLocation.accuracy,
-          color: '#1C8C99',
-          weight: 1,
-          opacity: 0.65,
-          fillColor: '#1C8C99',
-          fillOpacity: 0.12,
-          interactive: false
-        }
-      ).addTo(this._map);
-      this._positionMarker = L.marker(
-        [this._latestLocation.lat, this._latestLocation.lng],
-        {
-          icon: createBeaconDotIcon(),
-          title: 'Your current location',
-          keyboard: true
-        }
-      ).addTo(this._map);
-    }
-    this._map.invalidateSize();
-
-    // 5. Floating Session Card
     const card = createElement('section', {
       cls: 'bc-session-card',
-      attrs: { 'aria-label': 'Beacon prototype session', id: 'bc-session-card' }
+      attrs: { 'aria-labelledby': 'bc-live-share-title' }
     });
-    const prototypeNotice = createElement('div', {
-      cls: 'bc-prototype-notice',
-      attrs: { role: 'status' },
-      text: 'Prototype — location and alerts stay on this device and are not sent to others.'
-    });
-    card.appendChild(prototypeNotice);
-
-    const row = createElement('div', { cls: 'bcs-row' });
-    const avatars = createElement('div', { cls: 'bcs-avatars' });
-
-    // Show initials of members sharing with
-    const sharingMembers = (session.memberIds || [])
-      .map((id) => state.members.find((m) => m.id === id))
-      .filter(Boolean);
-
-    const memberNames = sharingMembers.map((m) => m.name.split(' ')[0]).join(', ');
-
-    for (const m of sharingMembers) {
-      const av = createElement('div', { cls: 'bc-avatar', text: m.initial });
-      avatars.appendChild(av);
-    }
-
-    const textCol = createElement('div', { attrs: { style: 'flex: 1;' } });
-    const title = createElement('div', {
-      cls: 'bcs-title',
-      text: sharingMembers.length
-        ? `Prototype preview for ${memberNames}`
-        : 'Prototype preview for selected circle members'
-    });
-    const sub = createElement('div', {
-      cls: 'bcs-sub',
-      text: session.mode === 'path'
-        ? `Local route preview to ${session.destination} · ETA ${session.eta}`
-        : 'Live location prototype · this device only'
-    });
-    textCol.append(title, sub);
-    row.append(avatars, textCol);
-    card.appendChild(row);
-    const accuracyStatus = createElement('div', {
-      cls: 'bc-location-accuracy-status',
-      attrs: { id: 'bc-location-accuracy-status', role: 'status', 'aria-live': 'polite' }
-    });
-    accuracyStatus.hidden = true;
-    card.appendChild(accuracyStatus);
-
-    // Screen D2: Off-Path Alert Banner & Action Buttons
-    if (session.isOffPath) {
-      const banner = createElement('div', { cls: 'offpath-banner', attrs: { role: 'alert' } });
-      banner.appendChild(BeaconIcons.warning(14, 'var(--amber, #BA7517)'));
-
-      const bannerText = createElement('div', { cls: 'offpath-banner-text' });
-      const bold = createElement('b', { text: 'You are off your path. ' });
-      const rest = document.createTextNode('Prototype only: no one was notified.');
-      bannerText.append(bold, rest);
-      banner.appendChild(bannerText);
-      card.appendChild(banner);
-
-      const btnRow = createElement('div', { cls: 'offpath-btn-row' });
-      const updateBtn = createElement('button', {
-        cls: 'offpath-update-btn',
-        attrs: { type: 'button', id: 'bc-update-path-btn' },
-        text: 'Update path'
-      });
-      updateBtn.onclick = () => {
-        navigate('beacon-draw-path', { edit: 'true' });
-      };
-
-      const okBtn = createElement('button', {
-        cls: 'offpath-ok-btn',
-        attrs: { type: 'button', id: 'bc-offpath-ok-btn' },
-        text: 'I am fine'
-      });
-      okBtn.onclick = () => {
-        this._offPathMonitor.dismiss();
-        setSessionOffPath(false);
-        showToast('Prototype preview continues on this device.', { type: 'info' });
-      };
-
-      btnRow.append(updateBtn, okBtn);
-      card.appendChild(btnRow);
-    }
-
-    // Stop sharing button
-    const stopBtn = createElement('button', {
+    card.append(
+      createElement('div', {
+        cls: 'bcs-title',
+        attrs: { id: 'bc-live-share-title' },
+        text: `Sharing with ${this._recipientName}`
+      }),
+      createElement('p', {
+        cls: 'bcs-sub',
+        attrs: { id: 'bc-live-share-countdown' }
+      }),
+      createElement('p', {
+        cls: 'bcs-sub',
+        attrs: { id: 'bc-live-share-last-update' }
+      }),
+      createElement('p', {
+        cls: 'bc-live-share-honest-copy',
+        text: 'Your location updates only while Bika is open. No location history is shown.'
+      })
+    );
+    const stopButton = createElement('button', {
       cls: 'bcs-stop',
-      attrs: { type: 'button', id: 'bc-stop-sharing-btn' },
-      text: 'Stop prototype'
+      attrs: { type: 'button', id: 'bc-stop-live-share' },
+      text: this._stoppingLiveShare ? 'Stopping…' : 'Stop sharing'
     });
-    stopBtn.onclick = async () => {
-      this._ending = true;
-      await stopActiveSession();
-      showToast('Beacon prototype session stopped', { type: 'info' });
-      navigate('beacon-home');
-    };
-    card.appendChild(stopBtn);
+    stopButton.disabled = Boolean(this._stoppingLiveShare);
+    stopButton.onclick = () => this.stopServerLiveShare();
+    card.appendChild(stopButton);
     this.appendChild(card);
+    this.updateLiveShareCountdown();
+  }
 
-    this.updateMarkerPosition();
-    this.updateAccuracyStatus();
-    this.updateOffPathState();
+  updateLiveShareCountdown() {
+    const share = this._liveShare;
+    if (!share || !this.isConnected) return;
+    const remainingSeconds = Math.max(
+      0,
+      Math.ceil((Date.parse(share.expiresAt) - Date.now()) / 1000)
+    );
+    const minutes = Math.floor(remainingSeconds / 60);
+    const seconds = remainingSeconds % 60;
+    const countdown = this.querySelector('#bc-live-share-countdown');
+    if (countdown) {
+      countdown.textContent = remainingSeconds > 0
+        ? `Ends in ${minutes}:${String(seconds).padStart(2, '0')}`
+        : 'Sharing has expired';
+    }
+    const lastUpdate = this.querySelector('#bc-live-share-last-update');
+    if (lastUpdate) {
+      lastUpdate.textContent = share.lastAt
+        ? `Last update ${new Date(share.lastAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+        : 'Waiting for the first location update';
+    }
+    if (remainingSeconds === 0) {
+      clearInterval(this._liveShareTimer);
+      this._liveShareTimer = null;
+      this._stopWatchingLiveShare?.();
+      this._stopWatchingLiveShare = null;
+      this.renderServerShareEnded();
+    }
+  }
+
+  renderServerShareEnded() {
+    this._stopWatchingLiveShare?.();
+    this._stopWatchingLiveShare = null;
+    clearInterval(this._liveShareTimer);
+    clearChildren(this);
+    this.appendChild(createElement('section', {
+      cls: ['bc-session-card', 'bc-live-share-ended'],
+      attrs: { role: 'status' },
+      text: 'Sharing ended'
+    }));
+    this._endNavigationTimer = setTimeout(() => {
+      if (this.isConnected) navigate('beacon-home');
+    }, 1500);
+  }
+
+  async stopServerLiveShare() {
+    if (this._stoppingLiveShare) return;
+    this._stoppingLiveShare = true;
+    this.renderServerLiveShare();
+    try {
+      await stopLiveShare(this._shareId);
+      this._liveShare = null;
+      this._stopWatchingLiveShare = null;
+      showToast('Live location sharing stopped.', { type: 'success' });
+      navigate('beacon-home');
+    } catch {
+      this._stoppingLiveShare = false;
+      showToast('Could not stop sharing. Please try again.', { type: 'error' });
+      try {
+        this.startLocationWatch();
+      } catch {
+        console.error('Could not resume Beacon location updates after stop failed.');
+      }
+      if (this.isConnected) this.renderServerLiveShare();
+    }
   }
 }
+
 customElements.define('page-beacon-share-session', PageBeaconShareSession);

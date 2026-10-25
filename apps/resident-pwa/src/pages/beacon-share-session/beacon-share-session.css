@@ -182,6 +182,28 @@
   background: #FFF5F5;
 }
 
+.bc-live-share-page {
+  background: var(--paper, #F6F4EE);
+}
+
+.bc-live-share-honest-copy {
+  margin: 12px 0 2px;
+  color: var(--ink-soft, #3E4A44);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.bc-live-share-ended {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.bc-session-card .bcs-stop:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 /* Route Line and Dot */
 .beacon-offpath-tooltip {
   background: var(--amber-tint, #FAEEDA);

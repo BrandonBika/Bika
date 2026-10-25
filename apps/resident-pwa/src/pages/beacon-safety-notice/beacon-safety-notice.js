@@ -9,9 +9,7 @@ import { BeaconIcons } from '../../features/beacon/beacon-icons.js';
 import { config } from '../../config.js';
 import { navigate } from '../../router.js';
 
-const LIVE_LOCATION_ROUTES = new Set([
-  'beacon-start-confirm',
-  'beacon-share-session',
+const NOTICE_ROUTES = new Set([
   'beacon-draw-path'
 ]);
 
@@ -35,16 +33,16 @@ export class PageBeaconSafetyNotice extends BaseElement {
     this.appendChild(iconWrap);
 
     // Title
-    const title = createElement('h1', { cls: 'safety-title', text: 'Beacon live tracking is a prototype' });
+    const title = createElement('h1', { cls: 'safety-title', text: 'Beacon sharing safety notice' });
     this.appendChild(title);
 
     const liveLocationNotice = config.beaconEnabled
-      && LIVE_LOCATION_ROUTES.has(this._params.requestedRoute);
+      && NOTICE_ROUTES.has(this._params.requestedRoute);
     const safetyPoints = [{
       title: 'What this means today',
       body: liveLocationNotice
-        ? 'You can share your current location in chat once. Live tracking is a prototype and is not delivered.'
-        : 'Beacon controls are temporarily unavailable. You can share your current location in chat once. Live tracking is a prototype and is not delivered.'
+        ? 'Draw a path is not available yet. Live location sharing is limited to one accepted contact, updates only while Bika is open, and can be stopped at any time.'
+        : 'Beacon controls are temporarily unavailable. Live location sharing is limited to one accepted contact and updates only while Bika is open.'
     }];
 
     // Safety items

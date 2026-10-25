@@ -16,7 +16,7 @@ test('Beacon routes stay gated when the runtime flag is missing or false', () =>
   assert.equal(isBeaconRouteGated('contacts-permission', { source: 'lifeline' }), false);
 });
 
-test('the production runtime enables Circle and chat but keeps live location gated', () => {
+test('the production runtime enables live sharing but keeps path drawing gated', () => {
   assert.equal(config.beaconEnabled, true);
   assert.equal(isBeaconRouteGated('beacon-home', {}, true), false);
   assert.equal(isBeaconRouteGated('beacon-requests', {}, true), false);
@@ -24,7 +24,7 @@ test('the production runtime enables Circle and chat but keeps live location gat
   assert.equal(isBeaconRouteGated('beacon-find-contacts', {}, true), false);
   assert.equal(isBeaconRouteGated('beacon-chat', {}, true), false);
   assert.equal(isBeaconRouteGated('contacts-permission', { source: 'beacon' }, true), false);
-  assert.equal(isBeaconRouteGated('beacon-start-confirm', {}, true), true);
-  assert.equal(isBeaconRouteGated('beacon-share-session', {}, true), true);
+  assert.equal(isBeaconRouteGated('beacon-start-confirm', {}, true), false);
+  assert.equal(isBeaconRouteGated('beacon-share-session', {}, true), false);
   assert.equal(isBeaconRouteGated('beacon-draw-path', {}, true), true);
 });

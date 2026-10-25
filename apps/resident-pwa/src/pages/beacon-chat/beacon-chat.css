@@ -158,6 +158,39 @@
   margin: 14px 0 10px;
 }
 
+.bc-live-share-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px auto 12px;
+  padding: 11px;
+  width: min(90%, 380px);
+  border: 1px solid var(--beacon, #1C8C99);
+  border-radius: 14px;
+  background: var(--beacon-tint, #E3F3F5);
+  color: var(--ink, #16241F);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.bc-live-share-card.ended {
+  border-color: var(--line, #DAD5C6);
+  background: var(--paper-raised, #FFFFFF);
+  color: var(--ink-soft, #3E4A44);
+}
+
+.bc-live-share-age,
+.bc-live-share-accuracy {
+  color: var(--ink-soft, #3E4A44);
+}
+
+.bc-live-share-map {
+  width: 100%;
+  height: 150px;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
 /* System cards (Live location started / ended / off path) */
 .bc-share-card {
   background: var(--beacon-tint, #E3F3F5);
