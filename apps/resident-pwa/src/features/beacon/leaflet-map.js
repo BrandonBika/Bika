@@ -10,6 +10,15 @@ export function createBeaconMap(container, { interactive = true, zoom = 15 } = {
     doubleClickZoom: interactive,
     keyboard: interactive
   }).setView([config.defaultCenter.lat, config.defaultCenter.lng], zoom);
+  const fallback = typeof container.appendChild === 'function'
+    ? document.createElement('p')
+    : null;
+  if (fallback) {
+    fallback.className = 'beacon-map-fallback';
+    fallback.setAttribute('role', 'status');
+    fallback.hidden = true;
+    fallback.textContent = 'The map could not load. Check your connection and try again.';
+  }
 
   const tileLayer = L.tileLayer(config.tileHost, {
     maxZoom: 19,
@@ -20,8 +29,10 @@ export function createBeaconMap(container, { interactive = true, zoom = 15 } = {
     if (tileErrorLogged) return;
     tileErrorLogged = true;
     console.error('[map] tile failed', event.error || event);
+    if (fallback) fallback.hidden = false;
   });
   tileLayer.addTo(map);
+  if (fallback) container.appendChild(fallback);
 
   const invalidateIfVisible = () => {
     if (container.isConnected) map.invalidateSize();

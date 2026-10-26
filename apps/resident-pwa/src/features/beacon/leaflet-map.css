@@ -2,8 +2,28 @@
   min-height: 240px;
 }
 
+.cn-live-map {
+  min-height: 240px;
+}
+
 .cn-map-pin-picker__map {
   min-height: 220px;
+}
+
+.beacon-map-fallback {
+  position: absolute;
+  z-index: 1000;
+  inset: 12px;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border: 1px solid var(--line, #DAD5C6);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 92%);
+  color: var(--ink, #16241F);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  text-align: center;
 }
 
 .beacon-leaflet-icon {
