@@ -65,12 +65,29 @@ test('rejects an invalid Supabase access token', async () => {
   assert.equal(response.status, 401);
 });
 
-test('requires a recipient list', async () => {
-  const response = await handleZegoToken(request([]), {
+test('requires a recipient list array', async () => {
+  const response = await handleZegoToken(request(null), {
     ...options,
     fetchImpl: relationshipFetch()
   });
   assert.equal(response.status, 400);
+});
+
+test('issues a login token without recipient lookups when the authenticated caller has no circle members', async () => {
+  let recipientLookups = 0;
+  const response = await handleZegoToken(request([]), {
+    ...options,
+    fetchImpl: async (url, init) => {
+      const parsed = new URL(url);
+      if (parsed.pathname === '/auth/v1/user') return Response.json({ id: CALLER_ID });
+      recipientLookups++;
+      throw new Error('Empty-recipient login should not query recipient relations.');
+    }
+  });
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.userId, '123e4567e89b42d3a456426614174000');
+  assert.equal(recipientLookups, 0);
 });
 
 test('rejects anonymous Supabase sessions', async () => {

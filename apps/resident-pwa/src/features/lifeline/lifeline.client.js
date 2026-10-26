@@ -8,6 +8,7 @@ import { mergeLifelineCards } from './lifeline-groups.js';
 import { sendLifelineInvitations } from './lifeline-calls.js';
 
 let lastGroupCall = null;
+const inFlightGroupCalls = new Map();
 
 export const LIFELINE_STARTER_CARDS = [
   { id: 'starter-crime', name: 'Crime', icon: 'police', color: '#E6F1FB', isPreset: true, members: [{ id: 'starter-crime-saps', name: 'SAPS', phone: '10111', isPreset: true }] },
@@ -33,26 +34,109 @@ export async function saveLifelineCard(card) {
   return await saveLifelineCardRecord(getOwnerId(), card);
 }
 
-export async function startLifelineGroupCall(groupId) {
-  const { cards } = await getLifelineCards();
-  const group = cards.find((card) => card.id === groupId);
-  if (!group) throw new Error('This Lifeline group could not be found.');
+export async function dispatchLifelineGroupCall(groupId, groupMembers, {
+  sendInvitations = sendLifelineInvitations,
+  callFallback = (id) => invokeFunction(Endpoints.LIFELINE_GROUP_CALL, { groupId: id })
+} = {}) {
+  if (!Array.isArray(groupMembers) || !groupMembers.length) {
+    throw new Error('This Lifeline group has no members to call.');
+  }
 
-  const invitations = await sendLifelineInvitations(group.members || []);
-  const invitedIds = new Set(invitations.invited.map((member) => member.userID));
-  const members = invitations.members.map((member) => ({
+  const errors = [];
+  let invitations = { members: groupMembers, invited: [], failed: [] };
+  try {
+    invitations = await sendInvitations(groupMembers);
+  } catch (error) {
+    console.error('[lifeline] in-app invitations failed', error);
+    errors.push(error);
+  }
+
+  const invited = invitations.invited || [];
+  const invitedIds = new Set(invited.map((member) => member.userID));
+  const members = (invitations.members || groupMembers).map((member) => ({
     ...member,
     status: member.userId && invitedIds.has(member.userId.replaceAll('-', '')) ? 'ringing' : 'queued'
   }));
-  const remainingMembers = members.filter((member) => !member.userId);
+  const remainingMembers = members.filter((member) => (
+    !member.userId || !invitedIds.has(member.userId.replaceAll('-', ''))
+  ));
   let fallback = null;
+  let fallbackSucceeded = false;
   if (remainingMembers.length) {
-    fallback = await invokeFunction(Endpoints.LIFELINE_GROUP_CALL, { groupId });
+    try {
+      fallback = await callFallback(groupId);
+      fallbackSucceeded = true;
+    } catch (error) {
+      console.error('[lifeline] fallback call failed', error);
+      errors.push(error);
+    }
   }
-  lastGroupCall = { groupId, members, invited: invitations.invited, fallback };
+
+  if (!invited.length && !fallbackSucceeded) {
+    const firstError = errors[0];
+    const message = firstError instanceof Error
+      ? firstError.message
+      : typeof firstError === 'string' ? firstError : '';
+    throw new Error(message || 'No one in this group could be reached.');
+  }
+
+  lastGroupCall = {
+    groupId,
+    members,
+    invited,
+    failed: invitations.failed || [],
+    fallback,
+    errors
+  };
   return lastGroupCall;
+}
+
+export function startLifelineGroupCall(groupId, {
+  loadCards = getLifelineCards,
+  sendInvitations = sendLifelineInvitations,
+  callFallback
+} = {}) {
+  const pending = inFlightGroupCalls.get(groupId);
+  if (pending) return pending;
+
+  const operation = Promise.resolve().then(async () => {
+    const { cards } = await loadCards();
+    const group = cards.find((card) => card.id === groupId);
+    if (!group) throw new Error('This Lifeline group could not be found.');
+    return dispatchLifelineGroupCall(groupId, group.members || [], {
+      sendInvitations,
+      ...(callFallback ? { callFallback } : {})
+    });
+  });
+  let tracked;
+  tracked = operation.finally(() => {
+    if (inFlightGroupCalls.get(groupId) === tracked) inFlightGroupCalls.delete(groupId);
+  });
+  inFlightGroupCalls.set(groupId, tracked);
+  return tracked;
 }
 
 export function getLastLifelineGroupCall() {
   return lastGroupCall;
+}
+
+export function isLifelineCallSession(session) {
+  return Boolean(session?.isAuthenticated && !session.isGuest);
+}
+
+export function redirectGuestLifelineCall(session, { showToast, navigate }) {
+  if (isLifelineCallSession(session)) return false;
+  showToast('Sign in to use Lifeline calls', { type: 'error' });
+  navigate('lifeline-home');
+  return true;
+}
+
+export function withLifelineCallTimeout(callPromise, timeoutMs = 20000) {
+  let timeout;
+  return Promise.race([
+    callPromise,
+    new Promise((resolve, reject) => {
+      timeout = setTimeout(() => reject(new Error('Lifeline call request timed out.')), timeoutMs);
+    })
+  ]).finally(() => clearTimeout(timeout));
 }

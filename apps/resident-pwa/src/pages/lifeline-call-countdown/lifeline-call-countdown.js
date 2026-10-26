@@ -5,8 +5,15 @@
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { navigate } from '../../router.js';
-import { getLifelineCards, startLifelineGroupCall } from '../../features/lifeline/lifeline.client.js';
+import {
+  getLifelineCards,
+  isLifelineCallSession,
+  redirectGuestLifelineCall,
+  startLifelineGroupCall,
+  withLifelineCallTimeout
+} from '../../features/lifeline/lifeline.client.js';
 import { createLifelineCallRoom } from '../../features/lifeline/lifeline-calls.js';
+import { sessionStore } from '../../session.js';
 
 export class PageLifelineCallCountdown extends BaseElement {
   init(params) {
@@ -17,7 +24,16 @@ export class PageLifelineCallCountdown extends BaseElement {
     clearChildren(this);
     this.classList.add('cn-lifeline-countdown-page');
 
-    const { cards } = await getLifelineCards();
+    if (redirectGuestLifelineCall(sessionStore.get(), { showToast, navigate })) return;
+
+    let cards;
+    try {
+      ({ cards } = await getLifelineCards());
+    } catch (error) {
+      showToast(error.message || 'Could not load Lifeline groups', { type: 'error' });
+      navigate('lifeline-home');
+      return;
+    }
     this._group = cards.find((card) => card.id === this._groupId);
     if (!this._group || !this._group.members?.length) {
       showToast('This group has no members to call', { type: 'error' });
@@ -50,13 +66,20 @@ export class PageLifelineCallCountdown extends BaseElement {
     });
 
     const dispatchCall = async () => {
+      if (!isLifelineCallSession(sessionStore.get())) {
+        this._dispatching = false;
+        cancelBtn.disabled = false;
+        showToast('Sign in to use Lifeline calls', { type: 'error' });
+        return;
+      }
       if (this._dispatching) return;
       this._dispatching = true;
       cancelBtn.disabled = true;
       try {
-        await startLifelineGroupCall(this._groupId);
+        await withLifelineCallTimeout(startLifelineGroupCall(this._groupId));
         navigate('lifeline-calling-status', { groupId: this._groupId }, { replace: true });
       } catch (error) {
+        console.error('[lifeline] dispatch failed', error);
         this._dispatching = false;
         cancelBtn.disabled = false;
         showToast(error.message || 'Could not start group call', { type: 'error' });

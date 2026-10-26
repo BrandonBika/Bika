@@ -5,7 +5,10 @@ import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { navigate } from '../../router.js';
 import { getLastLifelineGroupCall, getLifelineCards } from '../../features/lifeline/lifeline.client.js';
-import { createLifelineCallRoom } from '../../features/lifeline/lifeline-calls.js';
+import {
+  createLifelineCallRoom,
+  toLifelineCallNumber
+} from '../../features/lifeline/lifeline-calls.js';
 
 export class PageLifelineCallingStatus extends BaseElement {
   init(params) {
@@ -40,13 +43,36 @@ export class PageLifelineCallingStatus extends BaseElement {
         createElement('span', { cls: 'cn-lifeline-status-name', text: member.name }),
         createElement('span', { cls: 'cn-lifeline-status-phone', text: member.phone })
       );
-      const status = createElement('span', { cls: 'cn-lifeline-status-chip', text: member.status === 'ringing' ? 'Ringing' : 'Queued' });
+      const statusText = member.status === 'ringing'
+        ? 'Ringing'
+        : member.status === 'queued' ? 'Not reachable in-app' : 'Not started';
+      const status = createElement('span', {
+        cls: 'cn-lifeline-status-chip',
+        text: statusText
+      });
+      const e164Phone = member.status === 'queued'
+        ? toLifelineCallNumber(member.phone)
+        : null;
+      const phoneLink = e164Phone
+        ? createElement('a', {
+          cls: 'cn-lifeline-status-chip',
+          text: 'Call',
+          attrs: {
+            href: `tel:${e164Phone}`,
+            'aria-label': `Call ${member.name}`
+          }
+        })
+        : null;
       row.append(avatar, details, status);
+      if (phoneLink) row.appendChild(phoneLink);
       memberList.appendChild(row);
     }
     const callRoom = createLifelineCallRoom();
 
-    const note = createElement('p', { cls: 'cn-lifeline-status-note', text: 'Each person in the group is included in the call request.' });
+    const note = createElement('p', {
+      cls: 'cn-lifeline-status-note',
+      text: 'In-app invitations go to eligible residents. Phone contacts without an in-app account cannot be called here.'
+    });
     const edit = createElement('button', { cls: 'cn-lifeline-status-secondary', text: 'Edit group', attrs: { type: 'button' } });
     edit.onclick = () => navigate('lifeline-card-edit', { groupId: group.id });
     const back = createElement('button', { cls: 'cn-lifeline-status-primary', text: 'Back to Lifeline', attrs: { type: 'button' } });

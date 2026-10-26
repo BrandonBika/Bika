@@ -16,6 +16,21 @@ export function normalizeLifelinePhone(phone) {
   return String(phone || '').replace(/\D/g, '');
 }
 
+export function toLifelineCallNumber(phone) {
+  const rawPhone = String(phone || '').trim();
+  if (/^\d{3,6}$/.test(rawPhone)) return rawPhone;
+
+  let digits = normalizeLifelinePhone(rawPhone);
+  if (digits.length < 7) return null;
+  if (digits.startsWith('00')) {
+    digits = digits.slice(2);
+  } else if (!rawPhone.startsWith('+')) {
+    if (digits.startsWith('0')) digits = `27${digits.slice(1)}`;
+    else if (!digits.startsWith('27')) digits = `27${digits}`;
+  }
+  return /^[1-9]\d{7,14}$/.test(digits) ? `+${digits}` : null;
+}
+
 export function mapResolvedCallMembers(members, resolved) {
   const resolvedByPhone = new Map(
     resolved.map((resident) => [normalizeLifelinePhone(resident.phone), resident])
@@ -30,6 +45,16 @@ export function mapResolvedCallMembers(members, resolved) {
   });
 }
 
+export function splitLifelineInvitees(callees, errorInvitees = []) {
+  const failedIds = new Set(errorInvitees.map((invitee) => (
+    typeof invitee === 'string' ? invitee : invitee?.userID
+  )).filter(Boolean));
+  return {
+    invited: callees.filter((callee) => !failedIds.has(callee.userID)),
+    failed: errorInvitees
+  };
+}
+
 export function createLifelineCallRoom() {
   const container = document.createElement('div');
   container.className = 'cn-lifeline-zego-call-room';
@@ -39,7 +64,7 @@ export function createLifelineCallRoom() {
   return container;
 }
 
-async function requestCallToken(recipientIds) {
+export async function requestCallToken(recipientIds) {
   const accessToken = getAccessToken();
   if (!accessToken) throw new Error('Sign in to start a Bika call.');
 
@@ -51,8 +76,18 @@ async function requestCallToken(recipientIds) {
     },
     body: JSON.stringify({ recipientIds })
   });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || 'Could not prepare the call service.');
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    result = null;
+  }
+  if (!response.ok) {
+    throw new Error(result?.error || `Call service unavailable (HTTP ${response.status}).`);
+  }
+  if (!result || typeof result !== 'object') {
+    throw new Error('Call service returned an invalid response.');
+  }
   return result;
 }
 
@@ -120,10 +155,9 @@ export async function resolveLifelineCallMembers(members) {
 export async function sendLifelineInvitations(members) {
   const mappedMembers = await resolveLifelineCallMembers(members);
   const inAppMembers = mappedMembers.filter((member) => member.userId);
-  if (!inAppMembers.length) return { members: mappedMembers, invited: [] };
+  if (!inAppMembers.length) return { members: mappedMembers, invited: [], failed: [] };
 
   const recipientIds = [...new Set(inAppMembers.map((member) => member.userId))];
-  if (callKitPromise) await requestCallToken(recipientIds);
   const kit = await initializeLifelineCallKit(recipientIds);
   const userIDs = new Set();
   const callees = inAppMembers
@@ -137,16 +171,24 @@ export async function sendLifelineInvitations(members) {
       userID: toZegoUserId(member.userId),
       userName: member.displayName || member.name
     }));
-  if (!callees.length) return { members: mappedMembers, invited: [] };
+  if (!callees.length) return { members: mappedMembers, invited: [], failed: [] };
 
-  const result = await kit.sendCallInvitation({
-    callees,
-    callType: zegoModule.ZegoUIKitPrebuilt.InvitationTypeVoiceCall,
-    timeout: 60,
-    data: JSON.stringify({ source: 'lifeline' })
-  });
-  if (result.errorInvitees?.length) {
-    throw new Error('Some in-app Lifeline members could not be invited.');
+  let errorInvitees = [];
+  try {
+    const result = await kit.sendCallInvitation({
+      callees,
+      callType: zegoModule.ZegoUIKitPrebuilt.InvitationTypeVoiceCall,
+      timeout: 60,
+      data: JSON.stringify({ source: 'lifeline' })
+    });
+    errorInvitees = Array.isArray(result.errorInvitees) ? result.errorInvitees : [];
+  } catch (error) {
+    console.error('[lifeline] Zego invitation request failed', error);
+    errorInvitees = callees.map((callee) => ({
+      ...callee,
+      error: error instanceof Error ? error.message : String(error)
+    }));
   }
-  return { members: mappedMembers, invited: callees };
+  const { invited, failed } = splitLifelineInvitees(callees, errorInvitees);
+  return { members: mappedMembers, invited, failed };
 }

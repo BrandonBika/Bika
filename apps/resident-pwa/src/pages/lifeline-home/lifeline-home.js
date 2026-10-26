@@ -18,7 +18,7 @@ export class PageLifelineHome extends BaseElement {
     if (session.isAuthenticated && !session.isGuest) {
       listCircle().then((members) => {
         const recipientIds = members.slice(0, 100).map((member) => member.id);
-        if (recipientIds.length) return initializeLifelineCallKit(recipientIds);
+        return initializeLifelineCallKit(recipientIds);
       }).catch((error) => {
         console.error('Lifeline call service could not be initialized.', error);
         showToast(error.message || 'Call service could not be initialized.', { type: 'error' });
