@@ -10,6 +10,13 @@ import {
   toLifelineCallNumber
 } from '../../features/lifeline/lifeline-calls.js';
 
+export function getLifelineCallingStatusSubtitle(callMembers, groupMembers) {
+  if (!callMembers.some((member) => member.status === 'ringing')) {
+    return 'None of these contacts are on Bika yet. Tap Call to phone them.';
+  }
+  return `Group call started for ${groupMembers.length} ${groupMembers.length === 1 ? 'person' : 'people'}.`;
+}
+
 export class PageLifelineCallingStatus extends BaseElement {
   init(params) {
     this._groupId = params.groupId;
@@ -28,13 +35,16 @@ export class PageLifelineCallingStatus extends BaseElement {
     }
 
     const header = createElement('div', { cls: 'cn-lifeline-status-header' });
+    const callMembers = call?.groupId === group.id ? call.members : group.members;
     header.append(
       createElement('h1', { cls: 'cn-lifeline-status-title', text: `${group.name} group · calling` }),
-      createElement('p', { cls: 'cn-lifeline-status-subtitle', text: `Group call started for ${group.members.length} ${group.members.length === 1 ? 'person' : 'people'}.` })
+      createElement('p', {
+        cls: 'cn-lifeline-status-subtitle',
+        text: getLifelineCallingStatusSubtitle(callMembers, group.members)
+      })
     );
     const sectionTitle = createElement('h2', { cls: 'cn-lifeline-status-section', text: 'On this call' });
     const memberList = createElement('div', { cls: 'cn-lifeline-status-list' });
-    const callMembers = call?.groupId === group.id ? call.members : group.members;
     for (const member of callMembers) {
       const row = createElement('div', { cls: 'cn-lifeline-status-member' });
       const avatar = createElement('span', { cls: 'cn-lifeline-status-avatar', text: member.name.slice(0, 1).toUpperCase() });
@@ -71,7 +81,7 @@ export class PageLifelineCallingStatus extends BaseElement {
 
     const note = createElement('p', {
       cls: 'cn-lifeline-status-note',
-      text: 'In-app invitations go to eligible residents. Phone contacts without an in-app account cannot be called here.'
+      text: 'Contacts on Bika are rung in-app. For everyone else, tap Call to phone them.'
     });
     const edit = createElement('button', { cls: 'cn-lifeline-status-secondary', text: 'Edit group', attrs: { type: 'button' } });
     edit.onclick = () => navigate('lifeline-card-edit', { groupId: group.id });

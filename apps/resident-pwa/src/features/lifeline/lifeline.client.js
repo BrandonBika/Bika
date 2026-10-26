@@ -9,6 +9,7 @@ import { sendLifelineInvitations } from './lifeline-calls.js';
 
 let lastGroupCall = null;
 const inFlightGroupCalls = new Map();
+const LIFELINE_FALLBACK_ENABLED = false;
 
 export const LIFELINE_STARTER_CARDS = [
   { id: 'starter-crime', name: 'Crime', icon: 'police', color: '#E6F1FB', isPreset: true, members: [{ id: 'starter-crime-saps', name: 'SAPS', phone: '10111', isPreset: true }] },
@@ -44,9 +45,11 @@ export async function dispatchLifelineGroupCall(groupId, groupMembers, {
 
   const errors = [];
   let invitations = { members: groupMembers, invited: [], failed: [] };
+  let invitationsThrew = false;
   try {
     invitations = await sendInvitations(groupMembers);
   } catch (error) {
+    invitationsThrew = true;
     console.error('[lifeline] in-app invitations failed', error);
     errors.push(error);
   }
@@ -62,7 +65,7 @@ export async function dispatchLifelineGroupCall(groupId, groupMembers, {
   ));
   let fallback = null;
   let fallbackSucceeded = false;
-  if (remainingMembers.length) {
+  if (LIFELINE_FALLBACK_ENABLED && remainingMembers.length) {
     try {
       fallback = await callFallback(groupId);
       fallbackSucceeded = true;
@@ -72,7 +75,7 @@ export async function dispatchLifelineGroupCall(groupId, groupMembers, {
     }
   }
 
-  if (!invited.length && !fallbackSucceeded) {
+  if (!invited.length && invitationsThrew && !fallbackSucceeded) {
     const firstError = errors[0];
     const message = firstError instanceof Error
       ? firstError.message

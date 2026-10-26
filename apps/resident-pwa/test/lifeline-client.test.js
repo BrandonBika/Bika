@@ -47,25 +47,38 @@ test('marks partial Zego invitation failures queued while successful invitees ri
       invited: [{ userID: '123e4567e89b42d3a456426614174001', userName: 'In-app contact' }],
       failed
     }),
-    callFallback: async () => ({ callId: 'fallback-call' })
+    callFallback: async () => {
+      throw new Error('Fallback should not run.');
+    }
   });
 
   assert.equal(result.members[0].status, 'ringing');
   assert.equal(result.members[1].status, 'queued');
   assert.deepEqual(result.failed, failed);
+  assert.equal(result.fallback, null);
 });
 
-test('keeps successful in-app invitations when fallback fails for a mixed group', async (t) => {
-  const fallbackError = new Error('Fallback service unavailable.');
+test('returns all queued members when no contacts are app users', async () => {
   const memberWithoutApp = { id: 'member-2', name: 'Phone contact', phone: '0712345678' };
-  const memberNotInvited = {
-    id: 'member-3',
-    name: 'Uninvited resident',
-    phone: '0731234567',
-    userId: '123e4567-e89b-42d3-a456-426614174002'
-  };
-  const log = t.mock.method(console, 'error', () => {});
-  const result = await dispatchLifelineGroupCall('group-2', [signedInMember, memberWithoutApp, memberNotInvited], {
+  let fallbackCalls = 0;
+  const result = await dispatchLifelineGroupCall('group-no-app-users', [memberWithoutApp], {
+    sendInvitations: async (members) => ({ members, invited: [], failed: [] }),
+    callFallback: async () => {
+      fallbackCalls++;
+      throw new Error('Fallback should not run.');
+    }
+  });
+
+  assert.equal(result.members[0].status, 'queued');
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.fallback, null);
+  assert.equal(fallbackCalls, 0);
+});
+
+test('keeps successful in-app invitations for a mixed group without calling the fallback', async () => {
+  const memberWithoutApp = { id: 'member-2', name: 'Phone contact', phone: '0712345678' };
+  let fallbackCalls = 0;
+  const result = await dispatchLifelineGroupCall('group-mixed', [signedInMember, memberWithoutApp], {
     sendInvitations: async (members) => ({
       members,
       invited: [{
@@ -73,27 +86,34 @@ test('keeps successful in-app invitations when fallback fails for a mixed group'
         userName: 'In-app contact'
       }]
     }),
-    callFallback: async () => { throw fallbackError; }
+    callFallback: async () => {
+      fallbackCalls++;
+      throw new Error('Fallback should not run.');
+    }
   });
 
   assert.equal(result.members[0].status, 'ringing');
   assert.equal(result.members[1].status, 'queued');
-  assert.equal(result.members[2].status, 'queued');
-  assert.deepEqual(result.errors, [fallbackError]);
-  assert.equal(log.mock.calls[0].arguments[0], '[lifeline] fallback call failed');
+  assert.deepEqual(result.errors, []);
+  assert.equal(fallbackCalls, 0);
 });
 
-test('throws when neither an in-app invitation nor fallback reaches anyone', async (t) => {
+test('throws when invitation setup fails and nobody is invited', async (t) => {
   const invitationError = new Error('Zego token service is unavailable.');
   t.mock.method(console, 'error', () => {});
+  let fallbackCalls = 0;
 
   await assert.rejects(
     dispatchLifelineGroupCall('group-3', [signedInMember], {
       sendInvitations: async () => { throw invitationError; },
-      callFallback: async () => { throw new Error('Fallback failed.'); }
+      callFallback: async () => {
+        fallbackCalls++;
+        throw new Error('Fallback should not run.');
+      }
     }),
     { message: 'Zego token service is unavailable.' }
   );
+  assert.equal(fallbackCalls, 0);
 });
 
 test('rejects a group without members before attempting either call route', async () => {
