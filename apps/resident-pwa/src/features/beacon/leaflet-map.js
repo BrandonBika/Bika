@@ -11,14 +11,26 @@ export function createBeaconMap(container, { interactive = true, zoom = 15 } = {
     keyboard: interactive
   }).setView([config.defaultCenter.lat, config.defaultCenter.lng], zoom);
 
-  L.tileLayer(config.tileHost, {
+  const tileLayer = L.tileLayer(config.tileHost, {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
-
-  requestAnimationFrame(() => {
-    if (container.isConnected) map.invalidateSize();
   });
+  let tileErrorLogged = false;
+  tileLayer.on('tileerror', (event) => {
+    if (tileErrorLogged) return;
+    tileErrorLogged = true;
+    console.error('[map] tile failed', event.error || event);
+  });
+  tileLayer.addTo(map);
+
+  const invalidateIfVisible = () => {
+    if (container.isConnected) map.invalidateSize();
+  };
+  requestAnimationFrame(invalidateIfVisible);
+  if (document.readyState !== 'complete') {
+    window.addEventListener('load', invalidateIfVisible, { once: true });
+  }
+  setTimeout(invalidateIfVisible, 300);
 
   return map;
 }

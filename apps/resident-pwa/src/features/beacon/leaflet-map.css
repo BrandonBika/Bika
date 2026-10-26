@@ -1,3 +1,11 @@
+.bc-map-wrap {
+  min-height: 240px;
+}
+
+.cn-map-pin-picker__map {
+  min-height: 220px;
+}
+
 .beacon-leaflet-icon {
   background: transparent;
   border: 0;
