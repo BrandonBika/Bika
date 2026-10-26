@@ -8,14 +8,18 @@ import '../bottom-nav/bottom-nav.js';
 import '../top-menu-button/top-menu-button.js';
 import '../offline-banner/offline-banner.js';
 import '../error-state/error-state.js';
+import { waitForRouteStylesheet } from './route-stylesheet.js';
 
 export class CnAppShell extends BaseElement {
+  _routeLoadId = 0;
+
   connectedCallback() {
     this.subscribe(sessionStore, () => this.render());
     this.render();
   }
 
   async loadRoute(routeName, params) {
+    const routeLoadId = ++this._routeLoadId;
     const entryRoutes = [
       'welcome', 'sign-in', 'register', 'verify-email', 'forgot-password',
       'reset-password', 'session-expired', 'guest-report', 'guest-confirmation', 'track-report'
@@ -41,6 +45,7 @@ export class CnAppShell extends BaseElement {
       });
       document.head.appendChild(routeStylesheet);
     }
+    const stylesheetLoaded = waitForRouteStylesheet(routeStylesheet);
     routeStylesheet.href = new URL(`../../pages/${routeName}/${routeName}.css`, import.meta.url).href;
 
     const main = this.querySelector('#cn-main-content');
@@ -55,6 +60,11 @@ export class CnAppShell extends BaseElement {
     try {
       // Dynamic import of page module
       await import(`../../pages/${routeName}/${routeName}.js`);
+      const stylesheetResult = await stylesheetLoaded;
+      if (routeLoadId !== this._routeLoadId) return;
+      if (stylesheetResult !== 'load') {
+        console.warn(`The ${routeName} stylesheet ${stylesheetResult === 'error' ? 'failed to load' : 'timed out'}.`);
+      }
       clearChildren(main);
 
       const pageEl = createElement(`page-${routeName}`);
@@ -64,6 +74,7 @@ export class CnAppShell extends BaseElement {
       }
       main.appendChild(pageEl);
     } catch (err) {
+      if (routeLoadId !== this._routeLoadId) return;
       console.error(`Could not load the ${routeName} page.`, err);
       clearChildren(main);
       const errEl = createElement('cn-error-state', {

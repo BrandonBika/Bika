@@ -13,11 +13,36 @@
   <script type="importmap" id="cn-importmap">{"imports":{"@supabase/supabase-js":"./vendor/supabase-js.js","@civicneuro/zego-uikit":"./vendor/zego-uikit.js"}}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./src/styles/main.css">
+  <style>
+    .cn-boot-loading {
+      display: flex;
+      min-height: 40vh;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: #16241F;
+      font: 500 14px system-ui, sans-serif;
+    }
+    .cn-boot-loading::before {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #DAD5C6;
+      border-top-color: #0F6E56;
+      border-radius: 50%;
+      content: "";
+      animation: cn-boot-spin 700ms linear infinite;
+    }
+    @keyframes cn-boot-spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
-  <cn-app-shell id="app"></cn-app-shell>
+  <cn-app-shell id="app">
+    <div class="cn-boot-loading" role="status" aria-label="Loading Bika">Loading Bika</div>
+  </cn-app-shell>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

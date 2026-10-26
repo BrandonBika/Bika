@@ -3,7 +3,7 @@
  * Service worker strictly caching shell files only.
  * NEVER caches API responses, signed URLs, or personal data.
  */
-const CACHE_NAME = 'cn-shell-v13';
+const CACHE_NAME = 'cn-shell-v14';
 const SHELL_ASSETS = [
   './index.html',
   './offline.html',
@@ -38,6 +38,12 @@ self.addEventListener('fetch', (e) => {
   }
 
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || fetch(e.request).catch(() => caches.match('./offline.html')))
+    caches.match(e.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(e.request).catch((error) => {
+        if (e.request.mode === 'navigate') return caches.match('./offline.html');
+        throw error;
+      });
+    })
   );
 });
