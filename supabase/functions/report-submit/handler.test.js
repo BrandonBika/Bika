@@ -56,6 +56,9 @@ function createBackend({
     if (url.endsWith('/rest/v1/rpc/organization_name_is_approved')) {
       return jsonResponse(organizationApproved);
     }
+    if (url.endsWith('/rest/v1/rpc/organization_is_approved')) {
+      return jsonResponse(organizationApproved);
+    }
     if (url.endsWith('/rest/v1/rpc/consume_report_rate_limit')) {
       return jsonResponse({ allowed: !blockRateLimit });
     }
@@ -123,6 +126,7 @@ test('creates a report_form report, stores evidence and ignores protected client
   assert.equal(saved.report_level, 'MEDIUM');
   assert.equal(saved.user_selected_category, 'roads_traffic');
   assert.equal(saved.user_selected_organization, 'Example Municipality');
+  assert.equal('user_selected_organization_id' in saved, false);
   assert.equal(saved.user_selected_branch, 'Roads');
   assert.equal(saved.idempotency_key, 'resident-test-key-0001');
   assert.equal('tracking_number' in JSON.parse(
@@ -139,6 +143,27 @@ test('creates a report_form report, stores evidence and ignores protected client
     backend.calls.some((call) => call.url.endsWith('/rest/v1/rpc/log_report_event')),
     false
   );
+});
+
+test('stores a selected organisation ID and verifies its approved status', async () => {
+  const backend = createBackend();
+  const organizationId = '2697c120-a36b-44da-b5fb-63cbba222cb0';
+  const payload = {
+    ...basePayload(),
+    user_selected_organization_id: organizationId
+  };
+  const response = await handleReportSubmit(createRequest(payload), {
+    env: createEnv(),
+    fetchImpl: backend.fetchImpl,
+    user: resident
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(backend.getSavedReport().user_selected_organization_id, organizationId);
+  assert.ok(backend.calls.some((call) => (
+    call.url.endsWith('/rest/v1/rpc/organization_is_approved')
+    && JSON.parse(call.options.body).p_organization_id === organizationId
+  )));
 });
 
 test('accepts the resident form multipart payload with a pinned location and PNG photo', async () => {

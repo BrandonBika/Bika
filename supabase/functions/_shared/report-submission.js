@@ -91,6 +91,14 @@ function validateReport(values, files) {
     MAX_ORG_TEXT_LENGTH,
     'Organisation'
   );
+  const organizationId = optionalText(
+    values.user_selected_organization_id,
+    36,
+    'Organisation ID'
+  );
+  if (organizationId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(organizationId)) {
+    throw httpError(422, 'INVALID_ORGANIZATION_ID', 'The selected organisation is invalid.');
+  }
   const branch = optionalText(values.user_selected_branch ?? values.branch, MAX_ORG_TEXT_LENGTH, 'Branch');
   if (!category || !description) {
     throw httpError(422, 'MISSING_REQUIRED_FIELD', 'Category and description are required.');
@@ -157,6 +165,7 @@ function validateReport(values, files) {
     description,
     address,
     organization,
+    organizationId,
     branch,
     latitude,
     longitude,
@@ -265,6 +274,19 @@ async function getExistingReport(idempotencyKey, reporterId, config, fetchImpl) 
 }
 
 async function requireApprovedOrganization(report, config, fetchImpl) {
+  if (report.organizationId) {
+    const idResponse = await adminRequest('rpc/organization_is_approved', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_organization_id: report.organizationId })
+    }, config.projectUrl, config.serviceRole, fetchImpl);
+    if (!idResponse.ok) {
+      throw httpError(503, 'ORGANIZATION_LOOKUP_FAILED', 'The selected organization could not be verified.');
+    }
+    if (await idResponse.json() !== true) {
+      throw httpError(422, 'ORGANIZATION_NOT_APPROVED', 'Select an approved, active organization.');
+    }
+  }
   if (!report.organization) return;
 
   const response = await adminRequest('rpc/organization_name_is_approved', {
@@ -516,6 +538,9 @@ async function processSubmission(request, context, expectedGuest) {
     user_reported_address: report.address,
     location_name: report.address,
     user_selected_organization: report.organization,
+    ...(report.organizationId
+      ? { user_selected_organization_id: report.organizationId }
+      : {}),
     user_selected_branch: report.branch,
     latitude: report.latitude,
     longitude: report.longitude,

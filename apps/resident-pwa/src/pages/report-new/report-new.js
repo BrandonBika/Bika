@@ -6,6 +6,7 @@
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { submitReport } from '../../features/reports/reports.client.js';
+import { loadReportOrganisationOptions } from '../../features/reports/organisation-options.js';
 import { validateEvidenceFile } from '../../features/reports/evidence-validation.js';
 import { navigate } from '../../router.js';
 import { sessionStore } from '../../session.js';
@@ -97,7 +98,7 @@ export class PageReportNew extends BaseElement {
     const sel = createElement('select', { cls: 'rn-dropdown', attrs: { id: 'rn-category' } });
     for (const o of options) {
       const opt = createElement('option', { attrs: { value: o.id }, text: o.name });
-      if (!o.id) opt.setAttribute('disabled', '');
+      if (!o.id && o.disabled !== false) opt.setAttribute('disabled', '');
       if (!o.id) opt.setAttribute('selected', '');
       sel.appendChild(opt);
     }
@@ -122,10 +123,7 @@ export class PageReportNew extends BaseElement {
     /* ── Org field ── */
     const orgField = this._field('Organisation');
     const { outer: orgOuter, sel: orgSel } = this._select([
-      { id: '', name: 'Unsure / Not specified' },
-      { id: 'ethekwini', name: 'eThekwini Municipality' },
-      { id: 'joburg',    name: 'City of Johannesburg' },
-      { id: 'cape_town', name: 'City of Cape Town' },
+      { id: '', name: 'Unsure / Not specified', disabled: false },
     ]);
     orgSel.id = 'rn-org';
     orgField.wrap.appendChild(orgOuter);
@@ -268,6 +266,7 @@ export class PageReportNew extends BaseElement {
           latitude:    this._location?.lat,
           longitude:   this._location?.lng,
           organisation: orgSel.value ? orgSel.options[orgSel.selectedIndex].textContent : '',
+          user_selected_organization_id: orgSel.value || '',
           branch: branchSel.value ? branchSel.options[branchSel.selectedIndex].textContent : '',
           photo: this._photoFile,
           video: this._videoFile
@@ -305,6 +304,17 @@ export class PageReportNew extends BaseElement {
     this.appendChild(titleEl);
     this.appendChild(subEl);
     this.appendChild(form);
+    void this._loadOrganisationOptions(orgSel);
+  }
+
+  async _loadOrganisationOptions(select) {
+    const options = await loadReportOrganisationOptions();
+    for (const organisation of options.slice(1)) {
+      select.appendChild(createElement('option', {
+        attrs: { value: organisation.id },
+        text: organisation.name
+      }));
+    }
   }
 }
 
