@@ -9,6 +9,10 @@ import {
   getUnreadNotificationCount,
   notificationsStore
 } from '../../features/notifications/notifications.store.js';
+import {
+  getIncomingPendingCount,
+  subscribeIncomingPendingCount
+} from '../../features/beacon/beacon.client.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -63,12 +67,14 @@ export class CnBottomNav extends BaseElement {
     this._onHash = () => this.render();
     window.addEventListener('hashchange', this._onHash);
     this._unsubscribeNotifications = notificationsStore.subscribe(() => this.render());
+    this._unsubscribeBeacon = subscribeIncomingPendingCount(() => this.render());
     this.render();
   }
 
   disconnectedCallback() {
     window.removeEventListener('hashchange', this._onHash);
     if (this._unsubscribeNotifications) this._unsubscribeNotifications();
+    if (this._unsubscribeBeacon) this._unsubscribeBeacon();
     super.disconnectedCallback();
   }
 
@@ -126,6 +132,7 @@ export class CnBottomNav extends BaseElement {
     ];
 
     for (const item of items) {
+      const alertCount = getUnreadNotificationCount() + getIncomingPendingCount();
       const active = item.isActive !== undefined
         ? item.isActive
         : (currentPath === item.route || (item.id === 'notifications' && currentPath === 'alerts'));
@@ -133,8 +140,8 @@ export class CnBottomNav extends BaseElement {
         cls: ['nav-item', 'cn-nav-item', active ? 'active' : ''],
         attrs: {
           href: `#${item.route}`,
-          'aria-label': item.id === 'notifications' && getUnreadNotificationCount() > 0
-            ? `${item.label}, ${getUnreadNotificationCount()} unread`
+          'aria-label': item.id === 'notifications' && alertCount > 0
+            ? `${item.label}, ${alertCount} unread alerts or pending circle requests`
             : item.label,
           'aria-current': active ? 'page' : null,
           id: `cn-nav-${item.id}`
@@ -143,11 +150,11 @@ export class CnBottomNav extends BaseElement {
 
       const iconSpan = createElement('span', { cls: 'cn-nav-icon' });
       iconSpan.appendChild(createIcon(item.paths, item.circles));
-      if (item.id === 'notifications' && getUnreadNotificationCount() > 0) {
+      if (item.id === 'notifications' && alertCount > 0) {
         iconSpan.appendChild(createElement('span', {
           cls: 'cn-nav-badge',
           attrs: { 'aria-hidden': 'true' },
-          text: String(getUnreadNotificationCount())
+          text: String(alertCount)
         }));
       }
       const labelSpan = createElement('span', { cls: 'cn-nav-label', text: item.label });

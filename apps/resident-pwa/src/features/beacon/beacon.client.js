@@ -14,6 +14,7 @@ import {
 } from '@civicneuro/supabase-client';
 import {
   cancelRequest as cancelRemoteCircleRequest,
+  countIncomingPendingRequests,
   listCircle as listRemoteCircle,
   listRequests as listRemoteCircleRequests,
   respondToRequest as respondToRemoteCircleRequest,
@@ -37,6 +38,11 @@ const PENDING_PATH_MAX_AGE = 30 * 60 * 1000;
 let pendingPathCoordinates = loadPendingBeaconPath();
 let circleRefreshPromise = null;
 let circleRefreshPending = false;
+let circleRequestsSubscription = null;
+const circleRequestsErrorHandlers = new Set();
+const incomingPendingCountListeners = new Set();
+let appCircleSyncUnsubscribe = null;
+let appCircleSyncStarted = false;
 const conversationIdsByMember = new Map();
 const chatRefreshVersions = new Map();
 
@@ -85,8 +91,10 @@ function createDefaultState() {
 }
 
 let state = loadState();
+let lastIncomingPendingCount = null;
 let sessionExpiryTimer = null;
 const listeners = new Set();
+lastIncomingPendingCount = getIncomingPendingCount();
 scheduleActiveSessionExpiry();
 if (state.activeSession) {
   sessionStore.update((session) => ({ ...session, activeSharesCount: 1 }));
@@ -163,6 +171,7 @@ function saveState() {
     console.warn('Could not save beacon state to storage:', err);
   }
   notify();
+  notifyIncomingPendingCount();
 }
 
 function notify() {
@@ -182,6 +191,37 @@ export function subscribeBeacon(listener) {
 
 export function getBeaconState() {
   return state;
+}
+
+export function getIncomingPendingCount() {
+  if (!isAuthenticatedResident()) return 0;
+  return countIncomingPendingRequests(state.pendingRequests);
+}
+
+export function subscribeIncomingPendingCount(listener) {
+  if (typeof listener !== 'function') {
+    throw new TypeError('An incoming Beacon request count listener is required.');
+  }
+  incomingPendingCountListeners.add(listener);
+  try {
+    listener(getIncomingPendingCount());
+  } catch (error) {
+    console.error('Could not update the incoming Beacon request indicator:', error);
+  }
+  return () => incomingPendingCountListeners.delete(listener);
+}
+
+function notifyIncomingPendingCount() {
+  const count = getIncomingPendingCount();
+  if (count === lastIncomingPendingCount) return;
+  lastIncomingPendingCount = count;
+  for (const listener of incomingPendingCountListeners) {
+    try {
+      listener(count);
+    } catch (error) {
+      console.error('Could not update the incoming Beacon request indicator:', error);
+    }
+  }
 }
 
 function isAuthenticatedResident() {
@@ -240,13 +280,80 @@ export async function refreshBeaconCircle() {
 }
 
 export function subscribeBeaconCircle(onError = console.error) {
-  if (!isAuthenticatedResident()) return () => {};
-  const refresh = () => {
-    refreshBeaconCircle().catch(onError);
+  if (typeof onError !== 'function') {
+    throw new TypeError('A Beacon circle error handler must be a function.');
+  }
+  const errorHandler = (error) => onError(error);
+  circleRequestsErrorHandlers.add(errorHandler);
+  startCircleRequestsSubscription();
+  return () => {
+    circleRequestsErrorHandlers.delete(errorHandler);
+    if (circleRequestsErrorHandlers.size === 0) stopCircleRequestsSubscription();
   };
-  const subscription = subscribeToRequests(refresh, onError, refresh);
-  subscription.ready.catch(onError);
-  return () => subscription.unsubscribe();
+}
+
+function reportCircleRequestsError(error) {
+  if (circleRequestsErrorHandlers.size === 0) {
+    console.error(error);
+    return;
+  }
+  for (const onError of circleRequestsErrorHandlers) onError(error);
+}
+
+function startCircleRequestsSubscription() {
+  if (!isAuthenticatedResident() || circleRequestsSubscription) return;
+  const refresh = () => {
+    refreshBeaconCircle().catch(reportCircleRequestsError);
+  };
+  circleRequestsSubscription = subscribeToRequests(refresh, reportCircleRequestsError, refresh);
+  circleRequestsSubscription.ready.catch(reportCircleRequestsError);
+}
+
+function stopCircleRequestsSubscription() {
+  circleRequestsSubscription?.unsubscribe();
+  circleRequestsSubscription = null;
+}
+
+export function startBeaconCircleSync() {
+  if (appCircleSyncStarted) return;
+  appCircleSyncStarted = true;
+
+  const refreshWhenVisible = () => {
+    if (!isAuthenticatedResident() || document.visibilityState !== 'visible') return;
+    refreshBeaconCircle().catch(reportCircleRequestsError);
+  };
+  let activeUserId = null;
+  const syncSession = (session) => {
+    if (session.isAuthenticated && !session.isGuest && session.user?.id) {
+      if (activeUserId !== session.user.id) {
+        appCircleSyncUnsubscribe?.();
+        appCircleSyncUnsubscribe = null;
+        stopCircleRequestsSubscription();
+        if (state.pendingRequests.length > 0) {
+          state.pendingRequests = [];
+          saveState();
+        }
+      }
+      activeUserId = session.user.id;
+      if (!appCircleSyncUnsubscribe) {
+        appCircleSyncUnsubscribe = subscribeBeaconCircle();
+      }
+      return;
+    }
+
+    appCircleSyncUnsubscribe?.();
+    appCircleSyncUnsubscribe = null;
+    stopCircleRequestsSubscription();
+    activeUserId = null;
+    if (state.pendingRequests.length > 0) {
+      state.pendingRequests = [];
+      saveState();
+    }
+  };
+
+  sessionStore.subscribe(syncSession);
+  window.addEventListener('focus', refreshWhenVisible);
+  document.addEventListener('visibilitychange', refreshWhenVisible);
 }
 
 function getBeaconContactOwnerId() {

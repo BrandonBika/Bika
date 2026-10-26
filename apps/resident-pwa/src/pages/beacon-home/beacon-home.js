@@ -9,6 +9,7 @@ import { clearChildren, createElement } from '@civicneuro/security-web';
 import runtimeConfig from '../../../runtime-config.js';
 import {
   getBeaconState,
+  getIncomingPendingCount,
   subscribeBeacon,
   refreshBeaconCircle,
   subscribeBeaconCircle
@@ -797,6 +798,23 @@ export class PageBeaconHome extends BaseElement {
 
     topbar.append(titlePill, addBtn);
     this.appendChild(topbar);
+
+    const incomingPendingCount = getIncomingPendingCount();
+    if (incomingPendingCount > 0) {
+      const requestsBanner = createElement('a', {
+        cls: 'bc-requests-banner',
+        attrs: {
+          href: '#beacon-requests',
+          'aria-label': `${incomingPendingCount} circle ${incomingPendingCount === 1 ? 'request' : 'requests'} waiting`
+        },
+        text: `${incomingPendingCount} circle ${incomingPendingCount === 1 ? 'request' : 'requests'} waiting`
+      });
+      requestsBanner.onclick = (event) => {
+        event.preventDefault();
+        navigate('beacon-requests');
+      };
+      this.appendChild(requestsBanner);
+    }
 
     // 3. Bottom sheet
     const sheet = createElement('section', {

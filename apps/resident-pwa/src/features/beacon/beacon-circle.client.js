@@ -117,6 +117,15 @@ export async function listRequests() {
   }));
 }
 
+export function countIncomingPendingRequests(requests) {
+  if (!Array.isArray(requests)) {
+    throw new TypeError('Beacon requests must be an array.');
+  }
+  return requests.filter((request) => (
+    request?.direction === 'incoming' && request.status === 'pending'
+  )).length;
+}
+
 export function subscribeToRequests(onChange, onError, onSubscribed) {
   const userId = requireUserId();
   if (typeof onChange !== 'function') {

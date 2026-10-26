@@ -15,6 +15,10 @@ import {
   subscribeToMessagingAlerts,
   notificationsStore
 } from '../../features/notifications/notifications.store.js';
+import {
+  getIncomingPendingCount,
+  subscribeIncomingPendingCount
+} from '../../features/beacon/beacon.client.js';
 import { navigate } from '../../router.js';
 
 const REPORT_KINDS = new Set(['report_status', 'report_reply', 'report_resolved']);
@@ -141,6 +145,7 @@ export class PageNotifications extends BaseElement {
 
   connectedCallback() {
     this._unsubscribe = notificationsStore.subscribe(() => this._render());
+    this._unsubscribeBeacon = subscribeIncomingPendingCount(() => this._render());
     this._alertsActive = true;
     prepareNotificationsForSession();
     this._render();
@@ -153,6 +158,7 @@ export class PageNotifications extends BaseElement {
   disconnectedCallback() {
     this._alertsActive = false;
     if (this._unsubscribe) this._unsubscribe();
+    if (this._unsubscribeBeacon) this._unsubscribeBeacon();
     if (this._messageAlertSubscription) this._messageAlertSubscription.unsubscribe();
     super.disconnectedCallback();
   }
@@ -178,6 +184,7 @@ export class PageNotifications extends BaseElement {
     const notifications = getNotifications().slice().sort(
       (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
     );
+    const incomingPendingCount = getIncomingPendingCount();
     const unreadCount = notifications.filter((notification) => !notification.readAt).length;
     const header = createElement('header', { cls: 'cn-notifications-header' });
     header.appendChild(createElement('h1', {
@@ -203,7 +210,7 @@ export class PageNotifications extends BaseElement {
     }
     this.appendChild(header);
 
-    if (notifications.length === 0) {
+    if (notifications.length === 0 && incomingPendingCount === 0) {
       this.appendChild(createEmptyState(
         'No alerts yet',
         "You'll be notified here when one of your reports updates, or there's important news for your area.",
@@ -252,7 +259,7 @@ export class PageNotifications extends BaseElement {
       ? notifications
       : notifications.filter((notification) => categoryFor(notification) === this._filter);
 
-    if (visibleNotifications.length === 0) {
+    if (visibleNotifications.length === 0 && incomingPendingCount === 0) {
       const category = this._filter === 'reports' ? 'reports' : 'community';
       this.appendChild(createEmptyState('Nothing here', `No ${category} alerts yet.`, null, 'bell'));
       return;
@@ -262,6 +269,24 @@ export class PageNotifications extends BaseElement {
       cls: 'cn-notifications-feed',
       attrs: { 'aria-label': 'Notifications' }
     });
+    if (incomingPendingCount > 0) {
+      const requestLink = createElement('a', {
+        cls: ['cn-notification-card', 'cn-circle-request-notification', 'is-unread'],
+        attrs: {
+          href: '#beacon-requests',
+          'aria-label': `${incomingPendingCount} circle ${incomingPendingCount === 1 ? 'request' : 'requests'} waiting`
+        }
+      });
+      requestLink.appendChild(createElement('span', {
+        cls: 'cn-notification-content',
+        text: `${incomingPendingCount} circle ${incomingPendingCount === 1 ? 'request' : 'requests'} waiting`
+      }));
+      requestLink.onclick = (event) => {
+        event.preventDefault();
+        navigate('beacon-requests');
+      };
+      feed.appendChild(requestLink);
+    }
     let activeGroup = '';
     for (const notification of visibleNotifications) {
       const group = getDayGroup(notification.createdAt);

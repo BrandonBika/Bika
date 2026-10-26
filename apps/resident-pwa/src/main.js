@@ -9,6 +9,7 @@ import { configureSupabaseClient, getAccessToken } from '@civicneuro/supabase-cl
 import { showToast } from '@civicneuro/ui';
 import { config } from './config.js';
 import { triggerQueueSync } from './features/offline/offline.client.js';
+import { startBeaconCircleSync } from './features/beacon/beacon.client.js';
 import './components/app-shell/app-shell.js';
 
 async function syncQueuedReports() {
@@ -56,6 +57,7 @@ async function bootstrap() {
   }
 
   initRouter();
+  startBeaconCircleSync();
   window.addEventListener('online', () => {
     syncQueuedReports().catch((error) => {
       console.error('Queued report sync could not start.', error);

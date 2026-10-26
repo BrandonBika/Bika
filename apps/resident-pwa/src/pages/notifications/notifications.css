@@ -107,6 +107,11 @@
   cursor: pointer;
 }
 
+.cn-circle-request-notification {
+  color: inherit;
+  text-decoration: none;
+}
+
 .cn-notification-card.is-unread {
   border-color: #BFE0D3;
   background: var(--teal-tint, #E1F5EE);
