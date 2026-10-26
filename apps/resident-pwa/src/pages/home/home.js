@@ -9,6 +9,11 @@ import {
   getUnreadNotificationCount,
   notificationsStore
 } from '../../features/notifications/notifications.store.js';
+import { refreshAreaInsights } from '../../features/area/area.client.js';
+import {
+  areaStore,
+  getAreaCardPresentation
+} from '../../features/area/area.store.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -97,24 +102,20 @@ export class PageHome extends BaseElement {
     area.appendChild(areaHeader);
 
     const pulseScroll = createElement('div', { cls: 'cn-home-pulse-scroll' });
-    const poll = createElement('button', { cls: 'cn-home-pulse-card cn-home-pulse-card--poll', attrs: { type: 'button' } });
-    poll.appendChild(createElement('span', { cls: 'cn-home-pulse-label', text: 'Quick poll' }));
-    poll.appendChild(createElement('span', { cls: 'cn-home-pulse-copy', text: 'Should this park get more lighting?' }));
-    poll.appendChild(createElement('span', { cls: 'cn-home-poll-options', text: 'Yes     No' }));
-    poll.onclick = () => navigate('poll-detail');
+    // Quick poll stays hidden until a real polls backend exists.
 
     const pulse = createElement('button', { cls: 'cn-home-pulse-card cn-home-pulse-card--stat', attrs: { type: 'button' } });
     pulse.appendChild(createElement('span', { cls: 'cn-home-pulse-label', text: 'Community pulse' }));
-    pulse.appendChild(createElement('span', { cls: 'cn-home-pulse-copy', text: '72% say waste collection is improving' }));
-    pulse.appendChild(createElement('span', { cls: 'cn-home-pulse-meta', text: 'Based on 340 responses' }));
-    pulse.onclick = () => navigate('community-pulse');
+    const pulseCopy = createElement('span', { cls: 'cn-home-pulse-copy' });
+    const pulseMeta = createElement('span', { cls: 'cn-home-pulse-meta' });
+    pulse.append(pulseCopy, pulseMeta);
 
     const trending = createElement('button', { cls: 'cn-home-pulse-card cn-home-pulse-card--trend', attrs: { type: 'button' } });
     trending.appendChild(createElement('span', { cls: 'cn-home-pulse-label', text: 'Trending issue' }));
-    trending.appendChild(createElement('span', { cls: 'cn-home-pulse-copy', text: 'Streetlights — #1 reported this week' }));
-    trending.appendChild(createElement('span', { cls: 'cn-home-pulse-meta', text: 'Tap to view or report' }));
-    trending.onclick = () => navigate('trending-issues');
-    pulseScroll.append(poll, pulse, trending);
+    const trendingCopy = createElement('span', { cls: 'cn-home-pulse-copy' });
+    const trendingMeta = createElement('span', { cls: 'cn-home-pulse-meta' });
+    trending.append(trendingCopy, trendingMeta);
+    pulseScroll.append(pulse, trending);
     area.appendChild(pulseScroll);
     this.appendChild(area);
 
@@ -122,13 +123,15 @@ export class PageHome extends BaseElement {
     const news = createElement('button', { cls: 'cn-home-tile', attrs: { type: 'button' } });
     const newsIcon = createElement('span', { cls: 'cn-home-tile-icon cn-home-tile-icon--news' });
     newsIcon.appendChild(createIcon(['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z', 'M14 2v6h6', 'M8 12h8M8 16h8']));
-    news.append(newsIcon, createElement('span', { cls: 'cn-home-tile-label', text: 'News' }), createElement('span', { cls: 'cn-home-tile-meta', text: '4 new' }));
+    // News counts need a published-news and per-resident read-state backend.
+    news.append(newsIcon, createElement('span', { cls: 'cn-home-tile-label', text: 'News' }), createElement('span', { cls: 'cn-home-tile-meta', text: 'View' }));
     news.onclick = () => navigate('news');
 
     const surveys = createElement('button', { cls: 'cn-home-tile', attrs: { type: 'button' } });
     const surveyIcon = createElement('span', { cls: 'cn-home-tile-icon cn-home-tile-icon--survey' });
     surveyIcon.appendChild(createIcon(['M9 11l3 3L22 4', 'M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11']));
-    surveys.append(surveyIcon, createElement('span', { cls: 'cn-home-tile-label', text: 'Surveys' }), createElement('span', { cls: 'cn-home-tile-meta', text: '1 open' }));
+    // Survey counts need a published-surveys backend with open dates.
+    surveys.append(surveyIcon, createElement('span', { cls: 'cn-home-tile-label', text: 'Surveys' }), createElement('span', { cls: 'cn-home-tile-meta', text: 'View' }));
     surveys.onclick = () => navigate('survey');
 
     const notifications = createElement('button', {
@@ -150,6 +153,38 @@ export class PageHome extends BaseElement {
     this._notificationMeta = notificationMeta;
     this._updateNotificationCount();
     this._unsubscribeNotifications = notificationsStore.subscribe(() => this._updateNotificationCount());
+    this._updateAreaInsights = () => {
+      const state = areaStore.get();
+      const pulsePresentation = getAreaCardPresentation(state, 'pulse');
+      const trendingPresentation = getAreaCardPresentation(state, 'trending');
+      pulseCopy.textContent = pulsePresentation.copy;
+      pulseMeta.textContent = pulsePresentation.meta;
+      trendingCopy.textContent = trendingPresentation.copy;
+      trendingMeta.textContent = trendingPresentation.meta;
+      pulse.onclick = () => this._openAreaInsight(pulsePresentation.destination, state);
+      trending.onclick = () => this._openAreaInsight(trendingPresentation.destination, state);
+    };
+    this._unsubscribeArea = areaStore.subscribe(this._updateAreaInsights);
+    this._updateAreaInsights();
+    this._onWindowFocus = () => {
+      refreshAreaInsights().catch(() => {
+        console.error('Area insights could not be refreshed.');
+      });
+    };
+    globalThis.window?.addEventListener('focus', this._onWindowFocus);
+    this._onWindowFocus();
+  }
+
+  _openAreaInsight(destination, state) {
+    if (destination === 'your-area') {
+      navigate('your-area');
+    } else if (state.status === 'error') {
+      refreshAreaInsights({ force: true }).catch(() => {
+        console.error('Area insights could not be refreshed.');
+      });
+    } else {
+      navigate(destination);
+    }
   }
 
   _updateNotificationCount() {
@@ -162,6 +197,8 @@ export class PageHome extends BaseElement {
 
   disconnectedCallback() {
     if (this._unsubscribeNotifications) this._unsubscribeNotifications();
+    if (this._unsubscribeArea) this._unsubscribeArea();
+    if (this._onWindowFocus) globalThis.window?.removeEventListener('focus', this._onWindowFocus);
     super.disconnectedCallback();
   }
 }
