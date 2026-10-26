@@ -7,6 +7,7 @@
 
 import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement, setText } from '@civicneuro/security-web';
+import { getCurrentUser } from '@civicneuro/supabase-client';
 import { BeaconIcons } from '../../features/beacon/beacon-icons.js';
 import {
   getActiveSession,
@@ -15,6 +16,10 @@ import {
   setPendingBeaconPath,
   updateSessionPath
 } from '../../features/beacon/beacon.client.js';
+import {
+  getActiveSharesForMe,
+  setLivePath
+} from '../../features/beacon/beacon-live-share.client.js';
 import {
   getCurrentLocation,
   getLocationErrorMessage,
@@ -103,16 +108,36 @@ export class PageBeaconDrawPath extends BaseElement {
   connectedCallback() {
     clearChildren(this);
     this.classList.add('cn-beacon-draw-page');
+    if (!this._activeShare) {
+      if (!this._params?.shareId) {
+        navigate('beacon-safety-notice', { requestedRoute: 'beacon-draw-path' });
+        return;
+      }
+      this._shareId = this._params.shareId;
+      this.appendChild(createElement('p', {
+        cls: 'draw-route-loading',
+        text: 'Opening your live share…'
+      }));
+      this.openActiveLiveShare().catch(() => {
+        console.error('Could not verify the Beacon live share for route drawing.');
+        if (this.isConnected) {
+          navigate('beacon-safety-notice', { requestedRoute: 'beacon-draw-path' });
+        }
+      });
+      return;
+    }
 
     // Default reference start location
-    this._points = [];
+    this._points = Array.isArray(this._activeShare.plannedPath)
+      ? mockPathToLatLngs(this._activeShare.plannedPath)
+      : [];
     this._pathHistory = [];
     this._isDrawing = false;
     this._destination = 'Selected destination';
     this._distanceKm = 0;
     this._distanceMeters = 0;
     this._timeMin = 0;
-    this._hasPath = false;
+    this._hasPath = this._points.length > 1;
     this._routeIsMock = false;
     this._accessibleRouteMode = false;
     const selectedRouteStart = getSelectedBeaconRouteStart();
@@ -132,6 +157,7 @@ export class PageBeaconDrawPath extends BaseElement {
       this._timeMin = parseInt(active.timeEstimate, 10) || 18;
       this.calculateLiveDistance();
     }
+    if (this._activeShare?.plannedPath?.length) this.calculateLiveDistance();
     const location = getCurrentLocation();
     this._startPos = this._points[0] || this._manualStartPos || (
       hasReliableLocation(location) ? [location.lat, location.lng] : null
@@ -151,6 +177,25 @@ export class PageBeaconDrawPath extends BaseElement {
         if (this.isConnected) showToast(getLocationErrorMessage(error), { type: 'error' });
       });
     }
+  }
+
+  async openActiveLiveShare() {
+    const shares = await getActiveSharesForMe();
+    const userId = getCurrentUser()?.id;
+    const activeShare = shares.find((share) =>
+      share.id === this._shareId
+      && share.sharerId === userId
+      && Date.parse(share.expiresAt) > Date.now()
+    );
+    if (!activeShare) {
+      if (this.isConnected) {
+        navigate('beacon-safety-notice', { requestedRoute: 'beacon-draw-path' });
+      }
+      return;
+    }
+    this._activeShare = activeShare;
+    this._isEditMode = false;
+    if (this.isConnected) this.connectedCallback();
   }
 
   disconnectedCallback() {
@@ -315,7 +360,11 @@ export class PageBeaconDrawPath extends BaseElement {
     const toolbar = createElement('div', { cls: 'draw-toolbar' });
     const legendRow = createElement('div', { cls: 'draw-legend-row' });
     const swatch = createElement('span', { cls: 'draw-legend-swatch' });
-    const legendText = createElement('span', { text: 'Alert zone · 100 m either side of your path' });
+    const legendText = createElement('span', {
+      text: this._activeShare
+        ? 'Planned route · no off-path alerts'
+        : 'Alert zone · 100 m either side of your path'
+    });
     legendRow.append(swatch, legendText);
 
     const btnRow = createElement('div', { cls: 'draw-btn-row' });
@@ -338,7 +387,7 @@ export class PageBeaconDrawPath extends BaseElement {
     this._nextBtn = createElement('button', {
       cls: ['draw-btn', 'primary'],
       attrs: { type: 'button', id: 'draw-next-btn' },
-      text: this._isEditMode ? 'Save path' : 'Next'
+      text: this._activeShare ? 'Share route' : this._isEditMode ? 'Save path' : 'Next'
     });
     this._nextBtn.onclick = () => this.handleNext();
 
@@ -626,7 +675,7 @@ export class PageBeaconDrawPath extends BaseElement {
 
     const latitude = this._points.reduce((sum, point) => sum + point[0], 0) / this._points.length;
     const metersPerPixel = 156543.03392 * Math.cos(latitude * Math.PI / 180) / (2 ** this._map.getZoom());
-    const corridor = L.polyline(this._points, {
+    const corridor = this._activeShare ? null : L.polyline(this._points, {
       color: '#1C8C99',
       opacity: 0.16,
       weight: 200 / metersPerPixel,
@@ -650,7 +699,7 @@ export class PageBeaconDrawPath extends BaseElement {
       icon: createBeaconDivIcon('D', 'destination'),
       title: this._destination
     }).addTo(this._map);
-    this._routeLayers.push(corridor, route, start, destination);
+    this._routeLayers.push(...(corridor ? [corridor] : []), route, start, destination);
   }
 
   updateHintAndButtons() {
@@ -665,11 +714,28 @@ export class PageBeaconDrawPath extends BaseElement {
       ? 'Tap the map to set start…'
       : canDrawFromManualStart ? 'Change start on map' : 'Choose start on map';
     this._manualStartBtn.disabled = this._selectingStartPosition;
-    this._nextBtn.disabled = !this._hasPath
-      || (locationNeedsImprovement && !canDrawFromManualStart)
-      || this._distanceMeters < 100
-      || this._distanceMeters > 10000
-      || this._routeIsMock;
+    this._nextBtn.disabled = this._activeShare
+      ? !this._hasPath || this._points.length < 2 || this._routeIsMock
+      : !this._hasPath
+        || (locationNeedsImprovement && !canDrawFromManualStart)
+        || this._distanceMeters < 100
+        || this._distanceMeters > 10000
+        || this._routeIsMock;
+    if (this._activeShare) {
+      if (this._isDrawing) {
+        setText(this._hintTitle, 'Drawing planned route');
+        setText(this._hintBody, 'Keep drawing, then choose Share route when the route is ready.');
+      } else if (this._hasPath) {
+        setText(this._hintTitle, 'Planned route ready');
+        setText(this._hintBody, 'This route is shown while your live share is active. Off-path alerts are not available.');
+      } else {
+        setText(this._hintTitle, 'Draw your planned route');
+        setText(this._hintBody, 'Draw a route on the map to share it with your contact.');
+      }
+      this._undoBtn.disabled = !this._hasPath || this._pathHistory.length === 0;
+      this._clearBtn.disabled = !this._hasPath;
+      return;
+    }
     if (this._selectingStartPosition) {
       setText(this._hintTitle, 'Choose your route start');
       setText(this._hintBody, 'Pan or zoom the map, then tap where you are. Beacon will still verify your live location before sharing.');
@@ -793,8 +859,7 @@ export class PageBeaconDrawPath extends BaseElement {
     if (this._hasPath) {
       this.showDiscardDialog();
     } else {
-      // A3 Back without a path → A2 Share Mode Chooser
-      navigate('beacon-home', { mode: 'choose' });
+      navigate('beacon-share-session', { shareId: this._shareId });
     }
   }
 
@@ -822,8 +887,7 @@ export class PageBeaconDrawPath extends BaseElement {
     });
     discardBtn.onclick = () => {
       backdrop.remove();
-      // A3 Discard → A2 Share Mode Chooser
-      navigate('beacon-home', { mode: 'choose' });
+      navigate('beacon-share-session', { shareId: this._shareId });
     };
 
     btnRow.append(keepBtn, discardBtn);
@@ -832,9 +896,33 @@ export class PageBeaconDrawPath extends BaseElement {
     this.appendChild(backdrop);
   }
 
-  handleNext() {
+  async handleNext() {
     if (this._routeIsMock) {
       showToast('A real walking route is required before you can share this path.', { type: 'error' });
+      return;
+    }
+    if (this._activeShare) {
+      if (!this._hasPath || this._points.length < 2) {
+        showToast('Draw a path with at least two points first.', { type: 'info' });
+        return;
+      }
+      if (this._savingLivePath) return;
+      this._savingLivePath = true;
+      this._nextBtn.disabled = true;
+      this._nextBtn.textContent = 'Sharing…';
+      try {
+        await setLivePath(this._shareId, limitPathPoints(this._points, 50));
+        navigate('beacon-share-session', {
+          shareId: this._shareId,
+          routeShared: 'true'
+        });
+      } catch {
+        console.error('Could not share the planned Beacon route.');
+        showToast('Could not share your planned route. Please try again.', { type: 'error' });
+        this._savingLivePath = false;
+        this._nextBtn.disabled = false;
+        this._nextBtn.textContent = 'Share route';
+      }
       return;
     }
     if (this._isEditMode) {

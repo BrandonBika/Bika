@@ -9,7 +9,9 @@ import { getCurrentUser } from '@civicneuro/supabase-client';
 import { listCircle } from '../../features/beacon/beacon-circle.client.js';
 import {
   getActiveSharesForMe,
+  setLivePath,
   stopLiveShare,
+  stopLiveShareLocationWatch,
   subscribeToLiveShares,
   watchLiveShareLocation
 } from '../../features/beacon/beacon-live-share.client.js';
@@ -140,6 +142,43 @@ export class PageBeaconShareSession extends BaseElement {
         text: 'Your location updates only while Bika is open. No location history is shown.'
       })
     );
+    if (this._liveShare.plannedPath?.length) {
+      if (this._params.routeShared === 'true') {
+        card.appendChild(createElement('p', {
+          cls: 'bc-live-share-route-status',
+          attrs: { role: 'status' },
+          text: `Planned route shared with ${this._recipientName}`
+        }));
+      }
+      card.appendChild(createElement('p', {
+        cls: 'bc-live-share-honest-copy',
+        text: `Your planned route is shown to ${this._recipientName} while you share. Off-path alerts are not available. Removing or blocking ${this._recipientName} stops it immediately.`
+      }));
+    }
+    const routeButton = createElement('button', {
+      cls: 'bcs-route-action',
+      attrs: { type: 'button', id: 'bc-planned-route-action' },
+      text: this._liveShare.plannedPath?.length
+        ? 'Update planned route'
+        : 'Add planned route'
+    });
+    routeButton.disabled = Boolean(this._updatingLivePath);
+    routeButton.onclick = () => {
+      stopLiveShareLocationWatch(this._shareId);
+      this._stopWatchingLiveShare = null;
+      navigate('beacon-draw-path', { shareId: this._shareId });
+    };
+    card.appendChild(routeButton);
+    if (this._liveShare.plannedPath?.length) {
+      const removeRouteButton = createElement('button', {
+        cls: 'bcs-route-action',
+        attrs: { type: 'button', id: 'bc-remove-planned-route' },
+        text: this._updatingLivePath ? 'Removing route…' : 'Remove planned route'
+      });
+      removeRouteButton.disabled = Boolean(this._updatingLivePath);
+      removeRouteButton.onclick = () => this.removePlannedRoute();
+      card.appendChild(removeRouteButton);
+    }
     const stopButton = createElement('button', {
       cls: 'bcs-stop',
       attrs: { type: 'button', id: 'bc-stop-live-share' },
@@ -150,6 +189,23 @@ export class PageBeaconShareSession extends BaseElement {
     card.appendChild(stopButton);
     this.appendChild(card);
     this.updateLiveShareCountdown();
+  }
+
+  async removePlannedRoute() {
+    if (this._updatingLivePath || !this._liveShare?.plannedPath?.length) return;
+    this._updatingLivePath = true;
+    this.renderServerLiveShare();
+    try {
+      await setLivePath(this._shareId, null);
+      this._liveShare = { ...this._liveShare, plannedPath: null };
+      showToast('Planned route removed.', { type: 'success' });
+    } catch {
+      console.error('Could not remove the planned Beacon route.');
+      showToast('Could not remove the planned route. Please try again.', { type: 'error' });
+    } finally {
+      this._updatingLivePath = false;
+      if (this.isConnected) this.renderServerLiveShare();
+    }
   }
 
   updateLiveShareCountdown() {

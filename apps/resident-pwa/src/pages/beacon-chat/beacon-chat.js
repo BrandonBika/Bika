@@ -42,6 +42,22 @@ function activateOnKeyboard(element, action) {
   };
 }
 
+function getValidPlannedPath(path) {
+  if (!Array.isArray(path) || path.length < 2 || path.length > 50) return null;
+  const normalized = [];
+  for (const point of path) {
+    if (Array.isArray(point) && point.length !== 2) return null;
+    const lat = Array.isArray(point) ? point[0] : point?.lat;
+    const lng = Array.isArray(point) ? point[1] : point?.lng;
+    if (
+      !Number.isFinite(lat) || lat < -90 || lat > 90
+      || !Number.isFinite(lng) || lng < -180 || lng > 180
+    ) return null;
+    normalized.push([lat, lng]);
+  }
+  return normalized;
+}
+
 export class PageBeaconChat extends BaseElement {
   init(params) {
     this._params = params || {};
@@ -633,23 +649,29 @@ export class PageBeaconChat extends BaseElement {
     );
     const lat = share.lastLat;
     const lng = share.lastLng;
-    if (
-      Number.isFinite(lat) && lat >= -90 && lat <= 90
-      && Number.isFinite(lng) && lng >= -180 && lng <= 180
-    ) {
+    const hasLocation = Number.isFinite(lat) && lat >= -90 && lat <= 90
+      && Number.isFinite(lng) && lng >= -180 && lng <= 180;
+    const plannedPath = getValidPlannedPath(share.plannedPath);
+    if (hasLocation || plannedPath) {
+      const center = hasLocation ? [lat, lng] : plannedPath[0];
       const mapElement = createElement('div', {
         cls: 'bc-live-share-map',
-        attrs: { role: 'img', 'aria-label': `Live location map for ${this._member.name}` }
+        attrs: {
+          role: 'img',
+          'aria-label': plannedPath
+            ? `Live location and planned route map for ${this._member.name}`
+            : `Live location map for ${this._member.name}`
+        }
       });
       card.appendChild(mapElement);
-      if (Number.isFinite(share.lastAccuracyM) && share.lastAccuracyM >= 0) {
+      if (hasLocation && Number.isFinite(share.lastAccuracyM) && share.lastAccuracyM >= 0) {
         card.appendChild(createElement('span', {
           cls: 'bc-live-share-accuracy',
           text: `Accuracy ±${Math.round(share.lastAccuracyM)} m`
         }));
       }
       body.appendChild(card);
-      this.mountLiveShareMap(mapElement, share, lat, lng);
+      this.mountLiveShareMap(mapElement, share, center, hasLocation, plannedPath);
       this.updateLiveShareAge();
       return;
     }
@@ -657,15 +679,26 @@ export class PageBeaconChat extends BaseElement {
     this.updateLiveShareAge();
   }
 
-  async mountLiveShareMap(container, share, lat, lng) {
+  async mountLiveShareMap(container, share, center, hasLocation, plannedPath) {
     try {
       const { createBeaconDotIcon, createBeaconMap, L } = await import(
         '../../features/beacon/leaflet-map.js'
       );
       if (!this.isConnected || !container.isConnected || this._incomingLiveShare !== share) return;
       this._liveShareMap = createBeaconMap(container, { interactive: false, zoom: 15 });
-      this._liveShareMap.setView([lat, lng], 15);
-      L.marker([lat, lng], { icon: createBeaconDotIcon() }).addTo(this._liveShareMap);
+      this._liveShareMap.setView(center, 15);
+      if (plannedPath) {
+        L.polyline(plannedPath, {
+          color: '#1C8C99',
+          weight: 4,
+          opacity: 0.9
+        }).addTo(this._liveShareMap);
+      }
+      if (hasLocation) {
+        L.marker([share.lastLat, share.lastLng], {
+          icon: createBeaconDotIcon()
+        }).addTo(this._liveShareMap);
+      }
     } catch {
       console.error('Could not render the Beacon live location map.');
     }

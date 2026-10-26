@@ -90,6 +90,10 @@ class FakeElement {
     return null;
   }
 
+  contains(element) {
+    return this === element || this.children.some((child) => child.contains(element));
+  }
+
   click() {
     this.onclick?.({ target: this, preventDefault() {} });
   }
@@ -161,6 +165,16 @@ export const L = {
         return this;
       }
     };
+  },
+  polyline() {
+    return {
+      addTo(map) {
+        const line = document.createElement('span');
+        line.classList.add('fake-live-path');
+        map.container.appendChild(line);
+        return this;
+      }
+    };
   }
 };
 `;
@@ -192,6 +206,7 @@ configureSupabaseClient({
 setSession('resident-access-token', { id: 'resident-a' }, 'resident-refresh-token');
 
 let activeShare = true;
+let plannedPath = null;
 const calls = [];
 const acceptedContact = {
   user_id: 'resident-b',
@@ -199,12 +214,16 @@ const acceptedContact = {
 };
 globalThis.fetch = async (request, options = {}) => {
   const url = new URL(request);
-  calls.push({ path: url.pathname, method: options.method || 'GET' });
+  const body = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
+  calls.push({ path: url.pathname, method: options.method || 'GET', body });
   let result = null;
   if (url.pathname.endsWith('/rpc/list_circle')) {
     result = [acceptedContact];
   } else if (url.pathname.endsWith('/rpc/stop_live_share')) {
     activeShare = false;
+    plannedPath = null;
+  } else if (url.pathname.endsWith('/rpc/set_live_share_path')) {
+    plannedPath = body?.p_path ?? null;
   } else if (url.pathname.endsWith('/live_location_shares')) {
     result = activeShare ? [{
       id: 'share-a',
@@ -216,7 +235,8 @@ globalThis.fetch = async (request, options = {}) => {
       last_lat: -29.86,
       last_lng: 31.02,
       last_accuracy_m: 20,
-      last_at: new Date().toISOString()
+      last_at: new Date().toISOString(),
+      planned_path: plannedPath
     }] : [];
   }
   return {
@@ -268,6 +288,7 @@ const { PageBeaconHome } = await import(pathToFileURL(path.join(appRoot, 'src/pa
 const { PageBeaconStartConfirm } = await import(pathToFileURL(path.join(appRoot, 'src/pages/beacon-start-confirm/beacon-start-confirm.js')));
 const { PageBeaconSafetyNotice } = await import(pathToFileURL(path.join(appRoot, 'src/pages/beacon-safety-notice/beacon-safety-notice.js')));
 const { PageBeaconShareSession } = await import(pathToFileURL(path.join(appRoot, 'src/pages/beacon-share-session/beacon-share-session.js')));
+const { PageBeaconDrawPath } = await import(pathToFileURL(path.join(appRoot, 'src/pages/beacon-draw-path/beacon-draw-path.js')));
 const { PageBeaconChat } = await import(pathToFileURL(path.join(appRoot, 'src/pages/beacon-chat/beacon-chat.js')));
 const { isBeaconRouteGated } = await import(pathToFileURL(path.join(appRoot, 'src/route-target.js')));
 
@@ -292,6 +313,17 @@ test('Draw a path is disabled and does not navigate; direct access renders the n
   assert.match(flattenText(notice), /Draw a path is not available yet/);
 });
 
+test('draw route rejects a supplied share ID when no active share belongs to the caller', async () => {
+  activeShare = false;
+  const page = new PageBeaconDrawPath();
+  page.isConnected = true;
+  page.init({ shareId: 'inactive-share' });
+  page.connectedCallback();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.match(window.location.hash, /beacon-safety-notice/);
+  activeShare = true;
+});
+
 test('live-share confirmation lists only the accepted contact returned by the circle RPC', async () => {
   const page = new PageBeaconStartConfirm();
   page.isConnected = true;
@@ -307,6 +339,63 @@ test('live-share confirmation lists only the accepted contact returned by the ci
   assert.match(flattenText(page), /It only updates while Bika is open/);
 });
 
+test('planned-route action opens drawing for the active share', async () => {
+  activeShare = true;
+  plannedPath = [[-29.86, 31.02], [-29.87, 31.03]];
+  const page = new PageBeaconShareSession();
+  page.isConnected = true;
+  page.init({ shareId: 'share-a', routeShared: 'true' });
+  await page.connectServerLiveShare();
+  assert.match(flattenText(page), /Planned route shared with Kai Contact/);
+  assert.match(flattenText(page), /Off-path alerts are not available/);
+  assert.match(flattenText(page), /Removing or blocking Kai Contact stops it immediately/);
+  page.querySelector('#bc-planned-route-action').click();
+  assert.match(window.location.hash, /beacon-draw-path/);
+  assert.match(window.location.hash, /shareId=share-a/);
+  assert.equal(activeShare, true);
+  page.disconnectedCallback();
+});
+
+test('confirming a drawn route calls set_live_share_path for the active share', async () => {
+  activeShare = true;
+  plannedPath = null;
+  calls.length = 0;
+  const page = new PageBeaconDrawPath();
+  page.isConnected = true;
+  page.init({ shareId: 'share-a' });
+  page._shareId = 'share-a';
+  page.connectedCallback = () => {};
+  await page.openActiveLiveShare();
+  page._points = [[-29.86, 31.02], [-29.87, 31.03]];
+  page._hasPath = true;
+  page._routeIsMock = false;
+  page._nextBtn = new FakeElement('button');
+
+  await page.handleNext();
+  const request = calls.find((call) => call.path.endsWith('/rpc/set_live_share_path'));
+  assert.deepEqual(request.body, {
+    p_id: 'share-a',
+    p_path: [[-29.86, 31.02], [-29.87, 31.03]]
+  });
+  assert.match(window.location.hash, /beacon-share-session/);
+});
+
+test('sharer can remove a planned route through the set path RPC', async () => {
+  activeShare = true;
+  plannedPath = [[-29.86, 31.02], [-29.87, 31.03]];
+  calls.length = 0;
+  const page = new PageBeaconShareSession();
+  page.isConnected = true;
+  page.init({ shareId: 'share-a' });
+  await page.connectServerLiveShare();
+  page.querySelector('#bc-remove-planned-route').click();
+  await new Promise((resolve) => setImmediate(resolve));
+  const request = calls.find((call) => call.path.endsWith('/rpc/set_live_share_path'));
+  assert.deepEqual(request.body, { p_id: 'share-a', p_path: null });
+  assert.equal(page._liveShare.plannedPath, null);
+  page.disconnectedCallback();
+});
+
 test('Stop sharing calls the server stop RPC', async () => {
   activeShare = true;
   calls.length = 0;
@@ -314,13 +403,16 @@ test('Stop sharing calls the server stop RPC', async () => {
   page.isConnected = true;
   page.init({ shareId: 'share-a' });
   await page.connectServerLiveShare();
-  const stopButton = page.querySelector('#bc-stop-live-share');
-  assert.ok(stopButton);
-  stopButton.click();
-  await new Promise((resolve) => setImmediate(resolve));
-  assert.ok(calls.some((call) => call.path.endsWith('/rpc/stop_live_share')));
-  assert.equal(window.location.hash, 'beacon-home');
-  page.disconnectedCallback();
+  try {
+    const stopButton = page.querySelector('#bc-stop-live-share');
+    assert.ok(stopButton);
+    stopButton.click();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.ok(calls.some((call) => call.path.endsWith('/rpc/stop_live_share')));
+    assert.equal(window.location.hash, 'beacon-home');
+  } finally {
+    page.disconnectedCallback();
+  }
 });
 
 test('sharer sees precise-GPS guidance until a location update arrives', () => {
@@ -357,16 +449,19 @@ test('viewer marker is removed and Sharing ended is rendered when the share ends
     lastLat: -29.86,
     lastLng: 31.02,
     lastAccuracyM: 20,
-    lastAt: new Date().toISOString()
+    lastAt: new Date().toISOString(),
+    plannedPath: [[-29.86, 31.02], [-29.87, 31.03]]
   };
   page.renderMessages();
   await new Promise((resolve) => setImmediate(resolve));
   assert.ok(page._chatBody.querySelector('.fake-live-marker'));
+  assert.ok(page._chatBody.querySelector('.fake-live-path'));
 
   page._incomingLiveShare = null;
   page._liveShareEnded = true;
   page.renderMessages();
   assert.equal(page._chatBody.querySelector('.bc-live-share-map'), null);
+  assert.equal(page._chatBody.querySelector('.fake-live-path'), null);
   assert.match(flattenText(page._chatBody), /Sharing ended/);
 });
 

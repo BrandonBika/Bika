@@ -16,7 +16,7 @@ test('Beacon routes stay gated when the runtime flag is missing or false', () =>
   assert.equal(isBeaconRouteGated('contacts-permission', { source: 'lifeline' }), false);
 });
 
-test('the production runtime enables live sharing but keeps path drawing gated', () => {
+test('the production runtime allows path drawing only through a live-share route', () => {
   assert.equal(config.beaconEnabled, true);
   assert.equal(isBeaconRouteGated('beacon-home', {}, true), false);
   assert.equal(isBeaconRouteGated('beacon-requests', {}, true), false);
@@ -27,4 +27,6 @@ test('the production runtime enables live sharing but keeps path drawing gated',
   assert.equal(isBeaconRouteGated('beacon-start-confirm', {}, true), false);
   assert.equal(isBeaconRouteGated('beacon-share-session', {}, true), false);
   assert.equal(isBeaconRouteGated('beacon-draw-path', {}, true), true);
+  assert.equal(isBeaconRouteGated('beacon-draw-path', { shareId: 'share-1' }, true), false);
+  assert.equal(isBeaconRouteGated('beacon-draw-path', { shareId: 'share-1' }, false), true);
 });

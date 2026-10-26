@@ -228,6 +228,11 @@ export async function stopLiveShare(shareId) {
   return callRpc('stop_live_share', { p_id: id });
 }
 
+export function stopLiveShareLocationWatch(shareId) {
+  const id = requireId(shareId, 'Live share ID');
+  liveShareWatchers.get(id)?.stopLocal();
+}
+
 export async function getActiveSharesForMe() {
   const userId = requireUserId();
   const expiresAfter = new Date().toISOString();
