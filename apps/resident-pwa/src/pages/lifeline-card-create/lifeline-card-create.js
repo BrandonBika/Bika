@@ -5,6 +5,7 @@ import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { navigate } from '../../router.js';
 import { saveLifelineCard } from '../../features/lifeline/lifeline.client.js';
+import { getLifelineCardValidationError } from '../../features/lifeline/lifeline-groups.js';
 import { selectLifelineContacts } from '../../features/lifeline/lifeline-contacts.js';
 
 export class PageLifelineCardCreate extends BaseElement {
@@ -73,15 +74,16 @@ export class PageLifelineCardCreate extends BaseElement {
       }
     };
 
-    const save = createElement('button', { cls: 'cn-lifeline-save-group', text: 'Save group', attrs: { type: 'button' } });
+    const save = createElement('button', { cls: 'cn-lifeline-save-group', text: 'Create group', attrs: { type: 'button' } });
     save.onclick = async () => {
       const validMembers = memberRows.map((entry, index) => ({
         id: `member-${Date.now()}-${index}`,
         name: entry.memberName.value.trim(),
         phone: entry.memberPhone.value.trim()
       }));
-      if (!name.value.trim() || validMembers.length === 0 || validMembers.some((member) => !member.name || !member.phone)) {
-        saveError.textContent = 'Add a group name and at least one complete phone number.';
+      const validationError = getLifelineCardValidationError(name.value, validMembers);
+      if (validationError) {
+        saveError.textContent = validationError;
         saveError.hidden = false;
         return;
       }

@@ -5,6 +5,7 @@ import { BaseElement } from '@civicneuro/ui';
 import { clearChildren, createElement } from '@civicneuro/security-web';
 import { navigate } from '../../router.js';
 import { getLifelineCards, saveLifelineCard } from '../../features/lifeline/lifeline.client.js';
+import { getLifelineCardValidationError } from '../../features/lifeline/lifeline-groups.js';
 import { showToast } from '@civicneuro/ui';
 import { selectLifelineContacts } from '../../features/lifeline/lifeline-contacts.js';
 import '../../components/back-button/back-button.js';
@@ -44,6 +45,10 @@ export class PageLifelineCardEdit extends BaseElement {
 
     this._memberCount = createElement('h2', { cls: 'cn-lifeline-members-title' });
     this._memberList = createElement('div', { cls: 'cn-lifeline-member-list' });
+    this._saveError = createElement('p', {
+      cls: 'cn-lifeline-save-error',
+      attrs: { role: 'alert', hidden: 'hidden' }
+    });
     this._pickContacts = createElement('button', { cls: 'cn-lifeline-pick-contacts', text: 'Add from contacts', attrs: { type: 'button' } });
     this._pickContacts.onclick = () => this.pickContacts();
     this._addMember = createElement('button', { cls: 'cn-lifeline-add-member', text: '+ Add a number', attrs: { type: 'button' } });
@@ -51,7 +56,7 @@ export class PageLifelineCardEdit extends BaseElement {
     this._save = createElement('button', { cls: 'cn-lifeline-save-group', text: 'Save group', attrs: { type: 'button' } });
     this._save.onclick = () => this.saveGroup();
 
-    this.append(header, this._memberCount, this._memberList, this._pickContacts, this._addMember);
+    this.append(header, this._memberCount, this._memberList, this._pickContacts, this._addMember, this._saveError);
     this.renderMembers();
     this.appendChild(this._save);
   }
@@ -133,14 +138,27 @@ export class PageLifelineCardEdit extends BaseElement {
   }
 
   async saveGroup() {
+    const validationError = getLifelineCardValidationError(this._group.name, this._group.members);
+    if (validationError) {
+      this._saveError.textContent = validationError;
+      this._saveError.hidden = false;
+      showToast(validationError, { type: 'error' });
+      return;
+    }
+
     try {
+      this._saveError.hidden = true;
+      this._saveError.textContent = '';
       this._save.disabled = true;
       await saveLifelineCard(this._group);
       showToast('Group saved', { type: 'success' });
       navigate('lifeline-home');
     } catch (error) {
       this._save.disabled = false;
-      showToast(error.message || 'Could not save group', { type: 'error' });
+      const message = error.message || 'Could not save group';
+      this._saveError.textContent = message;
+      this._saveError.hidden = false;
+      showToast(message, { type: 'error' });
     }
   }
 }
