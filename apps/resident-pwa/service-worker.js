@@ -3,7 +3,7 @@
  * Service worker strictly caching shell files only.
  * NEVER caches API responses, signed URLs, or personal data.
  */
-const CACHE_NAME = 'cn-shell-v14';
+const CACHE_NAME = 'cn-shell-v15';
 const SHELL_ASSETS = [
   './index.html',
   './offline.html',

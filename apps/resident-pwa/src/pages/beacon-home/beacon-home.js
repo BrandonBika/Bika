@@ -690,7 +690,10 @@ export class PageBeaconHome extends BaseElement {
       cls: 'bc-map',
       attrs: { 'aria-label': 'Beacon prototype map', id: 'bc-leaflet-map' }
     });
+    mapWrap.appendChild(map);
+    this.appendChild(mapWrap);
     this._map = createBeaconMap(map, { zoom: 15 });
+    this._map.invalidateSize();
     L.control.zoom({ position: 'topright' }).addTo(this._map);
     if (previousMapView) {
       this._map.setView(previousMapView.center, previousMapView.zoom);
@@ -724,7 +727,6 @@ export class PageBeaconHome extends BaseElement {
       livePin.on('click', () => navigate('beacon-chat', { memberId: member.id }));
     }
 
-    mapWrap.appendChild(map);
     if (this._debugEnabled) {
       const diagnostics = createElement('section', {
         cls: 'bc-location-diagnostics',
@@ -762,8 +764,6 @@ export class PageBeaconHome extends BaseElement {
       );
       mapWrap.appendChild(diagnostics);
     }
-    this.appendChild(mapWrap);
-    this._map.invalidateSize();
     const currentLocation = getCurrentLocation();
     if (currentLocation) this.applyCurrentLocation(currentLocation);
     this.updateLocationDiagnostics();
