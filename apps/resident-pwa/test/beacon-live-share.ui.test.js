@@ -22,7 +22,9 @@ class FakeElement {
     this.parentNode = null;
     this.isConnected = true;
     this.disabled = false;
+    this.hidden = false;
     this._textContent = '';
+    this._listeners = new Map();
   }
 
   get firstChild() {
@@ -74,6 +76,21 @@ class FakeElement {
 
   removeAttribute(name) {
     delete this.attributes[name];
+  }
+
+  addEventListener(name, listener) {
+    if (!this._listeners.has(name)) this._listeners.set(name, []);
+    this._listeners.get(name).push(listener);
+  }
+
+  getBoundingClientRect() {
+    return { left: 0, top: 0, width: 400, height: 700 };
+  }
+
+  setPointerCapture() {}
+
+  emit(name, event) {
+    for (const listener of this._listeners.get(name) || []) listener(event);
   }
 
   querySelector(selector) {
@@ -141,12 +158,27 @@ globalThis.customElements = {
   get(name) { return registeredElements.get(name); }
 };
 globalThis.requestAnimationFrame = (callback) => callback();
+globalThis.__fakeBeaconMapViews = [];
 
 const fakeMapModule = `
 export function createBeaconMap(container) {
   return {
     container,
-    setView() { return this; },
+    setView(center, zoom) {
+      globalThis.__fakeBeaconMapViews.push({ center, zoom });
+      return this;
+    },
+    fitBounds() { return this; },
+    invalidateSize() { return this; },
+    zoomIn() { return this; },
+    zoomOut() { return this; },
+    getZoom() { return 13; },
+    removeLayer() { return this; },
+    containerPointToLatLng([x, y]) {
+      return { lat: -29.86 + y * 0.001, lng: 31.02 + x * 0.001 };
+    },
+    dragging: { disable() {}, enable() {} },
+    once() {},
     remove() { this.removed = true; }
   };
 }
@@ -163,7 +195,8 @@ export const L = {
         marker.classList.add('fake-live-marker');
         map.container.appendChild(marker);
         return this;
-      }
+      },
+      bindTooltip() { return this; }
     };
   },
   polyline() {
@@ -207,6 +240,8 @@ setSession('resident-access-token', { id: 'resident-a' }, 'resident-refresh-toke
 
 let activeShare = true;
 let plannedPath = null;
+let shareLastLat = -29.86;
+let shareLastLng = 31.02;
 const calls = [];
 const acceptedContact = {
   user_id: 'resident-b',
@@ -232,8 +267,8 @@ globalThis.fetch = async (request, options = {}) => {
       started_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 15 * 60000).toISOString(),
       stopped_at: null,
-      last_lat: -29.86,
-      last_lng: 31.02,
+      last_lat: shareLastLat,
+      last_lng: shareLastLng,
       last_accuracy_m: 20,
       last_at: new Date().toISOString(),
       planned_path: plannedPath
@@ -291,9 +326,35 @@ const { PageBeaconShareSession } = await import(pathToFileURL(path.join(appRoot,
 const { PageBeaconDrawPath } = await import(pathToFileURL(path.join(appRoot, 'src/pages/beacon-draw-path/beacon-draw-path.js')));
 const { PageBeaconChat } = await import(pathToFileURL(path.join(appRoot, 'src/pages/beacon-chat/beacon-chat.js')));
 const { isBeaconRouteGated } = await import(pathToFileURL(path.join(appRoot, 'src/route-target.js')));
+const { config } = await import(pathToFileURL(path.join(appRoot, 'src/config.js')));
 
 function flattenText(node) {
   return node.textContent;
+}
+
+function createRenderedActiveDrawPage({
+  lastLat = -29.86,
+  lastLng = 31.02,
+  plannedPath = null
+} = {}) {
+  const geolocation = navigator.geolocation;
+  navigator.geolocation = undefined;
+  const page = new PageBeaconDrawPath();
+  page.isConnected = true;
+  page.init({ shareId: 'share-a' });
+  page._shareId = 'share-a';
+  page._activeShare = {
+    id: 'share-a',
+    sharerId: 'resident-a',
+    recipientId: 'resident-b',
+    expiresAt: new Date(Date.now() + 15 * 60000).toISOString(),
+    lastLat,
+    lastLng,
+    plannedPath
+  };
+  page.connectedCallback();
+  navigator.geolocation = geolocation;
+  return page;
 }
 
 test('Draw a path is disabled and does not navigate; direct access renders the notice', () => {
@@ -322,6 +383,48 @@ test('draw route rejects a supplied share ID when no active share belongs to the
   await new Promise((resolve) => setImmediate(resolve));
   assert.match(window.location.hash, /beacon-safety-notice/);
   activeShare = true;
+});
+
+test('active-share drawing without GPS centers on Durban and has no GPS start prompt', () => {
+  activeShare = true;
+  plannedPath = null;
+  shareLastLat = null;
+  shareLastLng = null;
+  globalThis.__fakeBeaconMapViews.length = 0;
+  const page = createRenderedActiveDrawPage({ lastLat: null, lastLng: null });
+
+  const activeShareView = globalThis.__fakeBeaconMapViews.at(-1);
+  assert.deepEqual(activeShareView, {
+    center: [config.defaultCenter.lat, config.defaultCenter.lng],
+    zoom: 13
+  });
+  assert.notDeepEqual(activeShareView.center, [0, 0]);
+  assert.equal(page.querySelector('.draw-hint-retry-btn').hidden, true);
+  assert.equal(page.querySelector('.draw-hint-manual-start-btn').hidden, true);
+  assert.doesNotMatch(page.querySelector('.draw-hint-body').textContent, /Retry location|choose your route starting point/i);
+  page.disconnectedCallback();
+  shareLastLat = -29.86;
+  shareLastLng = 31.02;
+});
+
+test('active-share drawing centers on valid last known coordinates', () => {
+  activeShare = true;
+  plannedPath = null;
+  shareLastLat = -26.2041;
+  shareLastLng = 28.0473;
+  globalThis.__fakeBeaconMapViews.length = 0;
+  const page = createRenderedActiveDrawPage({
+    lastLat: -26.2041,
+    lastLng: 28.0473
+  });
+
+  assert.deepEqual(globalThis.__fakeBeaconMapViews.at(-1), {
+    center: [-26.2041, 28.0473],
+    zoom: 13
+  });
+  page.disconnectedCallback();
+  shareLastLat = -29.86;
+  shareLastLng = 31.02;
 });
 
 test('live-share confirmation lists only the accepted contact returned by the circle RPC', async () => {
@@ -360,24 +463,35 @@ test('confirming a drawn route calls set_live_share_path for the active share', 
   activeShare = true;
   plannedPath = null;
   calls.length = 0;
-  const page = new PageBeaconDrawPath();
-  page.isConnected = true;
-  page.init({ shareId: 'share-a' });
-  page._shareId = 'share-a';
-  page.connectedCallback = () => {};
-  await page.openActiveLiveShare();
-  page._points = [[-29.86, 31.02], [-29.87, 31.03]];
-  page._hasPath = true;
-  page._routeIsMock = false;
-  page._nextBtn = new FakeElement('button');
+  const page = createRenderedActiveDrawPage();
+  page.calculateLiveDistance = () => {
+    page._distanceMeters = 200;
+    page._distanceKm = 0.2;
+    page._timeMin = 3;
+  };
+
+  const canvas = page.querySelector('#draw-canvas');
+  const event = (clientX, clientY) => ({
+    isPrimary: true,
+    pointerId: 1,
+    clientX,
+    clientY,
+    preventDefault() {}
+  });
+  canvas.emit('pointerdown', event(0, 0));
+  canvas.emit('pointermove', event(100, 50));
+  canvas.emit('pointerup', event(100, 50));
+  assert.equal(page._hasPath, true);
+  assert.ok(page._points.length >= 2);
 
   await page.handleNext();
   const request = calls.find((call) => call.path.endsWith('/rpc/set_live_share_path'));
   assert.deepEqual(request.body, {
     p_id: 'share-a',
-    p_path: [[-29.86, 31.02], [-29.87, 31.03]]
+    p_path: [[-29.86, 31.02], [-29.81, 31.12]]
   });
   assert.match(window.location.hash, /beacon-share-session/);
+  page.disconnectedCallback();
 });
 
 test('sharer can remove a planned route through the set path RPC', async () => {

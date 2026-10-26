@@ -9,6 +9,7 @@ import { BaseElement, showToast } from '@civicneuro/ui';
 import { clearChildren, createElement, setText } from '@civicneuro/security-web';
 import { getCurrentUser } from '@civicneuro/supabase-client';
 import { BeaconIcons } from '../../features/beacon/beacon-icons.js';
+import { config } from '../../config.js';
 import {
   getActiveSession,
   getBeaconWalkingRoute,
@@ -222,6 +223,17 @@ export class PageBeaconDrawPath extends BaseElement {
     const location = getCurrentLocation();
     if (this._hasPath && this._points.length > 1) {
       this._map.fitBounds(this._points, { padding: [36, 36], maxZoom: 15 });
+    } else if (this._activeShare) {
+      const hasLastLocation = Number.isFinite(this._activeShare.lastLat)
+        && this._activeShare.lastLat >= -90
+        && this._activeShare.lastLat <= 90
+        && Number.isFinite(this._activeShare.lastLng)
+        && this._activeShare.lastLng >= -180
+        && this._activeShare.lastLng <= 180;
+      const center = hasLastLocation
+        ? [this._activeShare.lastLat, this._activeShare.lastLng]
+        : [config.defaultCenter.lat, config.defaultCenter.lng];
+      this._map.setView(center, 13);
     } else if (hasReliableLocation(location)) {
       this._map.setView([location.lat, location.lng], 15);
     } else if (!this._manualStartPos) {
@@ -439,19 +451,21 @@ export class PageBeaconDrawPath extends BaseElement {
         return;
       }
       const location = getCurrentLocation();
-      const startPosition = this._manualStartPos
-        || (hasReliableLocation(location) ? [location.lat, location.lng] : null);
+      const startPosition = this._activeShare
+        ? [pos.lat, pos.lng]
+        : this._manualStartPos
+          || (hasReliableLocation(location) ? [location.lat, location.lng] : null);
       const previousPoints = this._hasPath && !this._routeIsMock
         ? this._points.map((point) => [...point])
         : [];
-      if (!previousPoints.length && !startPosition) {
+      if (!this._activeShare && !previousPoints.length && !startPosition) {
         showToast('Retry location or choose your route starting point on the map.', { type: 'error' });
         return;
       }
       this._startPos = previousPoints.length
         ? previousPoints[previousPoints.length - 1]
         : startPosition;
-      if (L.latLng(this._startPos).distanceTo(pos) > 30) {
+      if (!this._activeShare && L.latLng(this._startPos).distanceTo(pos) > 30) {
         showToast(previousPoints.length
           ? 'Start drawing near the destination pin to extend your path.'
           : this._manualStartPos
@@ -707,8 +721,8 @@ export class PageBeaconDrawPath extends BaseElement {
     const locationNeedsImprovement = !this._isEditMode
       && (!location || location.accuracy > MAX_BEACON_LOCATION_ACCURACY_METERS);
     const canDrawFromManualStart = Boolean(this._manualStartPos);
-    this._locationRetryBtn.hidden = !locationNeedsImprovement;
-    this._manualStartBtn.hidden = this._isEditMode
+    this._locationRetryBtn.hidden = Boolean(this._activeShare) || !locationNeedsImprovement;
+    this._manualStartBtn.hidden = Boolean(this._activeShare) || this._isEditMode
       || (!locationNeedsImprovement && !canDrawFromManualStart);
     this._manualStartBtn.textContent = this._selectingStartPosition
       ? 'Tap the map to set start…'
